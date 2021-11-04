@@ -1,5 +1,5 @@
 ---
-outdir: /krummellab/data1/arrao/tmp/test_nextflow/results
+outdir: /c4/home/danb/rna_seq_testing_outs/run1
 cohort_name: plateTest
 samples:
     mini_CONTROL_jurkat_PlateP27:

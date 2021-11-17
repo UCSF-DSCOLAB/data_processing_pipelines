@@ -166,7 +166,7 @@ process extractRrnaCram {
                   -o ${sample}.trimmed.rrna.bam \
                   ${rrna_sam}
 
-    samtools sort  -m 3G \
+    samtools sort  -m 8G \
                    -@ ${task.cpus} \
                    --no-PG \
                    -O cram \
@@ -200,19 +200,20 @@ process extractNonRrnaReads {
     java -Xmx${task.memory.toGiga()-5}g \
          -jar /opt/picard/picard.jar \
             ViewSam \
-                VALIDATION_STRINGENCY=SILENT \
-                ALIGNMENT_STATUS=Unaligned \
-                PF_STATUS=All \
-                I=${rrna_sam} \
+                -VALIDATION_STRINGENCY SILENT \
+                -ALIGNMENT_STATUS Unaligned \
+                -PF_STATUS All \
+                -I ${rrna_sam} \
                 > ${sample}.trimmed.non_rrna.bam
 
     java -Xmx${task.memory.toGiga()-5}g \
          -jar /opt/picard/picard.jar \
             SamToFastq \
-                VALIDATION_STRINGENCY=SILENT \
-                I=${sample}.trimmed.non_rrna.bam \
-                FASTQ=${sample}.trimmed.non_rrna.1.fq.gz \
-                SECOND_END_FASTQ=${sample}.trimmed.non_rrna.2.fq.gz
+                -VALIDATION_STRINGENCY SILENT \
+                -I ${sample}.trimmed.non_rrna.bam \
+                -FASTQ ${sample}.trimmed.non_rrna.1.fq.gz \
+                -SECOND_END_FASTQ ${sample}.trimmed.non_rrna.2.fq.gz
+
     """
 }
 

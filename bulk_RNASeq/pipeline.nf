@@ -96,7 +96,7 @@ process runFastp {
     tag { "${sample}--${params.cohort_name}" }
     publishDir "${params.outdir}/${sample}/qc/", mode: 'copy', pattern: "${sample}.fastp.*"
 
-    container "/krummellab/data1/singularity_images/fastp/0.19.6/fastp.sif"
+    container "/krummellab/data1/singularity_images/fastp/0.20.1/fastp.sif"
     cpus 12
     memory '10G'
 
@@ -130,7 +130,7 @@ process runFastp {
 process quenchRrnaReads {
     tag { "${sample}--${params.cohort_name}" }
 
-    container "/krummellab/data1/singularity_images/bwa/0.7.12/bwa.sif"
+    container "/krummellab/data1/singularity_images/bwa/0.7.17/bwa.sif"
     containerOptions "-B ${tool_params.rrna_bwa_idx_dir}"
     cpus 16
     memory '50G'
@@ -158,7 +158,7 @@ process extractRrnaCram {
     tag { "${sample}--${params.cohort_name}" }
     publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.rrna.sorted.cram*"
     
-    container "/krummellab/data1/singularity_images/samtools/1.3.1/samtools.sif"
+    container "/krummellab/data1/singularity_images/samtools/1.12/samtools.sif"
     containerOptions "-B ${tool_params.rrna_bwa_idx_dir}"
 
     //FIXME: Figure out how to make the 3G below dynamic
@@ -177,16 +177,20 @@ process extractRrnaCram {
     """
     samtools view -b \
                   -F 0x4 \
-                  -o ${sample}.trimmed.rrna.bam ${rrna_sam}
+                  -@ ${task.cpus} \
+                  --no-PG \
+                  -o ${sample}.trimmed.rrna.bam \
+                  ${rrna_sam}
 
     samtools sort  -m 3G \
                    -@ ${task.cpus} \
+                   --no-PG \
                    -O cram \
+                   --write-index \
                    --reference ${tool_params.rrna_bwa_idx_dir}/${tool_params.rrna_bwa_idx_prefix} \
+                   -o ${sample}.trimmed.rrna.sorted.cram \
                    ${sample}.trimmed.rrna.bam \
-                   > ${sample}.trimmed.rrna.sorted.cram
 
-    samtools index ${sample}.trimmed.rrna.sorted.cram
     samtools flagstat ${sample}.trimmed.rrna.sorted.cram \
         > ${sample}.trimmed.rrna.sorted.cram.flagstat
     """
@@ -198,7 +202,7 @@ process extractRrnaCram {
 process extractNonRrnaReads {
     tag { "${sample}--${params.cohort_name}" }
     
-    container "/krummellab/data1/singularity_images/picard/2.18.14/picard.sif"
+    container "/krummellab/data1/singularity_images/picard/2.25.3/picard.sif"
     cpus 16
     memory '50G'
 
@@ -314,7 +318,7 @@ process transcriptomeBAMToCRAM {
     tag { "${sample}--${params.cohort_name}" }
     publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.non_rrna.star.cram"
 
-    container "/krummellab/data1/singularity_images/samtools/1.3.1/samtools.sif"
+    container "/krummellab/data1/singularity_images/samtools/1.12/samtools.sif"
     containerOptions "-B ${tool_params.rsem_star_transcript_ref_dir}"
     cpus 16
     memory '50G'
@@ -329,6 +333,7 @@ process transcriptomeBAMToCRAM {
     """
     samtools view  -@ ${task.cpus} \
                    -C \
+                   --no-PG \
                    -T ${tool_params.rsem_star_transcript_ref_dir}/${tool_params.rsem_star_transcript_ref_prefix}.transcripts.fa \
                    -o ${sample}.trimmed.non_rrna.star.cram \
                    ${t_bam}
@@ -342,7 +347,7 @@ process markDuplicatesGenomicBAM {
     tag { "${sample}--${params.cohort_name}" }
     publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.duplication_metrics"
 
-    container "/krummellab/data1/singularity_images/picard/2.18.14/picard.sif"
+    container "/krummellab/data1/singularity_images/picard/2.25.3/picard.sif"
     cpus 1
     memory '50G'
 
@@ -373,7 +378,7 @@ process dedupGenomeBAMToCRAM {
     tag { "${sample}--${params.cohort_name}" }
     publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.deduplicated.cram*"
 
-    container "/krummellab/data1/singularity_images/samtools/1.3.1/samtools.sif"
+    container "/krummellab/data1/singularity_images/samtools/1.12/samtools.sif"
     containerOptions "-B ${tool_params.sequence_ref_dir}"
     cpus 16
     memory '50G'
@@ -390,12 +395,13 @@ process dedupGenomeBAMToCRAM {
 
     """
     samtools view  -@ ${task.cpus} \
+                   --no-PG \
+                   --write-index \
                    -C \
                    -T ${tool_params.sequence_ref_dir}/${tool_params.genome_version}.fa \
                    -o ${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.deduplicated.cram \
                    ${dg_bam}
 
-    samtools index ${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.deduplicated.cram
     samtools flagstat  ${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.deduplicated.cram \
         > ${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.deduplicated.cram.flagstat
     """
@@ -408,7 +414,7 @@ process runRSEM {
     tag { "${sample}--${params.cohort_name}" }
     publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.rsem.*.results"
 
-    container "/krummellab/data1/singularity_images/RSEM/1.3.1/RSEM.sif"
+    container "/krummellab/data1/singularity_images/RSEM/1.3.3/RSEM.sif"
     containerOptions "-B ${tool_params.rsem_star_transcript_ref_dir}"
     cpus 12
     memory '50G'
@@ -438,7 +444,7 @@ process dedupGenomeBAMRSQMetrics {
     tag { "${sample}--${params.cohort_name}" }
     publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.deduplicated.rnaseq_metrics"
 
-    container "/krummellab/data1/singularity_images/picard/2.18.14/picard.sif"
+    container "/krummellab/data1/singularity_images/picard/2.25.3/picard.sif"
     containerOptions "-B ${tool_params.genome_flat_ref_dir} -B ${tool_params.ribosomal_intervals_dir}"
     cpus 12
     memory '50G'
@@ -470,7 +476,7 @@ process dedupGenomeBAMAlignmentMetrics {
     tag { "${sample}--${params.cohort_name}" }
     publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.deduplicated.alignment_metrics"
 
-    container "/krummellab/data1/singularity_images/picard/2.18.14/picard.sif"
+    container "/krummellab/data1/singularity_images/picard/2.25.3/picard.sif"
     cpus 12
     memory '50G'
 

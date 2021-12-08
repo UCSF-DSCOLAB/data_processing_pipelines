@@ -12,7 +12,6 @@
 # TODO: add an option to resume
 
 export PATH=$PATH:/krummellab/data1/ipi/software/nextflow/21.04.3_build_5560/
-#nextflow run pipeline.nf -resume -c $2 -params-file $1 
-nextflow run pipeline.nf -c $2 -params-file $1 
+nextflow run pipeline_no_ribo.nf -c $2 -params-file $1 
 
 

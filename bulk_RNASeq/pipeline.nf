@@ -108,122 +108,15 @@ process runFastp {
     """
 }
 
-/*
- * Step 4. Quench rrna reads
- */
-process quenchRrnaReads {
-    tag { "${sample}--${params.cohort_name}" }
 
-    container "${params.container.bwa}"
-    containerOptions "-B ${params.ref.rrna_bwa_idx_dir}"
-    cpus 16
-    memory '50G'
-
-    input:
-    tuple val(sample), path(reads) from trimmedReads
-
-    output:
-    tuple val(sample), path("${sample}.trimmed.rrna.sam") into bwaSams
-
-    """
-    bwa mem  -t ${task.cpus} \
-         -M \
-         -T 23 \
-         ${params.ref.rrna_bwa_idx_dir}/${params.ref.rrna_bwa_idx_prefix} \
-         ${reads[0]} \
-         ${reads[1]} > ${sample}.trimmed.rrna.sam
-    """
-}
-
-/*
- * Step 5. Extract Aligned rRNA bam
- */
-process extractRrnaCram {
-    tag { "${sample}--${params.cohort_name}" }
-    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.rrna.sorted.cram*"
-    
-    container "${params.container.samtools}"
-    containerOptions "-B ${params.ref.rrna_bwa_idx_dir}"
-
-    //FIXME: Figure out how to make the 3G below dynamic
-    cpus 16
-    memory '50G'
-
-    input:
-    tuple val(sample), path(rrna_sam) from bwaSams
-
-    output:
-    tuple val(sample), path(rrna_sam) into bwaSams2
-    tuple val(sample), "${sample}.trimmed.rrna.sorted.cram*" into rrnaSams
-    path "${sample}.trimmed.rrna.sorted.cram"
-    path "${sample}.trimmed.rrna.sorted.cram.crai"
-
-    """
-    samtools view -b \
-                  -F 0x4 \
-                  -@ ${task.cpus} \
-                  --no-PG \
-                  -o ${sample}.trimmed.rrna.bam \
-                  ${rrna_sam}
-
-    samtools sort  -m 8G \
-                   -@ ${task.cpus} \
-                   --no-PG \
-                   -O cram \
-                   --write-index \
-                   --reference ${params.ref.rrna_bwa_idx_dir}/${params.ref.rrna_bwa_idx_prefix} \
-                   -o ${sample}.trimmed.rrna.sorted.cram \
-                   ${sample}.trimmed.rrna.bam \
-
-    samtools flagstat ${sample}.trimmed.rrna.sorted.cram \
-        > ${sample}.trimmed.rrna.sorted.cram.flagstat
-    """
-}
-
-/*
- * Step 6. Extract Non-rRNA reads
- */
-process extractNonRrnaReads {
-    tag { "${sample}--${params.cohort_name}" }
-    
-    container "${params.container.picard}"
-    cpus 16
-    memory '50G'
-
-    input:
-    tuple val(sample), path(rrna_sam) from bwaSams2
-
-    output:
-    tuple val(sample), "${sample}.trimmed.non_rrna.{1,2}.fq.gz" into nonRrnaReads
-
-    """
-    java -Xmx${task.memory.toGiga()-5}g \
-         -jar /opt/picard/picard.jar \
-            ViewSam \
-                -VALIDATION_STRINGENCY SILENT \
-                -ALIGNMENT_STATUS Unaligned \
-                -PF_STATUS All \
-                -I ${rrna_sam} \
-                > ${sample}.trimmed.non_rrna.bam
-
-    java -Xmx${task.memory.toGiga()-5}g \
-         -jar /opt/picard/picard.jar \
-            SamToFastq \
-                -VALIDATION_STRINGENCY SILENT \
-                -I ${sample}.trimmed.non_rrna.bam \
-                -FASTQ ${sample}.trimmed.non_rrna.1.fq.gz \
-                -SECOND_END_FASTQ ${sample}.trimmed.non_rrna.2.fq.gz
-
-    """
-}
 
 /*
  * Step 7. Align to the human genome/transcriptome
  */
 process alignToGenomeTranscriptome {
     tag { "${sample}--${params.cohort_name}" }
-    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.non_rrna.star.Chimeric.out.junction"
-    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.non_rrna.star.ReadsPerGene.out.tab"
+    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.star.Chimeric.out.junction"
+    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.star.ReadsPerGene.out.tab"
     
     container "${params.container.star}"
     containerOptions "-B ${params.ref.star_genome_dir}"
@@ -231,14 +124,14 @@ process alignToGenomeTranscriptome {
     memory '100G'
 
     input:
-    tuple val(sample), path(reads) from nonRrnaReads
+    tuple val(sample), path(reads) from trimmedReads
 
     output:
-    tuple val(sample), "${sample}.trimmed.non_rrna.star.Unmapped.out.mate?" into starUnamppedReads
-    tuple val(sample), "${sample}.trimmed.non_rrna.star.Aligned.toTranscriptome.out.bam" into transcriptomeBAM
-    tuple val(sample), "${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.bam" into genomeBAM
-    path "${sample}.trimmed.non_rrna.star.Chimeric.out.junction"
-    path "${sample}.trimmed.non_rrna.star.ReadsPerGene.out.tab"
+    tuple val(sample), "${sample}.trimmed.star.Unmapped.out.mate?" into starUnamppedReads
+    tuple val(sample), "${sample}.trimmed.star.Aligned.toTranscriptome.out.bam" into transcriptomeBAM
+    tuple val(sample), "${sample}.trimmed.star.Aligned.sortedByCoord.out.bam" into genomeBAM
+    path "${sample}.trimmed.star.Chimeric.out.junction"
+    path "${sample}.trimmed.star.ReadsPerGene.out.tab"
 
     """
     STAR --readFilesIn ${reads[0]} ${reads[1]} \
@@ -269,7 +162,7 @@ process alignToGenomeTranscriptome {
          --peOverlapMMp 0.1 \
          --runThreadN ${task.cpus} \
          --twopassMode Basic \
-         --outFileNamePrefix ${sample}.trimmed.non_rrna.star.
+         --outFileNamePrefix ${sample}.trimmed.star.
     
     """
 }
@@ -281,7 +174,7 @@ process alignToGenomeTranscriptome {
  */
 process gzipSTARUnmappedReads {
     tag { "${sample}--${params.cohort_name}" }
-    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.non_rrna.star.Unmapped.out.mate?.fq.gz"
+    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.star.Unmapped.out.mate?.fq.gz"
 
     container "${params.container.utils}"
     cpus 16
@@ -291,12 +184,12 @@ process gzipSTARUnmappedReads {
     tuple val(sample), path(reads) from starUnamppedReads
 
     output:
-    path "${sample}.trimmed.non_rrna.star.Unmapped.out.mate1.fq.gz"
-    path "${sample}.trimmed.non_rrna.star.Unmapped.out.mate2.fq.gz"
+    path "${sample}.trimmed.star.Unmapped.out.mate1.fq.gz"
+    path "${sample}.trimmed.star.Unmapped.out.mate2.fq.gz"
 
     """
-    pigz -cf -p ${task.cpus} ${reads[0]} > ${sample}.trimmed.non_rrna.star.Unmapped.out.mate1.fq.gz
-    pigz -cf -p ${task.cpus} ${reads[1]} > ${sample}.trimmed.non_rrna.star.Unmapped.out.mate2.fq.gz
+    pigz -cf -p ${task.cpus} ${reads[0]} > ${sample}.trimmed.star.Unmapped.out.mate1.fq.gz
+    pigz -cf -p ${task.cpus} ${reads[1]} > ${sample}.trimmed.star.Unmapped.out.mate2.fq.gz
     """
 }
 
@@ -305,7 +198,7 @@ process gzipSTARUnmappedReads {
  */
 process transcriptomeBAMToCRAM {
     tag { "${sample}--${params.cohort_name}" }
-    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.non_rrna.star.cram"
+    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.star.cram"
 
     container "${params.container.samtools}"
     containerOptions "-B ${params.ref.rsem_star_transcript_ref_dir}"
@@ -317,14 +210,14 @@ process transcriptomeBAMToCRAM {
 
     output:
     tuple val(sample), path(t_bam) into transcriptomeBAM2
-    path "${sample}.trimmed.non_rrna.star.cram"
+    path "${sample}.trimmed.star.cram"
 
     """
     samtools view  -@ ${task.cpus} \
                    -C \
                    --no-PG \
                    -T ${params.ref.rsem_star_transcript_ref_dir}/${params.ref.rsem_star_transcript_ref_prefix}.transcripts.fa \
-                   -o ${sample}.trimmed.non_rrna.star.cram \
+                   -o ${sample}.trimmed.star.cram \
                    ${t_bam}
     """
 }
@@ -334,7 +227,7 @@ process transcriptomeBAMToCRAM {
  */
 process markDuplicatesGenomicBAM {
     tag { "${sample}--${params.cohort_name}" }
-    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.duplication_metrics"
+    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.star.Aligned.sortedByCoord.out.duplication_metrics"
 
     container "${params.container.picard}"
     cpus 1
@@ -344,8 +237,8 @@ process markDuplicatesGenomicBAM {
     tuple val(sample), path(g_bam) from genomeBAM
 
     output:
-    tuple val(sample), "${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.deduplicated.bam" into dedupGenomeBAM
-    path "${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.duplication_metrics"
+    tuple val(sample), "${sample}.trimmed.star.Aligned.sortedByCoord.out.deduplicated.bam" into dedupGenomeBAM
+    path "${sample}.trimmed.star.Aligned.sortedByCoord.out.duplication_metrics"
 
     """
     java -Xmx20g \
@@ -355,8 +248,8 @@ process markDuplicatesGenomicBAM {
                 -REMOVE_DUPLICATES false \
                 -ASSUME_SORTED true \
                 -INPUT ${g_bam} \
-                -OUTPUT ${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.deduplicated.bam \
-                -METRICS_FILE ${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.duplication_metrics
+                -OUTPUT ${sample}.trimmed.star.Aligned.sortedByCoord.out.deduplicated.bam \
+                -METRICS_FILE ${sample}.trimmed.star.Aligned.sortedByCoord.out.duplication_metrics
     """
 }
 
@@ -365,7 +258,7 @@ process markDuplicatesGenomicBAM {
  */
 process dedupGenomeBAMToCRAM {
     tag { "${sample}--${params.cohort_name}" }
-    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.deduplicated.cram*"
+    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.star.Aligned.sortedByCoord.out.deduplicated.cram*"
 
     container "${params.container.samtools}"
     containerOptions "-B ${params.ref.sequence_ref_dir}"
@@ -378,9 +271,9 @@ process dedupGenomeBAMToCRAM {
     output:
     tuple val(sample), path(dg_bam) into dedupGenomeBAM2
     tuple val(sample), path(dg_bam) into dedupGenomeBAM3
-    path "${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.deduplicated.cram"
-    path "${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.deduplicated.cram.crai"
-    path "${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.deduplicated.cram.flagstat"
+    path "${sample}.trimmed.star.Aligned.sortedByCoord.out.deduplicated.cram"
+    path "${sample}.trimmed.star.Aligned.sortedByCoord.out.deduplicated.cram.crai"
+    path "${sample}.trimmed.star.Aligned.sortedByCoord.out.deduplicated.cram.flagstat"
 
     """
     samtools view  -@ ${task.cpus} \
@@ -388,11 +281,11 @@ process dedupGenomeBAMToCRAM {
                    --write-index \
                    -C \
                    -T ${params.ref.sequence_ref_dir}/${params.ref.fasta_file} \
-                   -o ${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.deduplicated.cram \
+                   -o ${sample}.trimmed.star.Aligned.sortedByCoord.out.deduplicated.cram \
                    ${dg_bam}
 
-    samtools flagstat  ${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.deduplicated.cram \
-        > ${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.deduplicated.cram.flagstat
+    samtools flagstat  ${sample}.trimmed.star.Aligned.sortedByCoord.out.deduplicated.cram \
+        > ${sample}.trimmed.star.Aligned.sortedByCoord.out.deduplicated.cram.flagstat
     """
 }
 
@@ -431,7 +324,7 @@ process runRSEM {
  */
 process dedupGenomeBAMRSQMetrics {
     tag { "${sample}--${params.cohort_name}" }
-    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.deduplicated.rnaseq_metrics"
+    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.star.Aligned.sortedByCoord.out.deduplicated.rnaseq_metrics"
 
     container "${params.container.picard}"
     containerOptions "-B ${params.ref.genome_flat_ref_dir} -B ${params.ref.ribosomal_intervals_dir}"
@@ -442,7 +335,7 @@ process dedupGenomeBAMRSQMetrics {
     tuple val(sample), path(dg_bam) from dedupGenomeBAM2
 
     output:
-    path "${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.deduplicated.rnaseq_metrics"
+    path "${sample}.trimmed.star.Aligned.sortedByCoord.out.deduplicated.rnaseq_metrics"
     
     """
     java -Xmx${task.memory.toGiga()-5}g \
@@ -454,7 +347,7 @@ process dedupGenomeBAMRSQMetrics {
             -REF_FLAT ${params.ref.genome_flat_ref_dir}/${params.ref.genome_flat_ref_filename}  \
             -RIBOSOMAL_INTERVALS ${params.ref.ribosomal_intervals_dir}/${params.ref.ribosomal_intervals_filename}  \
             -I ${dg_bam} \
-            -OUTPUT ${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.deduplicated.rnaseq_metrics
+            -OUTPUT ${sample}.trimmed.star.Aligned.sortedByCoord.out.deduplicated.rnaseq_metrics
     """
 }
 
@@ -463,7 +356,7 @@ process dedupGenomeBAMRSQMetrics {
  */
 process dedupGenomeBAMAlignmentMetrics {
     tag { "${sample}--${params.cohort_name}" }
-    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.deduplicated.alignment_metrics"
+    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.star.Aligned.sortedByCoord.out.deduplicated.alignment_metrics"
 
     container "${params.container.picard}"
     cpus 12
@@ -473,7 +366,7 @@ process dedupGenomeBAMAlignmentMetrics {
     tuple val(sample), path(dg_bam) from dedupGenomeBAM3
 
     output:
-    path "${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.deduplicated.alignment_metrics"
+    path "${sample}.trimmed.star.Aligned.sortedByCoord.out.deduplicated.alignment_metrics"
 
     """
     java -Xmx${task.memory.toGiga()-5}g \
@@ -481,7 +374,7 @@ process dedupGenomeBAMAlignmentMetrics {
          CollectAlignmentSummaryMetrics \
             -VALIDATION_STRINGENCY SILENT \
             -INPUT ${dg_bam} \
-            -OUTPUT ${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.deduplicated.alignment_metrics
+            -OUTPUT ${sample}.trimmed.star.Aligned.sortedByCoord.out.deduplicated.alignment_metrics
     """
 }
 

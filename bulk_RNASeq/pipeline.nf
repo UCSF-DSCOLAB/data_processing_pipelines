@@ -75,17 +75,17 @@ process testGzipIntegrity {
  */
 process md5SumCalculation {
     tag { "${sample}--${params.cohort_name}" }
-    publishDir "${params.outdir}/${sample}/qc/", mode: 'copy', pattern: "${sample}_fastq_md5sums.txt"
+    publishDir "${params.outdir}/output/${sample}/", mode: 'copy', pattern: "fastq_md5sums.txt"
 
     input:
     tuple sample, path(reads) from gzipOKReads
 
     output:
     tuple sample, path(reads) into md5dReads
-    path "${sample}_fastq_md5sums.txt"
+    path "fastq_md5sums.txt"
 
     """
-    md5sum ${reads[0]} ${reads[1]} > ${sample}_fastq_md5sums.txt
+    md5sum ${reads[0]} ${reads[1]} > fastq_md5sums.txt
     """
 }
 
@@ -94,7 +94,7 @@ process md5SumCalculation {
  */
 process runFastp {
     tag { "${sample}--${params.cohort_name}" }
-    publishDir "${params.outdir}/${sample}/qc/", mode: 'copy', pattern: "${sample}.fastp.*"
+    publishDir "${params.outdir}/metrics/${sample}/", mode: 'copy', pattern: "fastp.*"
 
     container "/krummellab/data1/singularity_images/fastp/0.19.6/fastp.sif"
     cpus 12
@@ -105,8 +105,8 @@ process runFastp {
 
     output:
     tuple val(sample), path("${sample}_trimmed_R{1,2}.fq.gz") into trimmedReads
-    path "${sample}.fastp.json"
-    path "${sample}.fastp.html"
+    path "fastp.json"
+    path "fastp.html"
 
     """
     fastp -i ${reads[0]} \
@@ -119,8 +119,8 @@ process runFastp {
           --correction  \
           --trim_poly_g  \
           --thread ${task.cpus} \
-          -j ${sample}.fastp.json \
-          -h ${sample}.fastp.html
+          -j fastp.json \
+          -h fastp.html
     """
 }
 
@@ -156,7 +156,9 @@ process quenchRrnaReads {
  */
 process extractRrnaCram {
     tag { "${sample}--${params.cohort_name}" }
-    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.rrna.sorted.cram*"
+    publishDir "${params.outdir}/output/${sample}/", mode: 'copy', pattern: "${sample}.trimmed.rrna.sorted.cram"
+    publishDir "${params.outdir}/output/${sample}/", mode: 'copy', pattern: "${sample}.trimmed.rrna.sorted.cram.crai"
+    publishDir "${params.outdir}/metrics/${sample}/", mode: 'copy', pattern: "${sample}.trimmed.rrna.sorted.cram.flagstat"
     
     container "/krummellab/data1/singularity_images/samtools/1.3.1/samtools.sif"
     containerOptions "-B ${tool_params.rrna_bwa_idx_dir}"
@@ -233,7 +235,7 @@ process extractNonRrnaReads {
  */
 process alignToGenomeTranscriptome {
     tag { "${sample}--${params.cohort_name}" }
-    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.non_rrna.star.Chimeric.out.junction"
+    publishDir "${params.outdir}/log/${sample}/", mode: 'copy', pattern: "${sample}.trimmed.non_rrna.star.Log*"
     
     container "/krummellab/data1/singularity_images/STAR/2.6.1b/STAR.sif"
     containerOptions "-B ${tool_params.star_genome_dir}"
@@ -247,8 +249,8 @@ process alignToGenomeTranscriptome {
     tuple val(sample), "${sample}.trimmed.non_rrna.star.Unmapped.out.mate?" into starUnamppedReads
     tuple val(sample), "${sample}.trimmed.non_rrna.star.Aligned.toTranscriptome.out.bam" into transcriptomeBAM
     tuple val(sample), "${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.bam" into genomeBAM
-    path "${sample}.trimmed.non_rrna.star.Chimeric.out.junction"
-
+    path "${sample}.trimmed.non_rrna.star.Log.out"
+    path "${sample}.trimmed.non_rrna.star.Log.final.out"
     """
     STAR --readFilesIn ${reads[0]} ${reads[1]} \
          --genomeDir ${tool_params.star_genome_dir} \
@@ -288,7 +290,7 @@ process alignToGenomeTranscriptome {
  */
 process gzipSTARUnmappedReads {
     tag { "${sample}--${params.cohort_name}" }
-    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.non_rrna.star.Unmapped.out.mate?.fq.gz"
+    publishDir "${params.outdir}/output/${sample}/", mode: 'copy', pattern: "${sample}.trimmed.non_rrna.star.Unmapped.out.mate?.fq.gz"
 
     container "/krummellab/data1/singularity_images/utils/v1/utils.sif"
     cpus 16
@@ -312,7 +314,7 @@ process gzipSTARUnmappedReads {
  */
 process transcriptomeBAMToCRAM {
     tag { "${sample}--${params.cohort_name}" }
-    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.non_rrna.star.cram"
+    publishDir "${params.outdir}/output/${sample}/", mode: 'copy', pattern: "${sample}.trimmed.non_rrna.star.Aligned.toTranscriptome.out.cram"
 
     container "/krummellab/data1/singularity_images/samtools/1.3.1/samtools.sif"
     containerOptions "-B ${tool_params.rsem_star_transcript_ref_dir}"
@@ -324,13 +326,13 @@ process transcriptomeBAMToCRAM {
 
     output:
     tuple val(sample), path(t_bam) into transcriptomeBAM2
-    path "${sample}.trimmed.non_rrna.star.cram"
+    path "${sample}.trimmed.non_rrna.star.Aligned.toTranscriptome.out.cram"
 
     """
     samtools view  -@ ${task.cpus} \
                    -C \
                    -T ${tool_params.rsem_star_transcript_ref_dir}/${tool_params.rsem_star_transcript_ref_prefix}.transcripts.fa \
-                   -o ${sample}.trimmed.non_rrna.star.cram \
+                   -o ${sample}.trimmed.non_rrna.star.Aligned.toTranscriptome.out.cram \
                    ${t_bam}
     """
 }
@@ -340,7 +342,7 @@ process transcriptomeBAMToCRAM {
  */
 process markDuplicatesGenomicBAM {
     tag { "${sample}--${params.cohort_name}" }
-    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.duplication_metrics"
+    publishDir "${params.outdir}/metrics/${sample}/", mode: 'copy', pattern: "${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.duplication_metrics"
 
     container "/krummellab/data1/singularity_images/picard/2.18.14/picard.sif"
     cpus 1
@@ -371,7 +373,9 @@ process markDuplicatesGenomicBAM {
  */
 process dedupGenomeBAMToCRAM {
     tag { "${sample}--${params.cohort_name}" }
-    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.deduplicated.cram*"
+    publishDir "${params.outdir}/output/${sample}/", mode: 'copy', pattern: "${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.deduplicated.cram"
+    publishDir "${params.outdir}/output/${sample}/", mode: 'copy', pattern: "${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.deduplicated.cram.crai"
+    publishDir "${params.outdir}/metrics/${sample}/", mode: 'copy', pattern: "${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.deduplicated.cram.flagstat"
 
     container "/krummellab/data1/singularity_images/samtools/1.3.1/samtools.sif"
     containerOptions "-B ${tool_params.sequence_ref_dir}"
@@ -406,7 +410,7 @@ process dedupGenomeBAMToCRAM {
  */
 process runRSEM {
     tag { "${sample}--${params.cohort_name}" }
-    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.rsem.*.results"
+    publishDir "${params.outdir}/output/${sample}/", mode: 'copy', pattern: "${sample}.rsem.*.results"
 
     container "/krummellab/data1/singularity_images/RSEM/1.3.1/RSEM.sif"
     containerOptions "-B ${tool_params.rsem_star_transcript_ref_dir}"
@@ -436,7 +440,7 @@ process runRSEM {
  */
 process dedupGenomeBAMRSQMetrics {
     tag { "${sample}--${params.cohort_name}" }
-    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.deduplicated.rnaseq_metrics"
+    publishDir "${params.outdir}/metrics/${sample}/", mode: 'copy', pattern: "${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.deduplicated.rnaseq_metrics"
 
     container "/krummellab/data1/singularity_images/picard/2.18.14/picard.sif"
     containerOptions "-B ${tool_params.genome_flat_ref_dir} -B ${tool_params.ribosomal_intervals_dir}"
@@ -468,7 +472,7 @@ process dedupGenomeBAMRSQMetrics {
  */
 process dedupGenomeBAMAlignmentMetrics {
     tag { "${sample}--${params.cohort_name}" }
-    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.deduplicated.alignment_metrics"
+    publishDir "${params.outdir}/metrics/${sample}/", mode: 'copy', pattern: "${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.deduplicated.alignment_metrics"
 
     container "/krummellab/data1/singularity_images/picard/2.18.14/picard.sif"
     cpus 12

@@ -111,7 +111,7 @@ process runFastp {
 
 
 /*
- * Step 7. Align to the human genome/transcriptome
+ * Step 4. Align to the human genome/transcriptome
  */
 process alignToGenomeTranscriptome {
     tag { "${sample}--${params.cohort_name}" }
@@ -170,7 +170,7 @@ process alignToGenomeTranscriptome {
 
 
 /*
- * Step 8. gzip the STAR unmapped reads for storage
+ * Step 5. gzip the STAR unmapped reads for storage
  */
 process gzipSTARUnmappedReads {
     tag { "${sample}--${params.cohort_name}" }
@@ -194,7 +194,7 @@ process gzipSTARUnmappedReads {
 }
 
 /*
- * Step 9. Convert STAR transcriptome bam for storage
+ * Step 6. Convert STAR transcriptome bam for storage
  */
 process transcriptomeBAMToCRAM {
     tag { "${sample}--${params.cohort_name}" }
@@ -223,7 +223,7 @@ process transcriptomeBAMToCRAM {
 }
 
 /*
- * Step 10. MarkDuplicates on the STAR genome Bam
+ * Step 7. MarkDuplicates on the STAR genome Bam
  */
 process markDuplicatesGenomicBAM {
     tag { "${sample}--${params.cohort_name}" }
@@ -254,7 +254,7 @@ process markDuplicatesGenomicBAM {
 }
 
 /*
- * Step 11. Convert Deduplicated STAR genome bam for storage
+ * Step 8. Convert Deduplicated STAR genome bam for storage
  */
 process dedupGenomeBAMToCRAM {
     tag { "${sample}--${params.cohort_name}" }
@@ -290,7 +290,7 @@ process dedupGenomeBAMToCRAM {
 }
 
 /*
- * Step 12. Quantify Transcripts using RSEM
+ * Step 9. Quantify Transcripts using RSEM
  */
 process runRSEM {
     tag { "${sample}--${params.cohort_name}" }
@@ -320,7 +320,7 @@ process runRSEM {
 }
 
 /*
- * Step 13. Get CollectRnaSeqMetrics on the dedup genome BAM
+ * Step 10. Get CollectRnaSeqMetrics on the dedup genome BAM
  */
 process dedupGenomeBAMRSQMetrics {
     tag { "${sample}--${params.cohort_name}" }
@@ -352,7 +352,7 @@ process dedupGenomeBAMRSQMetrics {
 }
 
 /*
- * Step 14. Get CollectAlignmentSummaryMetrics on the dedup genome BAM
+ * Step 11. Get CollectAlignmentSummaryMetrics on the dedup genome BAM
  */
 process dedupGenomeBAMAlignmentMetrics {
     tag { "${sample}--${params.cohort_name}" }

@@ -89,6 +89,7 @@ process runFastp {
 
     output:
     tuple val(sample), path("${sample}_trimmed_R{1,2}.fq.gz") into trimmedReads
+    tuple val(sample), path("${sample}_trimmed_R{1,2}.fq.gz") into trimmedReads2
     path "${sample}.fastp.json"
     path "${sample}.fastp.html"
 
@@ -320,7 +321,38 @@ process runRSEM {
 }
 
 /*
- * Step 10. Get CollectRnaSeqMetrics on the dedup genome BAM
+ * Step 10. Use kallisto to quantify reads
+ */
+process runKallisto {
+    tag { "${sample}--${params.cohort_name}" }
+    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.kallisto.abundance.*"
+    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.kallisto.run_info.json"
+
+    container "${params.container.kallisto}"
+    containerOptions "-B ${params.ref.kallisto_dir}"
+    cpus 12
+    memory '50G'
+
+    input:
+    tuple val(sample), path(reads) from trimmedReads2
+
+    output:
+    path "${sample}.kallisto.abundance.h5"
+    path "${sample}.kallisto.abundance.tsv"
+    path "${sample}.kallisto.run_info.json"
+    
+    """
+    kallisto quant -i ${params.ref.kallisto_dir}/${params.ref.kallisto_index} -o ${sample} -t ${task.cpus} ${reads[0]} ${reads[1]}
+    mv ${sample}/abundance.h5 ${sample}.kallisto.abundance.h5
+    mv ${sample}/abundance.tsv ${sample}.kallisto.abundance.tsv
+    mv ${sample}/run_info.json ${sample}.kallisto.run_info.json
+
+    """
+}
+
+
+/*
+ * Step 11. Get CollectRnaSeqMetrics on the dedup genome BAM
  */
 process dedupGenomeBAMRSQMetrics {
     tag { "${sample}--${params.cohort_name}" }
@@ -352,7 +384,7 @@ process dedupGenomeBAMRSQMetrics {
 }
 
 /*
- * Step 11. Get CollectAlignmentSummaryMetrics on the dedup genome BAM
+ * Step 12. Get CollectAlignmentSummaryMetrics on the dedup genome BAM
  */
 process dedupGenomeBAMAlignmentMetrics {
     tag { "${sample}--${params.cohort_name}" }

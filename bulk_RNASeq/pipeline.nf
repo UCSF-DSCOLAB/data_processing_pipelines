@@ -236,6 +236,7 @@ process extractNonRrnaReads {
 process alignToGenomeTranscriptome {
     tag { "${sample}--${params.cohort_name}" }
     publishDir "${params.outdir}/log/${sample}/", mode: 'copy', pattern: "${sample}.trimmed.non_rrna.star.Log*"
+    publishDir "${params.outdir}/output/${sample}/", mode: 'copy', pattern: "${sample}.trimmed.non_rrna.star.Chimeric.out.junction"
     
     container "/krummellab/data1/singularity_images/STAR/2.6.1b/STAR.sif"
     containerOptions "-B ${tool_params.star_genome_dir}"
@@ -251,6 +252,7 @@ process alignToGenomeTranscriptome {
     tuple val(sample), "${sample}.trimmed.non_rrna.star.Aligned.sortedByCoord.out.bam" into genomeBAM
     path "${sample}.trimmed.non_rrna.star.Log.out"
     path "${sample}.trimmed.non_rrna.star.Log.final.out"
+    path "${sample}.trimmed.non_rrna.star.Chimeric.out.junction"
     """
     STAR --readFilesIn ${reads[0]} ${reads[1]} \
          --genomeDir ${tool_params.star_genome_dir} \

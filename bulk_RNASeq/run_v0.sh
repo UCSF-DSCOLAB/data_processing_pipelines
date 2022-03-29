@@ -12,11 +12,9 @@
 
 export PATH=$PATH:/krummellab/data1/ipi/software/nextflow/21.04.3_build_5560/
 
-NXF_WORK=$TMPDIR/working/
-mkdir -p $NXF_WORK
-
-export $NXF_WORK
-export TMPDIR=$TMPDIR/tmp
+nxf_work=/c4/scratch/nf_tmp/${USER}/${SLURM_JOB_ID}/ 
+mkdir -p $nxf_work
+export NXF_WORK=${nxf_work}
 
 nextflow run pipeline.nf -params-file $1 
 

@@ -4,7 +4,7 @@ Pipeline for running bulk RNA-seq analysis.
 
 
 To run a test example:
-  nextflow run pipeline.nf -c tool.config -params-file example/params.yml
+  sbatch ./run.sh example/params.yml
 
 
 Update 12/16/21:

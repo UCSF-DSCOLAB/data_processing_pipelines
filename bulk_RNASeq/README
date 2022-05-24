@@ -6,6 +6,9 @@ Pipeline for running bulk RNA-seq analysis.
 To run a test example:
   sbatch ./run.sh example/params.yml
 
+Update 5/24/22:
+- cleaned up scripts
+- moved working directory to c4 scratch
 
 Update 12/16/21:
 - Updated default version to no ribosomal quenching

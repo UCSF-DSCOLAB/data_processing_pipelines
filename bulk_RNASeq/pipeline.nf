@@ -272,6 +272,7 @@ process dedupGenomeBAMToCRAM {
     output:
     tuple val(sample), path(dg_bam) into dedupGenomeBAM2
     tuple val(sample), path(dg_bam) into dedupGenomeBAM3
+    tuple val(sample), path(dg_bam) into dedupGenomeBAM4
     path "${sample}.trimmed.star.Aligned.sortedByCoord.out.deduplicated.cram"
     path "${sample}.trimmed.star.Aligned.sortedByCoord.out.deduplicated.cram.crai"
     path "${sample}.trimmed.star.Aligned.sortedByCoord.out.deduplicated.cram.flagstat"
@@ -408,6 +409,128 @@ process dedupGenomeBAMAlignmentMetrics {
             -INPUT ${dg_bam} \
             -OUTPUT ${sample}.trimmed.star.Aligned.sortedByCoord.out.deduplicated.alignment_metrics
     """
+}
+
+
+/*
+ * Step 13a: add read groups
+ */
+process addRGroups {
+  tag { "${sample}--${params.cohort_name}" }
+ 
+  container "${params.container.picard}"
+  containerOptions "-B ${params.dirs.genome}"
+
+  cpus 16
+  memory '50G'
+
+  input: tuple val(sample), path(bamfile) from dedupGenomeBAM4
+
+  output: tuple val(sample), "${sample}.withRG.bam" into rgBAM
+
+  """
+  java -Xmx${task.memory.toGiga()-5}g \
+              -jar /opt/picard/picard.jar \
+	      AddOrReplaceReadGroups \
+                                        VALIDATION_STRINGENCY=SILENT \
+                                        CREATE_INDEX=TRUE \
+                                        INPUT=${bamfile} \
+                                        OUTPUT=${sample}.withRG.bam \
+                                        SORT_ORDER=coordinate \
+                                        RGID=grp1 \
+                                        RGPL="ILLUMINA" \
+                                        RGSM=grp \
+                                        RGLB=grpA \
+                                        RGPU=grpB
+ 					
+  """
+}
+
+/*
+ * Step 13c: filter/split BAM pre-GATK
+ */
+process splitBAM {
+   tag { "${sample}--${params.cohort_name}" }
+
+   container "${params.container.gatk}"
+   containerOptions "-B ${params.dirs.genome}"
+   
+   cpus 16
+   memory '50G'
+
+   input: 
+     tuple val(sample), path(rg_bam) from rgBAM
+   
+   output: 
+     tuple val(sample), "${sample}.withRG.nSplit.bam" into splitBAM
+
+
+   """
+   gatk SplitNCigarReads \
+     -R ${params.ref.sequence_ref_dir}/${params.ref.fasta_file} \
+     -I ${rg_bam} \
+     -O ${sample}.withRG.nSplit.bam
+	
+   """
+}
+
+/*
+ * Step 14: run GATK
+ */
+process runGATK {
+    tag { "${sample}--${params.cohort_name}" }
+
+   container "${params.container.gatk}"
+   containerOptions "-B ${params.dirs.genome}"
+
+   cpus 16
+   memory '50G'
+
+   input: 
+     tuple val(sample), path(split_bam) from splitBAM
+   output: 
+     tuple val(sample), "${sample}.raw.vcf" into gatkOut
+     tuple val(sample), "${sample}.raw.vcf.idx" into gatkOutIdx
+  """
+  gatk HaplotypeCaller \
+    -L ${params.ref.exon_bed} \
+    -R ${params.ref.sequence_ref_dir}/${params.ref.fasta_file} \
+    -D ${params.ref.dbsnp} \
+    -I ${split_bam} \
+    --dont-use-soft-clipped-bases true -stand-call-conf 20.0 \
+    -O ${sample}.raw.vcf
+  """
+
+}
+
+/*
+ * Step 15: filter based on GATK
+ */
+process filterGATK {
+   tag { "${sample}--${params.cohort_name}" }
+    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.filtered.vcf"    
+  container "${params.container.gatk}"
+  containerOptions "-B ${params.dirs.genome}"
+
+  cpus 16
+  memory '50G'
+
+  input: 
+     tuple val(sample), path(raw_gatk) from gatkOut
+     tuple val(sample), path(raw_gatk_idx) from gatkOutIdx
+  output: 
+    path "${sample}.filtered.vcf"
+
+ """
+ gatk VariantFiltration \
+    -L ${params.ref.exon_bed} \
+    -R ${params.ref.sequence_ref_dir}/${params.ref.fasta_file} \
+    -V ${raw_gatk} \
+    -window 35 -cluster 3 \
+    --filter-name FS -filter "FS > 30.0" \
+    --filter-name QD -filter "QD < 2.0" \
+    -O ${sample}.filtered.vcf
+  """
 }
 
 

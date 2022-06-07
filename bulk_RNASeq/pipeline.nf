@@ -217,7 +217,7 @@ process transcriptomeBAMToCRAM {
     publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.transcriptome.trimmed.star.cram"
 
     container "${params.container.samtools}"
-    containerOptions "-B ${params.ref.rsem_star_transcript_ref_dir}"
+    containerOptions "-B ${params.ref.rsem_star_dir}"
     cpus 16
     memory '50G'
 
@@ -240,7 +240,7 @@ process transcriptomeBAMToCRAM {
     samtools view -@ ${task.cpus} \
 		   -C \
 		   --no-PG \
-                   -T ${params.ref.rsem_star_transcript_ref_dir}/${params.ref.rsem_star_transcript_ref_prefix}.transcripts.fa \
+                   -T ${params.ref.rsem_star_dir}/${params.ref.genome_version}.transcripts.fa \
                    -o ${sample}.trimmed.star.Transcriptome.mapped.cram \
                    ${sample}.trimmed.star.Transcriptome.mapped.bam
     """
@@ -248,14 +248,14 @@ process transcriptomeBAMToCRAM {
 
 
 /*
- * Step 7b. Extract and convert mapped genome
+ * Step 7b. Extract mapped genome
  */
 process extractMappedGenome {
     tag { "${sample}--${params.cohort_name}" }
 
 
     container "${params.container.samtools}"
-    containerOptions "-B ${params.ref.rsem_star_transcript_ref_dir}"
+
     cpus 16
     memory '50G'
 
@@ -317,7 +317,7 @@ process dedupGenomeBAMToCRAM {
     publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.star.Aligned.sortedByCoord.out.deduplicated.cram*"
 
     container "${params.container.samtools}"
-    containerOptions "-B ${params.ref.sequence_ref_dir}"
+    containerOptions "-B ${params.dirs.genome}"
     cpus 16
     memory '50G'
 
@@ -338,7 +338,7 @@ process dedupGenomeBAMToCRAM {
                    --no-PG \
                    --write-index \
                    -C \
-                   -T ${params.ref.sequence_ref_dir}/${params.ref.fasta_file} \
+                   -T ${params.ref.genome_fasta_file} \
                    -o ${sample}.trimmed.star.Aligned.sortedByCoord.out.deduplicated.cram \
                    ${dg_bam}
 
@@ -355,7 +355,7 @@ process runRSEM {
     publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.rsem.*.results"
 
     container "${params.container.rsem}"
-    containerOptions "-B ${params.ref.rsem_star_transcript_ref_dir}"
+    containerOptions "-B ${params.ref.rsem_star_dir}"
     cpus 12
     memory '50G'
 
@@ -372,7 +372,7 @@ process runRSEM {
                               --alignments  \
                               --num-threads ${task.cpus} \
                               ${t_bam} \
-                              ${params.ref.rsem_star_transcript_ref_dir}/${params.ref.rsem_star_transcript_ref_prefix} \
+                              ${params.ref.rsem_star_dir}/${params.ref.genome_version} \
                               ${sample}.rsem   
     """
 }
@@ -416,7 +416,8 @@ process dedupGenomeBAMRSQMetrics {
     publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.star.Aligned.sortedByCoord.out.deduplicated.rnaseq_metrics"
 
     container "${params.container.picard}"
-    containerOptions "-B ${params.ref.genome_flat_ref_dir} -B ${params.ref.ribosomal_intervals_dir}"
+    containerOptions "-B ${params.dirs.genome}"
+
     cpus 12
     memory '50G'
 
@@ -433,8 +434,8 @@ process dedupGenomeBAMRSQMetrics {
             -VALIDATION_STRINGENCY SILENT \
             -ASSUME_SORTED true \
             -STRAND_SPECIFICITY NONE \
-            -REF_FLAT ${params.ref.genome_flat_ref_dir}/${params.ref.genome_flat_ref_filename}  \
-            -RIBOSOMAL_INTERVALS ${params.ref.ribosomal_intervals_dir}/${params.ref.ribosomal_intervals_filename}  \
+            -REF_FLAT ${params.ref.genome_flat_file}  \
+            -RIBOSOMAL_INTERVALS ${params.ref.ribosomal_intervals_file}  \
             -I ${dg_bam} \
             -OUTPUT ${sample}.trimmed.star.Aligned.sortedByCoord.out.deduplicated.rnaseq_metrics
     """
@@ -523,7 +524,7 @@ process splitBAM {
 
    """
    gatk SplitNCigarReads \
-     -R ${params.ref.sequence_ref_dir}/${params.ref.fasta_file} \
+     -R ${params.ref.genome_fasta_file} \
      -I ${rg_bam} \
      -O ${sample}.withRG.nSplit.bam
 	
@@ -550,7 +551,7 @@ process runGATK {
   """
   gatk HaplotypeCaller \
     -L ${params.ref.exon_bed} \
-    -R ${params.ref.sequence_ref_dir}/${params.ref.fasta_file} \
+    -R ${params.ref.genome_fasta_file} \
     -D ${params.ref.dbsnp} \
     -I ${split_bam} \
     --dont-use-soft-clipped-bases true -stand-call-conf 20.0 \
@@ -580,7 +581,7 @@ process filterGATK {
  """
  gatk VariantFiltration \
     -L ${params.ref.exon_bed} \
-    -R ${params.ref.sequence_ref_dir}/${params.ref.fasta_file} \
+    -R ${params.ref.genome_fasta_file} \
     -V ${raw_gatk} \
     -window 35 -cluster 3 \
     --filter-name FS -filter "FS > 30.0" \

@@ -170,7 +170,7 @@ process alignToGenomeTranscriptome {
 
 
 /*
- * Step 5. Extract unmapped reads and gzip them
+ * Step 5. Extract unmapped reads as fastq files
  */
 process extractUnmappedReads {
 
@@ -210,7 +210,7 @@ process extractUnmappedReads {
 
 
 /*
- * Step 6. Extract and convert mapped transcriptome
+ * Step 6a. Extract mapped transcriptome reads
  */
 process transcriptomeBAMToCRAM {
     tag { "${sample}--${params.cohort_name}" }
@@ -248,7 +248,7 @@ process transcriptomeBAMToCRAM {
 
 
 /*
- * Step 7b. Extract mapped genome
+ * Step 6b. Extract mapped genome reaads
  */
 process extractMappedGenome {
     tag { "${sample}--${params.cohort_name}" }
@@ -504,7 +504,7 @@ process addRGroups {
 }
 
 /*
- * Step 13c: filter/split BAM pre-GATK
+ * Step 13b: split BAM pre-GATK
  */
 process splitBAM {
    tag { "${sample}--${params.cohort_name}" }

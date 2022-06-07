@@ -118,7 +118,8 @@ process alignToGenomeTranscriptome {
     tag { "${sample}--${params.cohort_name}" }
     publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.star.Chimeric.out.junction"
     publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.star.ReadsPerGene.out.tab"
-    
+    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.star.Aligned.toTranscriptome.out.bam"    
+
     container "${params.container.star}"
     containerOptions "-B ${params.ref.star_genome_dir}"
     cpus 32
@@ -128,16 +129,15 @@ process alignToGenomeTranscriptome {
     tuple val(sample), path(reads) from trimmedReads
 
     output:
-    tuple val(sample), "${sample}.trimmed.star.Unmapped.out.mate?" into starUnamppedReads
     tuple val(sample), "${sample}.trimmed.star.Aligned.toTranscriptome.out.bam" into transcriptomeBAM
     tuple val(sample), "${sample}.trimmed.star.Aligned.sortedByCoord.out.bam" into genomeBAM
+    tuple val(sample), "${sample}.trimmed.star.Aligned.sortedByCoord.out.bam" into genomeBAM2
     path "${sample}.trimmed.star.Chimeric.out.junction"
     path "${sample}.trimmed.star.ReadsPerGene.out.tab"
 
     """
     STAR --readFilesIn ${reads[0]} ${reads[1]} \
          --genomeDir ${params.ref.star_genome_dir} \
-         --outSAMunmapped None \
          --outFilterType BySJout \
          --outSAMattributes NH HI AS NM MD \
          --outFilterMismatchNoverLmax 0.04 \
@@ -156,50 +156,65 @@ process alignToGenomeTranscriptome {
          --chimMultimapScoreRange 10 \
          --chimMultimapNmax 10 \
          --chimNonchimScoreDropMin 10 \
-         --outReadsUnmapped Fastx \
+         --outReadsUnmapped None \
+	 --outSAMunmapped Within KeepPairs \
          --outSAMattrRGline ID:GRPundef \
          --outSAMstrandField intronMotif \
          --peOverlapNbasesMin 12 \
          --peOverlapMMp 0.1 \
          --runThreadN ${task.cpus} \
          --twopassMode Basic \
-         --outFileNamePrefix ${sample}.trimmed.star.
-    
+         --outFileNamePrefix ${sample}.trimmed.star.  
     """
 }
 
 
-
 /*
- * Step 5. gzip the STAR unmapped reads for storage
+ * Step 5. Extract unmapped reads and gzip them
  */
-process gzipSTARUnmappedReads {
-    tag { "${sample}--${params.cohort_name}" }
-    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.star.Unmapped.out.mate?.fq.gz"
+process extractUnmappedReads {
 
-    container "${params.container.utils}"
+    tag { "${sample}--${params.cohort_name}" }
+    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.unmapped.{1,2}.fq.gz" 
+
+    container "${params.container.picard}"
     cpus 16
     memory '50G'
 
-    input:
-    tuple val(sample), path(reads) from starUnamppedReads
-
+    input: 
+     tuple val(sample), path(bamfile) from genomeBAM
+    
     output:
-    path "${sample}.trimmed.star.Unmapped.out.mate1.fq.gz"
-    path "${sample}.trimmed.star.Unmapped.out.mate2.fq.gz"
+     path "${sample}.trimmed.unmapped.{1,2}.fq.gz" 
 
     """
-    pigz -cf -p ${task.cpus} ${reads[0]} > ${sample}.trimmed.star.Unmapped.out.mate1.fq.gz
-    pigz -cf -p ${task.cpus} ${reads[1]} > ${sample}.trimmed.star.Unmapped.out.mate2.fq.gz
+    java -Xmx${task.memory.toGiga()-5}g \
+         -jar /opt/picard/picard.jar \
+            ViewSam \
+                VALIDATION_STRINGENCY=SILENT \
+                ALIGNMENT_STATUS=Unaligned \
+                PF_STATUS=All \
+                I=${bamfile} \
+                > ${sample}.trimmed.unmapped.bam
+
+    java -Xmx${task.memory.toGiga()-5}g \
+         -jar /opt/picard/picard.jar \
+            SamToFastq \
+                VALIDATION_STRINGENCY=SILENT \
+                I=${sample}.trimmed.unmapped.bam \
+                FASTQ=${sample}.trimmed.unmapped.1.fq.gz \
+                SECOND_END_FASTQ=${sample}.trimmed.unmapped.2.fq.gz
+
     """
 }
 
+
 /*
- * Step 6. Convert STAR transcriptome bam for storage
+ * Step 6. Extract and convert mapped transcriptome
  */
 process transcriptomeBAMToCRAM {
     tag { "${sample}--${params.cohort_name}" }
-    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.star.cram"
+    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.transcriptome.trimmed.star.cram"
 
     container "${params.container.samtools}"
     containerOptions "-B ${params.ref.rsem_star_transcript_ref_dir}"
@@ -210,18 +225,58 @@ process transcriptomeBAMToCRAM {
     tuple val(sample), path(t_bam) from transcriptomeBAM
 
     output:
-    tuple val(sample), path(t_bam) into transcriptomeBAM2
-    path "${sample}.trimmed.star.cram"
+    tuple val(sample), "${sample}.trimmed.star.Transcriptome.mapped.bam" into transcriptomeBAM2
+    path "${sample}.trimmed.star.Transcriptome.mapped.cram"
+
 
     """
-    samtools view  -@ ${task.cpus} \
-                   -C \
+    samtools view  -b \
+		   -F 0x4 \
+    	     	   -@ ${task.cpus} \
                    --no-PG \
+		   -o ${sample}.trimmed.star.Transcriptome.mapped.bam \
+		   ${t_bam}
+
+    samtools view -@ ${task.cpus} \
+		   -C \
+		   --no-PG \
                    -T ${params.ref.rsem_star_transcript_ref_dir}/${params.ref.rsem_star_transcript_ref_prefix}.transcripts.fa \
-                   -o ${sample}.trimmed.star.cram \
-                   ${t_bam}
+                   -o ${sample}.trimmed.star.Transcriptome.mapped.cram \
+                   ${sample}.trimmed.star.Transcriptome.mapped.bam
     """
 }
+
+
+/*
+ * Step 7b. Extract and convert mapped genome
+ */
+process extractMappedGenome {
+    tag { "${sample}--${params.cohort_name}" }
+
+
+    container "${params.container.samtools}"
+    containerOptions "-B ${params.ref.rsem_star_transcript_ref_dir}"
+    cpus 16
+    memory '50G'
+
+    input:
+    tuple val(sample), path(g_bam) from genomeBAM2
+
+    output:
+    tuple val(sample), "${sample}.trimmed.star.Aligned.mapped.bam" into genomeBAM3
+
+
+    """
+    samtools view  -b \
+		   -F 0x4 \
+    	     	   -@ ${task.cpus} \
+                   --no-PG \
+		   -o ${sample}.trimmed.star.Aligned.mapped.bam \
+		   ${g_bam}
+
+    """
+}
+
 
 /*
  * Step 7. MarkDuplicates on the STAR genome Bam
@@ -235,7 +290,7 @@ process markDuplicatesGenomicBAM {
     memory '50G'
 
     input:
-    tuple val(sample), path(g_bam) from genomeBAM
+    tuple val(sample), path(g_bam) from genomeBAM3
 
     output:
     tuple val(sample), "${sample}.trimmed.star.Aligned.sortedByCoord.out.deduplicated.bam" into dedupGenomeBAM
@@ -273,6 +328,7 @@ process dedupGenomeBAMToCRAM {
     tuple val(sample), path(dg_bam) into dedupGenomeBAM2
     tuple val(sample), path(dg_bam) into dedupGenomeBAM3
     tuple val(sample), path(dg_bam) into dedupGenomeBAM4
+    tuple val(sample), path(dg_bam) into dedupGenomeBAM5
     path "${sample}.trimmed.star.Aligned.sortedByCoord.out.deduplicated.cram"
     path "${sample}.trimmed.star.Aligned.sortedByCoord.out.deduplicated.cram.crai"
     path "${sample}.trimmed.star.Aligned.sortedByCoord.out.deduplicated.cram.flagstat"
@@ -531,6 +587,39 @@ process filterGATK {
     --filter-name QD -filter "QD < 2.0" \
     -O ${sample}.filtered.vcf
   """
+}
+
+/*
+ * Step 16: Run arcasHLA
+ */
+process arcasHLA {
+   tag { "${sample}--${params.cohort_name}" }
+    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.genes.json"
+    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.genotype.json"
+
+ cpus 8
+ memory '30G'
+
+ container "${params.container.arcashla}"
+
+ input: tuple val(sample), path(bamfile) from dedupGenomeBAM5
+
+ output:
+ path "${sample}.genes.json"
+ path "${sample}.genotype.json"
+
+ """
+ cp "${bamfile}" "${sample}.bam"
+ 
+ arcasHLA extract -t 8 -v "${sample}.bam"
+    
+ arcasHLA genotype --genes A,B,C,DPB1,DQB1,DQA1,DRB1 \
+                        --threads 8 \
+                        --verbose \
+			"${sample}.extracted.1.fq.gz" \
+			"${sample}.extracted.2.fq.gz"
+ """
+
 }
 
 

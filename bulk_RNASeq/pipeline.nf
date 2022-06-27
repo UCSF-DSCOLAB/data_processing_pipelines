@@ -118,7 +118,7 @@ process alignToGenomeTranscriptome {
     tag { "${sample}--${params.cohort_name}" }
     publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.star.Chimeric.out.junction"
     publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.star.ReadsPerGene.out.tab"
-    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.star.Aligned.toTranscriptome.out.bam"    
+
 
     container "${params.container.star}"
     containerOptions "-B ${params.ref.star_genome_dir}"
@@ -214,7 +214,7 @@ process extractUnmappedReads {
  */
 process transcriptomeBAMToCRAM {
     tag { "${sample}--${params.cohort_name}" }
-    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.transcriptome.trimmed.star.cram"
+    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.star.Transcriptome.mapped.cram"
 
     container "${params.container.samtools}"
     containerOptions "-B ${params.ref.rsem_star_dir}"
@@ -252,8 +252,8 @@ process transcriptomeBAMToCRAM {
  */
 process extractMappedGenome {
     tag { "${sample}--${params.cohort_name}" }
-
-
+    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.star.genome.flagstat"
+    
     container "${params.container.samtools}"
 
     cpus 16
@@ -264,9 +264,11 @@ process extractMappedGenome {
 
     output:
     tuple val(sample), "${sample}.trimmed.star.Aligned.mapped.bam" into genomeBAM3
-
+    path "${sample}.trimmed.star.genome.flagstat"
 
     """
+    samtools flagstat  ${g_bam} > ${sample}.trimmed.star.genome.flagstat
+
     samtools view  -b \
 		   -F 0x4 \
     	     	   -@ ${task.cpus} \
@@ -536,7 +538,7 @@ process splitBAM {
  */
 process runGATK {
     tag { "${sample}--${params.cohort_name}" }
-
+    publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.raw.vcf"    
    container "${params.container.gatk}"
    containerOptions "-B ${params.dirs.genome}"
 
@@ -548,6 +550,7 @@ process runGATK {
    output: 
      tuple val(sample), "${sample}.raw.vcf" into gatkOut
      tuple val(sample), "${sample}.raw.vcf.idx" into gatkOutIdx
+     path "${sample}.raw.vcf"
   """
   gatk HaplotypeCaller \
     -L ${params.ref.exon_bed} \

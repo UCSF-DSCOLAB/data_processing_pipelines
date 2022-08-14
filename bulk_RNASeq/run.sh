@@ -11,12 +11,15 @@
 
 # Arugments:
 # $1 is the parameter file: e.g. example/params.yml
-# then pass as many additional arguments to nextflow as you'd like (e.g. -resume, -with-timeline)
+# then pass as many additional arguments to nextflow as you'd like (e.g. -resume)
 
 function cleanup()
 {
-    nf_work=/c4/scratch/${USER}/nextflow/${SLURM_JOB_ID}/
-    rm -rf ${nf_work}
+    if [ $? -eq 0 ]
+    then
+	nf_work=/c4/scratch/${USER}/nextflow/${SLURM_JOB_ID}/
+	rm -rf ${nf_work}
+    fi
 }
 trap cleanup EXIT
 
@@ -44,6 +47,7 @@ else
     export NXF_WORK=${nf_work}
 
     # run the pipeline
-    nextflow run pipeline.nf -c tool.config -params-file $PARAM_FILE "${@:2}" 
+    nextflow run pipeline.nf -c tool.config -params-file $PARAM_FILE -with-report report_${SLURM_JOB_ID}.html "${@:2}" 
+
 fi
 

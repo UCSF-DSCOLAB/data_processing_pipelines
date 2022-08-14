@@ -81,8 +81,8 @@ process runFastp {
     publishDir "${params.outdir}/${sample}/qc/", mode: 'copy', pattern: "${sample}.fastp.*"
 
     container "${params.container.fastp}"
-    cpus 12
-    memory '10G'
+    cpus 8
+    memory '5G'
 
     input:
     tuple val(sample), path(reads) from md5dReads
@@ -123,7 +123,7 @@ process alignToGenomeTranscriptome {
     container "${params.container.star}"
     containerOptions "-B ${params.ref.star_genome_dir}"
     cpus 32
-    memory '100G'
+    memory '80G'
 
     input:
     tuple val(sample), path(reads) from trimmedReads
@@ -179,7 +179,7 @@ process extractUnmappedReads {
 
     container "${params.container.picard}"
     cpus 16
-    memory '50G'
+    memory '30G'
 
     input: 
      tuple val(sample), path(bamfile) from genomeBAM
@@ -219,7 +219,7 @@ process transcriptomeBAMToCRAM {
     container "${params.container.samtools}"
     containerOptions "-B ${params.ref.rsem_star_dir}"
     cpus 16
-    memory '50G'
+    memory '30G'
 
     input:
     tuple val(sample), path(t_bam) from transcriptomeBAM
@@ -257,7 +257,7 @@ process extractMappedGenome {
     container "${params.container.samtools}"
 
     cpus 16
-    memory '50G'
+    memory '30G'
 
     input:
     tuple val(sample), path(g_bam) from genomeBAM2
@@ -289,7 +289,7 @@ process markDuplicatesGenomicBAM {
 
     container "${params.container.picard}"
     cpus 1
-    memory '50G'
+    memory '80G'
 
     input:
     tuple val(sample), path(g_bam) from genomeBAM3
@@ -299,7 +299,8 @@ process markDuplicatesGenomicBAM {
     path "${sample}.trimmed.star.Aligned.sortedByCoord.out.duplication_metrics"
 
     """
-    java -Xmx20g \
+    java -Xmx${task.memory.toGiga()-5}g \
+    	 -Duser.dir=\$PWD \
          -jar /opt/picard/picard.jar \
                 MarkDuplicates \
                 -VALIDATION_STRINGENCY SILENT \
@@ -320,8 +321,8 @@ process dedupGenomeBAMToCRAM {
 
     container "${params.container.samtools}"
     containerOptions "-B ${params.dirs.genome}"
-    cpus 16
-    memory '50G'
+    cpus 1
+    memory '30G'
 
     input:
     tuple val(sample), path(dg_bam) from dedupGenomeBAM
@@ -358,8 +359,8 @@ process runRSEM {
 
     container "${params.container.rsem}"
     containerOptions "-B ${params.ref.rsem_star_dir}"
-    cpus 12
-    memory '50G'
+    cpus 8
+    memory '30G'
 
     input:
     tuple val(sample), path(t_bam) from transcriptomeBAM2
@@ -389,8 +390,8 @@ process runKallisto {
 
     container "${params.container.kallisto}"
     containerOptions "-B ${params.ref.kallisto_dir}"
-    cpus 12
-    memory '50G'
+    cpus 4
+    memory '40G'
 
     input:
     tuple val(sample), path(reads) from trimmedReads2
@@ -420,8 +421,8 @@ process dedupGenomeBAMRSQMetrics {
     container "${params.container.picard}"
     containerOptions "-B ${params.dirs.genome}"
 
-    cpus 12
-    memory '50G'
+    cpus 4
+    memory '30G'
 
     input:
     tuple val(sample), path(dg_bam) from dedupGenomeBAM2
@@ -451,8 +452,8 @@ process dedupGenomeBAMAlignmentMetrics {
     publishDir "${params.outdir}/${sample}/alignments/", mode: 'copy', pattern: "${sample}.trimmed.star.Aligned.sortedByCoord.out.deduplicated.alignment_metrics"
 
     container "${params.container.picard}"
-    cpus 12
-    memory '50G'
+    cpus 4
+    memory '30G'
 
     input:
     tuple val(sample), path(dg_bam) from dedupGenomeBAM3
@@ -480,8 +481,8 @@ process addRGroups {
   container "${params.container.picard}"
   containerOptions "-B ${params.dirs.genome}"
 
-  cpus 16
-  memory '50G'
+  cpus 12
+  memory '30G'
 
   input: tuple val(sample), path(bamfile) from dedupGenomeBAM4
 
@@ -514,8 +515,8 @@ process splitBAM {
    container "${params.container.gatk}"
    containerOptions "-B ${params.dirs.genome}"
    
-   cpus 16
-   memory '80G'
+   cpus 1
+   memory '100G'
 
    input: 
      tuple val(sample), path(rg_bam) from rgBAM
@@ -528,7 +529,8 @@ process splitBAM {
    gatk SplitNCigarReads \
      -R ${params.ref.genome_fasta_file} \
      -I ${rg_bam} \
-     -O ${sample}.withRG.nSplit.bam
+     -O ${sample}.withRG.nSplit.bam \
+     --tmp-dir \$PWD
 	
    """
 }

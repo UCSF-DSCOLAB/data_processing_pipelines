@@ -1,0 +1,23 @@
+
+Pipeline for running bulk RNA-seq analysis.
+
+
+
+To run a test example:
+  sbatch ./run.sh example/params.yml
+
+Update 5/24/22:
+- cleaned up scripts
+- moved working directory to c4 scratch
+
+Update 12/16/21:
+- Updated default version to no ribosomal quenching
+- Default version uses CHR version of gencode hg38.p13 genome index
+
+
+
+To change the memory, cpus on an individual step, go to it in the nextflow.nf and specify, e.g.
+  memory '50 GB'
+  cpus 12
+
+To change the time: go to the nextflow.config

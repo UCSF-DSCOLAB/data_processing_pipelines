@@ -1,6 +1,7 @@
 process GATK4_BASE_RECALIBRATOR {
     tag "$meta.id"
-    label 'process_medium'
+    cpus 2
+    memory '31 GB'
 
     input:
     tuple val(meta), path(input)
@@ -10,6 +11,7 @@ process GATK4_BASE_RECALIBRATOR {
     path  dict
     path  known_sites
     path  known_sites_tbi
+    path  tmpDir
 
     output:
     tuple val(meta), path("*.table"), emit: table
@@ -20,16 +22,15 @@ process GATK4_BASE_RECALIBRATOR {
     script:
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
-    def interval_command = intervals ? "--intervals $intervals" : ""
+    // def interval_command = intervals ? "--intervals $intervals" : ""
     def sites_command = known_sites.collect{"--known-sites $it"}.join(' ')
     """
-    gatk --java-options "-Xmx314g" BaseRecalibrator  \\
+    gatk --java-options "-Xmx${task.memory.toGiga()}g" BaseRecalibrator  \\
         --input $input \\
         --output ${prefix}.table \\
         --reference $fasta \\
-        $interval_command \\
         $sites_command \\
-        --tmp-dir . \\
+        --tmp-dir $tmpDir \\
         $args
     """
 }

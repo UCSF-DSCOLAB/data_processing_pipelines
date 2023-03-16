@@ -1,16 +1,15 @@
 process GATK4_HAPLOTYPECALLER {
     tag "$meta.id"
-
-    conda (params.enable_conda ? "bioconda::gatk4=4.2.6.1" : null)
-    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'https://depot.galaxyproject.org/singularity/gatk4:4.2.6.1--hdfd78af_0':
-        'quay.io/biocontainers/gatk4:4.2.6.1--hdfd78af_0' }"
+    cpus 2
+    memory '31 GB'
+    publishDir "${params.results_directory}/snps", mode: 'copy'
 
     input:
     tuple val(meta), path(input), path(input_index)
     path  fasta
     path  fai
     path  dict
+    path  tmpDir
 
     output:
     tuple val(meta), path("*.vcf.gz"), emit: vcf
@@ -22,14 +21,13 @@ process GATK4_HAPLOTYPECALLER {
     script:
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
-    def dbsnp_command = dbsnp ? "--dbsnp $dbsnp" : ""
+    // def dbsnp_command = dbsnp ? "--dbsnp $dbsnp" : ""
     """
-    gatk --java-options "-Xmx314g" HaplotypeCaller \\
+    gatk --java-options "-Xmx${task.memory.toGiga()}g" HaplotypeCaller \\
         --input $input \\
         --output ${prefix}.vcf.gz \\
         --reference $fasta \\
-        $dbsnp_command \\
-        --tmp-dir . \\
+        --tmp-dir $tmpDir \\
         $args
     """
 }

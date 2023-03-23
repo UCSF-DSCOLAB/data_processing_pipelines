@@ -9,7 +9,6 @@ process GATK4_HAPLOTYPECALLER {
     path  fasta
     path  fai
     path  dict
-    path  tmpDir
 
     output:
     tuple val(meta), path("*.vcf.gz"), emit: vcf
@@ -27,7 +26,7 @@ process GATK4_HAPLOTYPECALLER {
         --input $input \\
         --output ${prefix}.vcf.gz \\
         --reference $fasta \\
-        --tmp-dir $tmpDir \\
+        --tmp-dir $params.tmp_dir \\
         $args
     """
 }

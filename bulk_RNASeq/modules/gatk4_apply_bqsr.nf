@@ -8,7 +8,6 @@ process GATK4_APPLY_BQSR {
     path  genome
     path  genome_idx
     path  genome_dict
-    path  tmpDir
 
     output:
     tuple val(meta), path("*.bam") , emit: bam
@@ -26,7 +25,7 @@ process GATK4_APPLY_BQSR {
         --output ${prefix}_bqsr.bam \\
         --reference $genome \\
         --bqsr-recal-file $bqsr_table \\
-        --tmp-dir $tmpDir \\
+        --tmp-dir $params.tmp_dir \\
         $args
     # Index the BAM file
     samtools index ${prefix}.bam

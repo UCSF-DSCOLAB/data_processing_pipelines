@@ -5,10 +5,9 @@ process GATK4_SPLITNCIGARREADS {
 
     input:
     tuple val(meta), path(bam), path(bai)
-    path  fasta
-    path  fai
+    path  genome
+    path  genome_idx
     path  dict
-    path  tmpDir
 
     output:
     tuple val(meta), path('*.bam'), emit: bam
@@ -25,8 +24,8 @@ process GATK4_SPLITNCIGARREADS {
     gatk --java-options "-Xmx${task.memory.toGiga()}g" SplitNCigarReads \\
         --input $bam \\
         --output ${prefix}.bam \\
-        --reference $fasta \\
-        --tmp-dir $tmpDir \\
+        --reference $genome \\
+        --tmp-dir $params.tmp_dir \\
         $args
     """
 }

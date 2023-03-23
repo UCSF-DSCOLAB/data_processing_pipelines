@@ -11,7 +11,6 @@ process GATK4_BASE_RECALIBRATOR {
     path  dict
     path  known_sites
     path  known_sites_tbi
-    path  tmpDir
 
     output:
     tuple val(meta), path("*.table"), emit: table
@@ -30,7 +29,7 @@ process GATK4_BASE_RECALIBRATOR {
         --output ${prefix}.table \\
         --reference $fasta \\
         $sites_command \\
-        --tmp-dir $tmpDir \\
+        --tmp-dir $params.tmp_dir \\
         $args
     """
 }

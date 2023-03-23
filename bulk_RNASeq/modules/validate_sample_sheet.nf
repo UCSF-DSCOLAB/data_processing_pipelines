@@ -12,7 +12,7 @@ process VALIDATE_SAMPLE_SHEET {
 
     script: // This script is bundled with the pipeline, in nf-core/rnavar/bin/
     """
-    python /c4/home/alaa/src/dev_scripts/rnalike/scripts/validate_sample_sheet.py \\
+    validate_sample_sheet.py \\
         $samplesheet \\
         samplesheet.valid.csv
     """

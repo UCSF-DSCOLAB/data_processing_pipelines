@@ -5,7 +5,7 @@
 include { PICARD_MARKDUPLICATES } from '../modules/picard_markduplicates'
 include { SAMTOOLS_INDEX        } from '../modules/samtools_index'
 include { SAMTOOLS_STATS        } from '../modules/samtools_stats'
-include { SAMTOOLS_FLAGSTATS     } from '../modules/samtools_flagstats'
+include { SAMTOOLS_FLAGSTAT     } from '../modules/samtools_flagstat'
 include { SAMTOOLS_IDXSTATS     } from '../modules/samtools_idxstats'
 
 workflow BAM_MARKDUPLICATES_PICARD {
@@ -40,7 +40,7 @@ workflow BAM_MARKDUPLICATES_PICARD {
     // MODULE: Generate stats, flag, and index them using samtools
     //
     SAMTOOLS_STATS ( ch_bam_bai, ch_fasta )
-    SAMTOOLS_FLAGSTATS ( ch_bam_bai )
+    SAMTOOLS_FLAGSTAT ( ch_bam_bai )
     SAMTOOLS_IDXSTATS ( ch_bam_bai )
 
     emit:
@@ -50,6 +50,6 @@ workflow BAM_MARKDUPLICATES_PICARD {
     csi      = SAMTOOLS_INDEX.out.csi            // channel: [ val(meta), [ csi ] ]
 
     stats    = SAMTOOLS_STATS.out.stats      // channel: [ val(meta), [ stats ] ]
-    flagstat = SAMTOOLS_FLAGSTATS.out.flagstat   // channel: [ val(meta), [ flagstat ] ]
+    flagstat = SAMTOOLS_FLAGSTAT.out.flagstat   // channel: [ val(meta), [ flagstat ] ]
     idxstats = SAMTOOLS_IDXSTATS.out.idxstats   // channel: [ val(meta), [ idxstats ] ]
 }

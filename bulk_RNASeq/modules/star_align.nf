@@ -12,6 +12,7 @@ process STAR_ALIGN {
     output:
     tuple val(meta), path('*d.sortedByCoord.out.bam'), emit: bam
     tuple val(meta), path('*d.toTranscriptome.out.bam'), emit: transcriptome_bam
+    tuple val(meta), path('*Log.final.out'), emit: log_final
 
 
     script:
@@ -27,7 +28,6 @@ process STAR_ALIGN {
         --twopassMode Basic \
         --outSAMtype BAM SortedByCoordinate \
         --quantMode TranscriptomeSAM \
-        --quantTranscriptomeBan Singleend \
         --outSAMattrRGline ID:$prefix SM:$prefix LB:library PL:illumina \
         --outFileNamePrefix $prefix 
         $args

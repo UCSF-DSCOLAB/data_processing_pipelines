@@ -27,7 +27,7 @@ process GATK4_VARIANTFILTRATION {
         --filter-name FS -filter "FS > $params.gatk_vf_fs_filter" \\
         --filter-name QD -filter "QD < $params.gatk_vf_qd_filter" \\
         --reference $fasta \\
-        --window $params.gatk_vf_window_size
+        --window $params.gatk_vf_window_size \\
         --output ${prefix}.filtered.vcf.gz \\
         --tmp-dir . \\
         $args

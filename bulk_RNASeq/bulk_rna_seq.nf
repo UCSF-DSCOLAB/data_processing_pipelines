@@ -2,7 +2,7 @@
 nextflow.enable.dsl=2
 
 /*
- * Define the default parameters 
+ * Display the default parameters (configure via nextflow.config)
  */
 params.input                    = ""
 params.genome                   = ""
@@ -13,6 +13,8 @@ params.gtf                      = ""
 params.transcript_fasta         = ""
 params.gtf_group_features       = ""
 params.gtf_extra_attributes     = ""
+params.fragment_length_mean     = ""
+params.fragment_length_std      = ""
 params.gatk_vf_cluster_size     = ""
 params.gatk_vf_window_size      = ""
 params.gatk_vf_fs_filter        = ""
@@ -39,10 +41,10 @@ include { QUANTIFY_SALMON           } from './subworkflows/quantify_transcriptom
 // Import MODULES
 include { CAT_FASTQ                 } from './modules/cat_fastq'
 include { FASTP_TRIM_ADAPTERS       } from './modules/fastp_trim_adapters'
-include { SAMTOOLS_SORT as SAMTOOLS_SORT_TRANSCRIPTOME_PRE_DEDUP } from './modules/samtools_sort'
-include { SAMTOOLS_SORT as SAMTOOLS_SORT_TRANSCRIPTOME_POST_DEDUP } from './modules/samtools_sort'
-include { SAMTOOLS_INDEX            } from './modules/samtools_index'
-include { UMITOOLS_PREPARE_FOR_SALMON } from './modules/umitools_prepare_for_salmon'
+// include { SAMTOOLS_SORT as SAMTOOLS_SORT_TRANSCRIPTOME_PRE_DEDUP } from './modules/samtools_sort'
+// include { SAMTOOLS_SORT as SAMTOOLS_SORT_TRANSCRIPTOME_POST_DEDUP } from './modules/samtools_sort'
+// include { SAMTOOLS_INDEX            } from './modules/samtools_index'
+// include { UMITOOLS_PREPARE_FOR_SALMON } from './modules/umitools_prepare_for_salmon'
 include { SORTMERNA                 } from './modules/sortmerna_rrna_removal'
 include { KALLISTO_QUANT            } from './modules/kallisto_quant'
 include { GATK4_SPLITNCIGARREADS    } from './modules/gatk4_splitncigar'
@@ -96,8 +98,8 @@ workflow {
         ch_cat_fastq
     )
     ch_trimmed_reads = FASTP_TRIM_ADAPTERS.out.trimmed_reads
-    ch_trim_multiqc = FASTP_TRIM_ADAPTERS.out.log
-    ch_reports = ch_reports.mix(FASTP_TRIM_ADAPTERS.out.log.collect{it[1]}.ifEmpty([]))
+    ch_trim_multiqc = FASTP_TRIM_ADAPTERS.out.json_report
+    ch_reports = ch_reports.mix(ch_trim_multiqc)
     //
     // MODULE: Remove ribosomal RNA reads
     //
@@ -117,9 +119,12 @@ workflow {
     //
     // MODULE: Quantify transcriptome abundance using Kallisto
     //
+    ch_kallisto_multiqc = Channel.empty()
     KALLISTO_QUANT(
         ch_trimmed_reads
     )
+    ch_kallisto_multiqc = KALLISTO_QUANT.out.log
+    ch_reports = ch_reports.mix(KALLISTO_QUANT.out.log.collect{it[1]}.ifEmpty([]))
     // SUBWORKFLOW: Align FastQ reads; sort, and index BAM files
     //
     ch_star_bam = Channel.empty()
@@ -140,8 +145,8 @@ workflow {
     ch_star_stats    = ALIGN_READS.out.stats
     ch_star_flagstat = ALIGN_READS.out.flagstat
     ch_star_idxstats = ALIGN_READS.out.idxstats
-    ch_star_multiqc  = ALIGN_STAR.out.log_final
-    ch_reports = ch_reports.mix(ALIGN_STAR.out.log_final.collect{it[1]}.ifEmpty([]))
+    ch_star_multiqc  = ALIGN_READS.out.log_final
+    ch_reports = ch_reports.mix(ALIGN_READS.out.log_final.collect{it[1]}.ifEmpty([]))
     ch_star_bam_bai = ch_star_bam.join(ch_star_bai, by: [0])
     // Deduplicate genome BAM file before downstream analysis
     // BAM_DEDUP_UMITOOLS_GENOME (
@@ -154,20 +159,20 @@ workflow {
     // ch_samtools_flagstat = BAM_DEDUP_UMITOOLS_GENOME.out.flagstat
     // ch_samtools_idxstats = BAM_DEDUP_UMITOOLS_GENOME.out.idxstats
     // Co-ordinate sort, index and run stats on transcriptome BAM
-    ch_transcriptome_bam_sort = Channel.empty()
-    SAMTOOLS_SORT_TRANSCRIPTOME_PRE_DEDUP ( ch_transcriptome_bam_star )
-    ch_transcriptome_bam_sort = SAMTOOLS_SORT_TRANSCRIPTOME_PRE_DEDUP.out.bam
-    SAMTOOLS_INDEX ( ch_transcriptome_bam_sort )
-    // ch_sam_bam_bai = SAMTOOLS_SORT.out.bam.join(SAMTOOLS_INDEX.out.bai, by: [0])
-    ch_transcriptome_bam_sort
-        .branch {
-            meta, bam ->
-                single_end: meta.single_end
-                    return [ meta, bam ]
-                paired_end: !meta.single_end
-                    return [ meta, bam ]
-                }
-        .set { ch_transcriptome_bam_pre }
+    // ch_transcriptome_bam_sort = Channel.empty()
+    // SAMTOOLS_SORT_TRANSCRIPTOME_PRE_DEDUP ( ch_transcriptome_bam_star )
+    // ch_transcriptome_bam_sort = SAMTOOLS_SORT_TRANSCRIPTOME_PRE_DEDUP.out.bam
+    // SAMTOOLS_INDEX ( ch_transcriptome_bam_sort )
+    // // ch_sam_bam_bai = SAMTOOLS_SORT.out.bam.join(SAMTOOLS_INDEX.out.bai, by: [0])
+    // ch_transcriptome_bam_sort
+    //     .branch {
+    //         meta, bam ->
+    //             single_end: meta.single_end
+    //                 return [ meta, bam ]
+    //             paired_end: !meta.single_end
+    //                 return [ meta, bam ]
+    //             }
+    //     .set { ch_transcriptome_bam_pre }
     // ch_transcriptome_sorted_bam = SAMTOOLS_SORT_TRANSCRIPTOME_PRE_DEDUP.out.bam
     // ch_transcriptome_sorted_bai = SAMTOOLS_INDEX.out.bai
     // ch_transcriptome_sorted_bam_bai = ch_transcriptome_sorted_bam.join(ch_transcriptome_sorted_bai, by: [0])
@@ -194,13 +199,13 @@ workflow {
     //     .set { ch_umitools_dedup_bam }
     // Fix paired-end reads in name sorted BAM file
     // See: https://github.com/nf-core/rnaseq/issues/828
-    UMITOOLS_PREPARE_FOR_SALMON (
-        ch_transcriptome_bam_pre.paired_end
-    )
-    ch_transcriptome_bam_pre
-        .single_end
-        .mix(UMITOOLS_PREPARE_FOR_SALMON.out.bam)
-        .set { ch_transcriptome_bam }
+    // UMITOOLS_PREPARE_FOR_SALMON (
+    //     ch_transcriptome_bam_pre.paired_end
+    // )
+    // ch_transcriptome_bam_pre
+    //     .single_end
+    //     .mix(UMITOOLS_PREPARE_FOR_SALMON.out.bam)
+    //     .set { ch_transcriptome_bam }
     //
     // SUBWORKFLOW: Count reads from BAM alignments using Salmon
     //
@@ -271,7 +276,7 @@ workflow {
     )
     ch_bam_variant_calling = GATK4_APPLY_BQSR.out.bam
     ch_bai_variant_calling = GATK4_APPLY_BQSR.out.bai
-    ch_reports = ch_reports.mix(GATK4_APPLY_BQSR.out.qc.collect{it[1]}.ifEmpty([]))
+    // ch_reports = ch_reports.mix(GATK4_APPLY_BQSR.out.qc.collect{it[1]}.ifEmpty([]))
     //
     // MODULE: Call SNPs and Indels using HaplotypeCaller
     //

@@ -1,4 +1,7 @@
 process MULTIQC {
+    publishDir "${params.results_directory}/multiqc", mode: 'copy'
+    cpus 12
+    memory '64 GB'
 
     input:
     path multiqc_files

@@ -52,6 +52,7 @@ include { GATK4_BASE_RECALIBRATOR   } from './modules/gatk4_recalibrator'
 include { GATK4_APPLY_BQSR          } from './modules/gatk4_apply_bqsr'
 include { GATK4_HAPLOTYPECALLER     } from './modules/gatk4_haplotype_caller'
 include { GATK4_VARIANTFILTRATION   } from './modules/gatk4_variant_filter'
+include { CUSTOM_CONTIG_CONVERSION  } from './modules/custom_contig_conversion'
 include { MULTIQC                   } from './modules/multiqc'
 
 
@@ -129,11 +130,11 @@ workflow {
     //
     ch_star_bam = Channel.empty()
     ch_star_bai = Channel.empty()
+    ch_transcriptome_bam_star = Channel.empty()
     ch_star_stats    = Channel.empty()
     ch_star_flagstat = Channel.empty()
     ch_star_idxstats = Channel.empty()
     ch_star_multiqc  = Channel.empty()
-    ch_transcriptome_bam_star = Channel.empty()
     ALIGN_READS(
         ch_trimmed_reads,
         params.gtf,
@@ -218,6 +219,11 @@ workflow {
     //
     // SUBWORKFLOW: Mark duplicate reads
     //
+    ch_genome_bam             = Channel.empty()
+    ch_genome_bai             = Channel.empty()
+    ch_samtools_stats         = Channel.empty()
+    ch_samtools_flagstat      = Channel.empty()
+    ch_samtools_idxstats      = Channel.empty()
     ch_markduplicates_multiqc = Channel.empty()
     BAM_MARKDUPLICATES_PICARD (
         ch_star_bam_bai,
@@ -282,11 +288,14 @@ workflow {
     //
     ch_bam_bai_variant_calling = ch_bam_variant_calling.join(ch_bai_variant_calling, by: [0])
     ch_haplotype_vcf = Channel.empty()
+    ch_haplotype_tbi = Channel.empty()
     GATK4_HAPLOTYPECALLER (
         ch_bam_bai_variant_calling,
         params.genome,
         params.genome_idx,
-        params.genome_dict
+        params.genome_dict,
+        params.dbsnp,
+        params.dbsnp_tbi
     )
     ch_haplotype_vcf = GATK4_HAPLOTYPECALLER.out.vcf
     ch_haplotype_tbi = GATK4_HAPLOTYPECALLER.out.tbi
@@ -303,6 +312,13 @@ workflow {
     )
     ch_filtered_vcf = GATK4_VARIANTFILTRATION.out.vcf 
     //
+    // MODULE: Convert VCF contigs to desired naming format (e.g. ucsc)
+    //
+    ch_formatted_vcf = Channel.empty()
+    CUSTOM_CONTIG_CONVERSION (
+        ch_filtered_vcf
+    )
+    ch_formatted_vcf = CUSTOM_CONTIG_CONVERSION.out.formatted_vcf
     // MODULE: Generate QC reports using MULTIQC
     //
     ch_multiqc_files = Channel

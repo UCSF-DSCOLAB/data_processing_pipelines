@@ -9,6 +9,8 @@ process GATK4_HAPLOTYPECALLER {
     path  fasta
     path  fai
     path  dict
+    path  known_sites
+    path  known_sites_tbi
 
     output:
     tuple val(meta), path("*.vcf.gz"), emit: vcf
@@ -19,13 +21,15 @@ process GATK4_HAPLOTYPECALLER {
 
     script:
     def args = task.ext.args ?: ''
+    def reference_command = "--reference $fasta"
+    def dbsnp_command = known_sites ? "--dbsnp $known_sites" : ""
     def prefix = task.ext.prefix ?: "${meta.id}"
-    // def dbsnp_command = dbsnp ? "--dbsnp $dbsnp" : ""
     """
     gatk --java-options "-Xmx${task.memory.toGiga()}g" HaplotypeCaller \\
         --input $input \\
         --output ${prefix}.vcf.gz \\
-        --reference $fasta \\
+        $reference_command \\
+        $dbsnp_command \\
         --tmp-dir $params.tmp_dir \\
         $args
     """

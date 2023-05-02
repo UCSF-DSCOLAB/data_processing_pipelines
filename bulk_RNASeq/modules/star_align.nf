@@ -28,6 +28,8 @@ process STAR_ALIGN {
         --twopassMode Basic \
         --outSAMtype BAM SortedByCoordinate \
         --quantMode TranscriptomeSAM \
+        --outReadsUnmapped None \
+	    --outSAMunmapped Within KeepPairs \
         --outSAMattrRGline ID:$prefix SM:$prefix LB:library PL:illumina \
         --outFileNamePrefix $prefix 
         $args

@@ -41,10 +41,6 @@ include { QUANTIFY_SALMON           } from './subworkflows/quantify_transcriptom
 // Import MODULES
 include { CAT_FASTQ                 } from './modules/cat_fastq'
 include { FASTP_TRIM_ADAPTERS       } from './modules/fastp_trim_adapters'
-// include { SAMTOOLS_SORT as SAMTOOLS_SORT_TRANSCRIPTOME_PRE_DEDUP } from './modules/samtools_sort'
-// include { SAMTOOLS_SORT as SAMTOOLS_SORT_TRANSCRIPTOME_POST_DEDUP } from './modules/samtools_sort'
-// include { SAMTOOLS_INDEX            } from './modules/samtools_index'
-// include { UMITOOLS_PREPARE_FOR_SALMON } from './modules/umitools_prepare_for_salmon'
 include { SORTMERNA                 } from './modules/sortmerna_rrna_removal'
 include { KALLISTO_QUANT            } from './modules/kallisto_quant'
 include { GATK4_SPLITNCIGARREADS    } from './modules/gatk4_splitncigar'
@@ -104,7 +100,6 @@ workflow {
     //
     // MODULE: Remove ribosomal RNA reads
     //
-    // ch_filtered_reads = Channel.empty()
     ch_sortmerna_multiqc = Channel.empty()
     if (params.rrna_db_file && params.filter_rrna) {
         sortmerna_fastas_data = file(params.rrna_db_file).readLines()
@@ -126,6 +121,7 @@ workflow {
     )
     ch_kallisto_multiqc = KALLISTO_QUANT.out.log
     ch_reports = ch_reports.mix(KALLISTO_QUANT.out.log.collect{it[1]}.ifEmpty([]))
+    //
     // SUBWORKFLOW: Align FastQ reads; sort, and index BAM files
     //
     ch_star_bam = Channel.empty()
@@ -149,73 +145,6 @@ workflow {
     ch_star_multiqc  = ALIGN_READS.out.log_final
     ch_reports = ch_reports.mix(ALIGN_READS.out.log_final.collect{it[1]}.ifEmpty([]))
     ch_star_bam_bai = ch_star_bam.join(ch_star_bai, by: [0])
-    // Deduplicate genome BAM file before downstream analysis
-    // BAM_DEDUP_UMITOOLS_GENOME (
-    //     ch_star_bam_bai,
-    //     params.umitools_dedup_stats
-    // )
-    // ch_genome_bam        = BAM_DEDUP_UMITOOLS_GENOME.out.bam
-    // ch_genome_bam_index  = BAM_DEDUP_UMITOOLS_GENOME.out.bai
-    // ch_samtools_stats    = BAM_DEDUP_UMITOOLS_GENOME.out.stats
-    // ch_samtools_flagstat = BAM_DEDUP_UMITOOLS_GENOME.out.flagstat
-    // ch_samtools_idxstats = BAM_DEDUP_UMITOOLS_GENOME.out.idxstats
-    // Co-ordinate sort, index and run stats on transcriptome BAM
-    // ch_transcriptome_bam_sort = Channel.empty()
-    // SAMTOOLS_SORT_TRANSCRIPTOME_PRE_DEDUP ( ch_transcriptome_bam_star )
-    // ch_transcriptome_bam_sort = SAMTOOLS_SORT_TRANSCRIPTOME_PRE_DEDUP.out.bam
-    // SAMTOOLS_INDEX ( ch_transcriptome_bam_sort )
-    // // ch_sam_bam_bai = SAMTOOLS_SORT.out.bam.join(SAMTOOLS_INDEX.out.bai, by: [0])
-    // ch_transcriptome_bam_sort
-    //     .branch {
-    //         meta, bam ->
-    //             single_end: meta.single_end
-    //                 return [ meta, bam ]
-    //             paired_end: !meta.single_end
-    //                 return [ meta, bam ]
-    //             }
-    //     .set { ch_transcriptome_bam_pre }
-    // ch_transcriptome_sorted_bam = SAMTOOLS_SORT_TRANSCRIPTOME_PRE_DEDUP.out.bam
-    // ch_transcriptome_sorted_bai = SAMTOOLS_INDEX.out.bai
-    // ch_transcriptome_sorted_bam_bai = ch_transcriptome_sorted_bam.join(ch_transcriptome_sorted_bai, by: [0])
-    // // Deduplicate transcriptome BAM file before read counting with Salmon
-    // BAM_DEDUP_UMITOOLS_TRANSCRIPTOME (
-    //     ch_transcriptome_sorted_bam_bai,
-    //     params.umitools_dedup_stats
-    // )
-    // // Name sort BAM before passing to Salmon
-    // SAMTOOLS_SORT_TRANSCRIPTOME_POST_DEDUP (
-    //     ch_transcriptome_sorted_bam
-    // )
-    // Only run prepare_for_rsem.py on paired-end BAM files
-    // SAMTOOLS_SORT_TRANSCRIPTOME_POST_DEDUP
-    //     .out
-    //     .bam
-    //     .branch {
-    //         meta, bam ->
-    //             single_end: meta.single_end
-    //                 return [ meta, bam ]
-    //             paired_end: !meta.single_end
-    //                 return [ meta, bam ]
-    //     }
-    //     .set { ch_umitools_dedup_bam }
-    // Fix paired-end reads in name sorted BAM file
-    // See: https://github.com/nf-core/rnaseq/issues/828
-    // UMITOOLS_PREPARE_FOR_SALMON (
-    //     ch_transcriptome_bam_pre.paired_end
-    // )
-    // ch_transcriptome_bam_pre
-    //     .single_end
-    //     .mix(UMITOOLS_PREPARE_FOR_SALMON.out.bam)
-    //     .set { ch_transcriptome_bam }
-    //
-    // SUBWORKFLOW: Count reads from BAM alignments using Salmon
-    //
-    // QUANTIFY_SALMON (
-    //     ch_transcriptome_bam,
-    //     params.transcript_fasta,
-    //     params.gtf,
-    //     params.salmon_quant_libtype ?: ''
-    // )
     //
     // SUBWORKFLOW: Mark duplicate reads
     //
@@ -319,6 +248,7 @@ workflow {
         ch_filtered_vcf
     )
     ch_formatted_vcf = CUSTOM_CONTIG_CONVERSION.out.formatted_vcf
+    //
     // MODULE: Generate QC reports using MULTIQC
     //
     ch_multiqc_files = Channel

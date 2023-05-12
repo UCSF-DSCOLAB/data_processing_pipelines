@@ -1,12 +1,12 @@
 # RNAX
-A computational pipeline for variant calling and expression analysis of bulk RNA-sequencing data.
+A computational pipeline for variant calling and expression quantification of bulk RNA-sequencing data.
 
 N.B: The pipeline is under active development and not yet suitable for deployment.
 
 ## Installation (for development only)
 * Create virtual environment using Anaconda
 ```bash
-conda env create -f environment.yml -n rnax_env
+conda env create -f the_env.yml -n rnax_env
 ```
 
 ## Usage (for development only)
@@ -27,6 +27,9 @@ nextflow run bulk_rna_seq.nf -c config/nextflow.config -w your/tmp/directory
 
 ## Authors
 Emily Flynn
+
 Al Latif
+
 Daniel Bunis
+
 Walter Eckalbar

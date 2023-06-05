@@ -2,7 +2,8 @@ process STAR_ALIGN {
     tag "$meta.id"
     cpus 32
     memory '64 GB'
-    publishDir "${params.results_directory}/star", mode: 'copy'
+    publishDir "${params.results_directory}/star", mode: 'copy', pattern: "${prefix}ReadsPerGene.out.tab"
+    publishDir "${params.results_directory}/star", mode: 'copy', pattern: "${prefix}Log.final.out"
 
     input:
     tuple val(meta), path(reads)
@@ -12,6 +13,7 @@ process STAR_ALIGN {
     output:
     tuple val(meta), path('*d.sortedByCoord.out.bam'), emit: bam
     tuple val(meta), path('*d.toTranscriptome.out.bam'), emit: transcriptome_bam
+    tuple val(meta), path('*.ReadsPerGene.out.tab'), emit: gene_counts 
     tuple val(meta), path('*Log.final.out'), emit: log_final
 
 
@@ -27,7 +29,7 @@ process STAR_ALIGN {
         --readFilesCommand zcat \
         --twopassMode Basic \
         --outSAMtype BAM SortedByCoordinate \
-        --quantMode TranscriptomeSAM \
+        --quantMode TranscriptomeSAM GeneCounts \
         --outReadsUnmapped None \
 	    --outSAMunmapped Within KeepPairs \
         --outSAMattrRGline ID:$prefix SM:$prefix LB:library PL:illumina \

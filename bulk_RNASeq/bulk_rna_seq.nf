@@ -33,8 +33,6 @@ if (params.input) { ch_input = file(params.input) } else { exit 1, 'Input sample
 // Import SUBWORKFLOWS
 include { INPUT_CHECK               } from './subworkflows/validate_input' 
 include { ALIGN_READS               } from './subworkflows/align_reads'
-include { BAM_DEDUP_UMITOOLS as BAM_DEDUP_UMITOOLS_GENOME } from './subworkflows/bam_dedup_umitools'
-include { BAM_DEDUP_UMITOOLS as BAM_DEDUP_UMITOOLS_TRANSCRIPTOME } from './subworkflows/bam_dedup_umitools'
 include { BAM_MARKDUPLICATES_PICARD } from './subworkflows/post_process_bam'
 include { QUANTIFY_SALMON           } from './subworkflows/quantify_transcriptome'
 
@@ -48,7 +46,7 @@ include { GATK4_BASE_RECALIBRATOR   } from './modules/gatk4_recalibrator'
 include { GATK4_APPLY_BQSR          } from './modules/gatk4_apply_bqsr'
 include { GATK4_HAPLOTYPECALLER     } from './modules/gatk4_haplotype_caller'
 include { GATK4_VARIANTFILTRATION   } from './modules/gatk4_variant_filter'
-include { CUSTOM_CONTIG_CONVERSION  } from './modules/custom_contig_conversion'
+include { BCFTOOLS_CONTIG_CONVERSION  } from './modules/bcftools_contig_conversion'
 include { MULTIQC                   } from './modules/multiqc'
 
 
@@ -100,8 +98,8 @@ workflow {
     //
     // MODULE: Remove ribosomal RNA reads
     //
-    ch_sortmerna_multiqc = Channel.empty()
     if (params.rrna_db_file && params.filter_rrna) {
+        ch_sortmerna_multiqc = Channel.empty()
         sortmerna_fastas_data = file(params.rrna_db_file).readLines()
         lst_sortmerna_fastas = sortmerna_fastas_data.collect { file(it) }
         SORTMERNA (
@@ -110,7 +108,7 @@ workflow {
         )
         ch_trimmed_reads = SORTMERNA.out.reads
         ch_sortmerna_multiqc = SORTMERNA.out.log
-        ch_reports = ch_reports.mix(SORTMERNA.out.log_final.collect{it[1]}.ifEmpty([]))
+        ch_reports = ch_reports.mix(SORTMERNA.out.log.collect{it[1]}.ifEmpty([]))
     }
     //
     // MODULE: Quantify transcriptome abundance using Kallisto
@@ -244,10 +242,10 @@ workflow {
     // MODULE: Convert VCF contigs to desired naming format (e.g. ucsc)
     //
     ch_formatted_vcf = Channel.empty()
-    CUSTOM_CONTIG_CONVERSION (
+    BCFTOOLS_CONTIG_CONVERSION (
         ch_filtered_vcf
     )
-    ch_formatted_vcf = CUSTOM_CONTIG_CONVERSION.out.formatted_vcf
+    ch_formatted_vcf = BCFTOOLS_CONTIG_CONVERSION.out.formatted_vcf
     //
     // MODULE: Generate QC reports using MULTIQC
     //

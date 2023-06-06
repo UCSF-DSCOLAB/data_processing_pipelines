@@ -3,7 +3,7 @@ process KALLISTO_QUANT {
     publishDir "${params.results_directory}/kallisto", mode: 'copy'
     cpus 12
     memory '64 GB'
-    conda '/c4/home/alaa/miniconda3/envs/umi'
+    conda "$baseDir/envs/kallisto.yml"
 
     input:
     tuple val(meta), path(reads)

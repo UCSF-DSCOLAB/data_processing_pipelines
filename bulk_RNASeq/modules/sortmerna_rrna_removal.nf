@@ -2,6 +2,7 @@ process SORTMERNA {
     tag "$meta.id"
     cpus 2
     memory '31 GB'
+    conda "$baseDir/envs/sortmerna.yml"
 
     input:
     tuple val(meta), path(reads)

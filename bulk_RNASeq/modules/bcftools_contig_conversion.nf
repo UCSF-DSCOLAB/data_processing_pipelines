@@ -3,7 +3,7 @@ process BCFTOOLS_CONTIG_CONVERSION {
     cpus 2
     memory '31 GB'
     publishDir "${params.results_directory}/snps", mode: 'copy'
-    conda '/c4/home/alaa/miniconda3/envs/umi'
+    conda "$baseDir/envs/bcftools.yml"
 
     input:
     tuple val(meta), path(vcf)

@@ -2,6 +2,7 @@ process EXTRACT_MAPPED_READS {
     tag "$meta.id"
     cpus 32
     memory '64 GB'
+    conda "$baseDir/envs/samtools.yml"
 
     input:
     tuple val(meta), path(bam)

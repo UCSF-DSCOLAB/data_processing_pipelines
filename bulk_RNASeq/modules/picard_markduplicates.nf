@@ -2,6 +2,7 @@ process PICARD_MARKDUPLICATES {
     tag "$meta.id"
     cpus 2
     memory '31 GB'
+    conda "$baseDir/envs/gatk.yml"
 
     input:
     tuple val(meta), path(bam), path(bai)

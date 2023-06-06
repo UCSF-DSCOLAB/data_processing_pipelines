@@ -3,6 +3,7 @@ process GATK4_VARIANTFILTRATION {
     cpus 2
     memory '31 GB'
     publishDir "${params.results_directory}/snps", mode: 'copy'
+    conda "$baseDir/envs/gatk.yml"
 
     input:
     tuple val(meta), path(vcf), path(tbi)

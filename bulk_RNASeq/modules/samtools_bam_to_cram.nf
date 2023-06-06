@@ -3,6 +3,7 @@ process SAMTOOLS_BAM_TO_CRAM {
     cpus 32
     memory '64 GB'
     publishDir "${params.results_directory}/star", mode: 'copy', pattern: "${prefix}${prefix_addon}.mapped.cram"
+    conda "$baseDir/envs/samtools.yml"
 
     input:
     tuple val(meta), path(bam)

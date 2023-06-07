@@ -47,7 +47,7 @@ workflow ALIGN_READS {
     // Index BAM file
     //
     SAMTOOLS_INDEX (
-        EXTRACT_MAPPED_GENOME_READS.out.mapped_bam
+        SAMTOOLS_SORT.out.bam 
     )
     //
     // Convert mapped genome reads from BAM to CRAM

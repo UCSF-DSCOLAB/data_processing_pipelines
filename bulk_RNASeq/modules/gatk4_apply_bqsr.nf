@@ -11,8 +11,8 @@ process GATK4_APPLY_BQSR {
     path  genome_dict
 
     output:
-    tuple val(meta), path("*.bam") , emit: bam
-    tuple val(meta), path("*.bai") , emit: bai
+    tuple val(meta), path("*_bqsr.bam") , emit: bam
+    // tuple val(meta), path("*.bai") , emit: bai
 
     when:
     task.ext.when == null || task.ext.when

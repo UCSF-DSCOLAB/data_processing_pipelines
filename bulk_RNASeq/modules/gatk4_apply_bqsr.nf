@@ -28,7 +28,5 @@ process GATK4_APPLY_BQSR {
         --bqsr-recal-file $bqsr_table \\
         --tmp-dir $params.tmp_dir \\
         $args
-    # Index the BAM file
-    samtools index ${prefix}.bam
     """
 }

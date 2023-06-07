@@ -44,6 +44,7 @@ include { KALLISTO_QUANT            } from './modules/kallisto_quant'
 include { GATK4_SPLITNCIGARREADS    } from './modules/gatk4_splitncigar'
 include { GATK4_BASE_RECALIBRATOR   } from './modules/gatk4_recalibrator'
 include { GATK4_APPLY_BQSR          } from './modules/gatk4_apply_bqsr'
+include { SAMTOOLS_INDEX as SAMTOOLS_INDEX_BQSR } from './modules/samtools_index'
 include { GATK4_HAPLOTYPECALLER     } from './modules/gatk4_haplotype_caller'
 include { GATK4_VARIANTFILTRATION   } from './modules/gatk4_variant_filter'
 include { BCFTOOLS_CONTIG_CONVERSION  } from './modules/bcftools_contig_conversion'
@@ -195,7 +196,7 @@ workflow {
     ch_recal_table = GATK4_BASE_RECALIBRATOR.out.table
     ch_reports = ch_reports.mix(ch_recal_table.map{ meta, table -> table})
     //
-    // MODULE: Apply BQSR using recalibration table
+    // MODULE: Apply BQSR using recalibration table, then index
     //
     ch_split_bam_bai = ch_split_bam.join(ch_split_bai, by: [0])
     ch_bam_bai_bqsr = ch_split_bam_bai.join(ch_recal_table, by: [0])
@@ -207,8 +208,11 @@ workflow {
         params.genome_idx,
         params.genome_dict
     )
+    SAMTOOLS_INDEX_BQSR (
+        GATK4_APPLY_BQSR.out.bam
+    )
     ch_bam_variant_calling = GATK4_APPLY_BQSR.out.bam
-    ch_bai_variant_calling = GATK4_APPLY_BQSR.out.bai
+    ch_bai_variant_calling = SAMTOOLS_INDEX_BQSR.out.bai
     // ch_reports = ch_reports.mix(GATK4_APPLY_BQSR.out.qc.collect{it[1]}.ifEmpty([]))
     //
     // MODULE: Call SNPs and Indels using HaplotypeCaller

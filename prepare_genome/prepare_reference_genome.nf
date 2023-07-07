@@ -26,7 +26,7 @@ workflow {
     SAMTOOLS_FAIDX(
         params.genome
     )
-    ch_fasta_fai    = SAMTOOLS_FAIDX.out.genome_samtools_index
+    ch_fasta_fai = SAMTOOLS_FAIDX.out.genome_samtools_index
     //
     // MODULE: Create Sequence Dictionary
     //
@@ -62,4 +62,6 @@ workflow {
         ch_gtf_genes_only
     )
     ch_rsem_index = RSEM_PREPAREREFERENCE.out.index
+    // TODO: ADD STEP TO INDEX VCF IF PROVIDED
+    // gatk --java-options "-Xmx314g" IndexFeatureFile -I GCF_000001405.40_chromosome_names.vcf.gz
 }

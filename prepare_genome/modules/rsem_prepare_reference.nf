@@ -1,8 +1,9 @@
 process RSEM_PREPAREREFERENCE {
     publishDir "${params.reference_directory}/genome_dir", mode: 'copy'
     tag "$fasta"
-    cpus 16
+    cpus 8
     memory '64 GB'
+    conda "$baseDir/envs/rsem.yml"
 
     input:
     path fasta, stageAs: "rsem/*"

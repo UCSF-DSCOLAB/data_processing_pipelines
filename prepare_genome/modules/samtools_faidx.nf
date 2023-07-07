@@ -2,7 +2,8 @@ process SAMTOOLS_FAIDX {
     publishDir "${params.reference_directory}/", mode: 'copy'
     tag "$genome"
     cpus 2
-    memory '314 GB'
+    memory '256 GB'
+    conda "$baseDir/envs/samtools.yml"
 
     input:
     path(genome)

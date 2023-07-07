@@ -1,5 +1,6 @@
 process GTF_GENE_FILTER {
     tag "$fasta"
+    conda "$baseDir/envs/py311_basic.yml"
 
     input:
     path fasta

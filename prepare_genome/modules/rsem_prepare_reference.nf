@@ -6,7 +6,7 @@ process RSEM_PREPAREREFERENCE {
     conda "$baseDir/envs/rsem.yml"
 
     input:
-    path fasta, stageAs: "rsem/*"
+    path fasta, stageAs: "rsem_index/*"
     path gtf
 
     output:
@@ -24,8 +24,8 @@ process RSEM_PREPAREREFERENCE {
         --num-threads $task.cpus \\
         $args \\
         $fasta \\
-        rsem/rsem_genome
+        rsem_index/rsem_genome
 
-    mv rsem/rsem_genome.transcripts.fa .
+    mv rsem_index/rsem_genome.transcripts.fa .
     """
 }

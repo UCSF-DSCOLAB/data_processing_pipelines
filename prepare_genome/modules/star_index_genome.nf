@@ -1,6 +1,6 @@
 process STAR_INDEX_GENOME {
-    publishDir "${params.reference_directory}/genome_dir", mode: 'copy'
-    cpus 8
+    publishDir "${params.reference_directory}", mode: 'copy'
+    cpus 32
     memory '256 GB'
     conda "$baseDir/envs/star.yml"
 
@@ -9,7 +9,7 @@ process STAR_INDEX_GENOME {
     path  gtf
 
     output:
-    path "genome_dir"         , emit: index
+    path "star_index"         , emit: index
 
     when:
     task.ext.when == null || task.ext.when
@@ -24,7 +24,7 @@ process STAR_INDEX_GENOME {
          --sjdbGTFfile $gtf \\
          $memory \\
          --runThreadN $task.cpus \\
-         --outTmpDir "${params.tmp_dir}/star_index_genome"
+         --outTmpDir "${params.tmp_dir}/star_index"
          $args
     """
 }

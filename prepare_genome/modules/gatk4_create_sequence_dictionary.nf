@@ -1,6 +1,6 @@
 process GATK4_GENERATE_SEQUENCE_DICTIONARY {
     publishDir "${params.reference_directory}/", mode: 'copy'
-    cpus 2
+    cpus 1
     memory '256 GB'
     conda "$baseDir/envs/gatk.yml"
 

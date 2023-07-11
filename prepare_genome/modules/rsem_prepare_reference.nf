@@ -1,7 +1,7 @@
 process RSEM_PREPAREREFERENCE {
-    publishDir "${params.reference_directory}/genome_dir", mode: 'copy'
+    publishDir "${params.reference_directory}", mode: 'copy'
     tag "$fasta"
-    cpus 8
+    cpus 32
     memory '64 GB'
     conda "$baseDir/envs/rsem.yml"
 
@@ -10,7 +10,7 @@ process RSEM_PREPAREREFERENCE {
     path gtf
 
     output:
-    path "rsem"           , emit: index
+    path "rsem_index"           , emit: index
     path "*transcripts.fa", emit: transcript_fasta
 
     when:

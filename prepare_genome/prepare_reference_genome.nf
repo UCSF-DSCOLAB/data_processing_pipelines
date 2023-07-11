@@ -7,6 +7,8 @@ nextflow.enable.dsl=2
 params.genome                   = ""
 params.gtf                      = ""
 params.tmp_dir                  = ""
+params.dbsnp                    = ""
+params.index_vcf                = false
 params.reference_directory      = ""
 
 
@@ -15,7 +17,8 @@ include { SAMTOOLS_FAIDX } from './modules/samtools_faidx'
 include { STAR_INDEX_GENOME } from './modules/star_index_genome'
 include { GATK4_GENERATE_SEQUENCE_DICTIONARY } from './modules/gatk4_create_sequence_dictionary'
 include { GTF_GENE_FILTER } from './modules/gtf_gene_filter'
-include { RSEM_PREPAREREFERENCE } from './modules/rsem_prepare_reference'   
+include { RSEM_PREPAREREFERENCE } from './modules/rsem_prepare_reference'
+include { GATK4_INDEX_VCF } from './modules/gatk4_index_vcf'
 
 
 workflow {
@@ -63,5 +66,11 @@ workflow {
     )
     ch_rsem_index = RSEM_PREPAREREFERENCE.out.index
     // TODO: ADD STEP TO INDEX VCF IF PROVIDED
-    // gatk --java-options "-Xmx314g" IndexFeatureFile -I GCF_000001405.40_chromosome_names.vcf.gz
+    if (params.index_vcf && params.dbsnp) {
+        ch_vcf_index = Channel.empty()
+        GATK4_INDEX_VCF (
+            params.dbsnp
+        )
+        ch_vcf_index = GATK4_INDEX_VCF.out.tbi
+    }
 }

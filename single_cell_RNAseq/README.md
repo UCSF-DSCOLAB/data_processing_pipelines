@@ -1,3 +1,8 @@
+### Update: 07/17/2023
+
+This code was initially developed at https://github.com/UCSF-DSCOLAB/sc_seq_nextflow/. Please note that the original
+repository is no longer maintained and has been marked as deprecated. Going forward, all enhancements, bug fixes, 
+and active development are to be carried out in this repository.
 
 ### Initial SC-Seq Pipeline in Nextflow
 

@@ -72,7 +72,7 @@ LOAD_SOBJ;
 SEURAT_ADD_BCR;
 SEURAT_ADD_TCR;
 SEURAT_QC
-} from './pipeline_tasks.nf'
+} from './modules/pipeline_tasks.nf'
 
  
 workflow  {

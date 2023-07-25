@@ -25,20 +25,17 @@ function cleanup()
 }
 trap cleanup EXIT
 
-export NXF_JAVA_HOME="/krummellab/data1/erflynn/software/java/jdk-17.0.5"
-export PATH=$PATH:"/krummellab/data1/erflynn/software/nextflow/22.10.4_build_5836/"
 
 # check on arguments
 failed=false
 PARAM_FILE=$1
-STEP=$2 
+STEP=$2
 
-if [ ! -f "$PARAM_FILE" ]; 
+if [ ! -f "$PARAM_FILE" ];
 then
  echo "Parameter file does not exist"
  failed=true;
 fi
-
 
 VALID_STEPS=("pre_qc post_qc pre_fmx_qc post_fmx_qc")
 if [[ ! " ${VALID_STEPS[*]} " =~ " ${STEP} " ]];
@@ -58,7 +55,7 @@ else
     export NXF_WORK=${nf_work}
 
     # run the pipeline
-    nextflow run pipeline_${STEP}.nf -c tool.config -params-file $PARAM_FILE "${@:3}" 
+    nextflow run pipeline_${STEP}.nf -params-file $PARAM_FILE "${@:3}"
 
 fi
 

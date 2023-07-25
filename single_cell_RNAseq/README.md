@@ -1,4 +1,40 @@
 
+## How to
+
+### Running on c4
+
+#### Pre-reqs
+
+In order to run nextflow we need to install a compatible version of java. We unfortunately can't use a package manager
+(because of sudo restrictions), so we must download it manually.
+
+1. In your home directory: `mkdir jdk`
+2. `wget https://download.oracle.com/java/17/archive/jdk-17.0.7_linux-x64_bin.tar.gz`
+3. `mv jdk-17.0.7_linux-x64_bin.tar.gz jdk/`
+4. `cd jdk`
+5. `tar -xf jdk-17.0.7_linux-x64_bin.tar.gz`
+6. Add the following to your `~/.bashrc`: 
+
+```bash
+# global environment variables
+export JAVA_HOME="/c4/home/${USER}/jdk/jdk-17.0.6"
+export NXF_JAVA_HOME="/c4/home/${USER}/jdk/jdk-17.0.6"
+```
+
+Install nextflow
+
+1. In your home directory: `mkdir bin` (If it doesn't exist)
+2. `cd bin`
+3. `wget -qO- https://get.nextflow.io | bash`
+4. `chmod +x nextflow`
+5. Make sure `${USER}/bin` is added to your path
+
+#### What do I need to configure?
+
+All of the parameters you need to supply for the pipeline can be found at: `nextflow.config`.
+To actually supply the parameters to this pipeline, you must submit a json file with these values.
+There are two examples located at: `example-inputs/param_1.json` `example-inputs/param_2.json`
+
 ### Initial SC-Seq Pipeline in Nextflow
 
 Update 1/25/2023: Separated the pipeline into two steps for pre+post QC.

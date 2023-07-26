@@ -37,7 +37,7 @@ process CELLRANGER {
 
 
   container "${params.container.cellranger}"
-  containerOptions "-B ${params.dirs.ref_dir} -B ${params.project_dir}"
+  containerOptions "-B ${params.ref.dir} -B ${params.project_dir}"
   
   input:
   tuple val(library), val(data_type)
@@ -78,7 +78,7 @@ process CELLRANGER_VDJ {
   publishDir "${params.project_dir}/data/single_cell_${data_type}/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "cellranger.log" }
 
   container "${params.container.cellranger}"
-  containerOptions "-B ${params.dirs.ref_dir} -B ${params.project_dir}"
+  containerOptions "-B ${params.ref.dir} -B ${params.project_dir}"
   
   input:
   tuple val(library), val(data_type) 
@@ -190,7 +190,7 @@ process SEURAT_PRE_FMX_FILTER {
  */
 process FILTER_BAM {
   container "${params.container.popscle}"
-  containerOptions "-B ${params.dirs.fmx_ref}"
+  containerOptions "-B ${params.ref.fmx_dir}"
 
   publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "filter_bam.log" }
 
@@ -216,7 +216,7 @@ process FILTER_BAM {
  */
 process DSC_PILEUP{
   container "${params.container.popscle}"
-  containerOptions "-B ${params.dirs.fmx_ref}"
+  containerOptions "-B ${params.ref.fmx_dir}"
   publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "dsc_pileup.log" }
   publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/freemuxlet/", mode: 'copy', pattern: "${library}*.gz"
 
@@ -284,7 +284,7 @@ process FREEMUXLET_POOL {
   publishDir "${params.project_dir}/data/single_cell_GEX/logs/${pool}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "freemuxlet.log" }
 
   container "${params.container.popscle}"
-  containerOptions "-B ${params.dirs.fmx_ref}"
+  containerOptions "-B ${params.ref.fmx_dir}"
   
   input:
   tuple val(pool), val(nsamples), path(merged_plp), path(merged_var), path(merged_cel), path(merged_barcodes)
@@ -314,7 +314,7 @@ process FREEMUXLET_LIBRARY {
   publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "freemuxlet.log" }
 
   container "${params.container.popscle}"
-  containerOptions "-B ${params.dirs.fmx_ref}"
+  containerOptions "-B ${params.ref.fmx_dir}"
   
   
   input:

@@ -11,6 +11,7 @@ params.genome_dict              = ""
 params.genome_dir               = ""
 params.gtf                      = ""
 params.transcript_fasta         = ""
+params.transcript_index         = ""
 params.gtf_group_features       = ""
 params.gtf_extra_attributes     = ""
 params.fragment_length_mean     = ""
@@ -22,6 +23,8 @@ params.gatk_vf_qd_filter        = ""
 params.umitools_dedup_stats     = ""
 params.dbsnp                    = ""
 params.dbsnp_tbi                = ""
+params.contig_format_map        = ""
+params.format_contigs           = ""
 params.tmp_dir                  = ""
 params.results_directory        = ""
 params.rrna_db_file             = ""
@@ -47,7 +50,10 @@ include { GATK4_APPLY_BQSR          } from './modules/gatk4_apply_bqsr'
 include { SAMTOOLS_INDEX as SAMTOOLS_INDEX_BQSR } from './modules/samtools_index'
 include { GATK4_HAPLOTYPECALLER     } from './modules/gatk4_haplotype_caller'
 include { GATK4_VARIANTFILTRATION   } from './modules/gatk4_variant_filter'
-include { BCFTOOLS_CONTIG_CONVERSION  } from './modules/bcftools_contig_conversion'
+include { BCFTOOLS_CONTIG_CONVERSION} from './modules/bcftools_contig_conversion'
+include { BCFTOOLS_SORT_VCF   }       from './modules/bcftools_sort_vcf'
+include { BCFTOOLS_INDEX_VCF   }      from './modules/bcftools_index_vcf'
+include { BCFTOOLS_MERGE_VCF        } from './modules/bcftools_merge_vcf'
 include { MULTIQC                   } from './modules/multiqc'
 
 
@@ -242,14 +248,50 @@ workflow {
         params.genome_dict
     )
     ch_filtered_vcf = GATK4_VARIANTFILTRATION.out.vcf 
+    if (params.format_contigs && params.contig_format_map) {
+        //
+        // MODULE: Convert VCF contigs to desired naming format (e.g. ucsc)
+        //
+        BCFTOOLS_CONTIG_CONVERSION (
+           ch_filtered_vcf
+        )
+        ch_filtered_vcf = BCFTOOLS_CONTIG_CONVERSION.out.formatted_vcf
+    }
     //
-    // MODULE: Convert VCF contigs to desired naming format (e.g. ucsc)
+    // MODULE: Sort and index VCFs
     //
-    ch_formatted_vcf = Channel.empty()
-    BCFTOOLS_CONTIG_CONVERSION (
+    ch_sorted_filtered_vcf = Channel.empty()
+    BCFTOOLS_SORT_VCF (
         ch_filtered_vcf
     )
-    ch_formatted_vcf = BCFTOOLS_CONTIG_CONVERSION.out.formatted_vcf
+    ch_sorted_vcf = BCFTOOLS_SORT_VCF.out.sorted_vcf
+    //
+    // MODULE: Index VCFs
+    //
+    ch_vcf_index = Channel.empty()
+    BCFTOOLS_INDEX_VCF (
+        ch_sorted_vcf
+    )
+    ch_vcf_index = BCFTOOLS_INDEX_VCF.out.vcf_index
+    ch_vcf = ch_sorted_vcf.join(ch_vcf_index, by: [0])
+    // Collect all VCFs and index files from upstream process
+    meta = ch_vcf
+    .map { tuple -> tuple[0]}
+    .collect()
+    vcfs = ch_vcf
+    .map { tuple -> tuple[1]}
+    .collect()
+    tbis = ch_vcf
+    .map { tuple -> tuple[2]}
+    .collect()
+    //
+    // MODULE: Merge VCFs
+    //
+    BCFTOOLS_MERGE_VCF (
+        meta, 
+        vcfs, 
+        tbis
+    )
     //
     // MODULE: Generate QC reports using MULTIQC
     //

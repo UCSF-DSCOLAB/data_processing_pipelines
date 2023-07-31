@@ -1,0 +1,131 @@
+{ "$schema":"http://json-schema.org/draft-04/schema",
+   "$id": "",
+   "title": "Data library sc-seq pipeline parameters",
+   "description": "schema for input parameters",
+   "type": "object",
+   "properties": {
+     "project_dir" : {
+        "type": "string",
+        "format": "directory-path",
+        "description" : "The path of the directory to find and place the results, generally this should be `/krummellab/data1/immunox/${PROJECT}`"
+     },
+     "settings" : {
+        "type" : "object" ,
+        "properties" : {
+            "add_tcr" : {
+                "type" : "boolean",
+                "description": "whether to add TCR data",
+                "default" : false
+            },
+            "add_bcr" : {
+                "type" : "boolean",
+                "description": "whether to add BCR data",
+                "default" : false
+            },
+            "skip_cellranger" : {
+                "type" : "boolean",
+                "description": "whether to skip Cellranger",
+                "default" : false
+            },
+            "demux_method" : {
+                "type" : "string",
+                "description": "whether to use freemuxlet or demuxlet",
+                "default": "freemuxlet",
+                "enum": ["freemuxlet", "demuxlet"]
+            },
+            "merge_for_demux" : {
+                "type" : "boolean",
+                "description": "whether to merge by pool for freemuxlet or demuxlet",
+                "default" : true
+            },
+            "merge_demux_dir": {
+                "type": "string",
+                "format": "directory-path",
+                "description" : "subdirectory within the project directory where the merged FMX data should be stored"
+            },
+            "run_doubletfinder" : {
+                "type" : "boolean",
+                "description": "whether to run doubletfinder",
+                "default" : true
+            },
+            "keep_only_SNG" : {
+                "type" : "boolean",
+                "description": "whether to filter to only singlets",
+                "default" : true
+            },
+            "mincell" : {
+                "type": "integer",
+                "description": "Minimum number of cells to retain a feature",
+                "default": 3
+            },
+            "minfeature" : {
+                "type": "integer",
+                "description": "Minimum number of features to retain a cell",
+                "default": 100
+            },
+            "default_qc_cuts_dir": {
+                "type": "string",
+                "format": "directory-path",
+                "description" : "absolute path to directory containing qc_cuts file"
+            },
+            "default_qc_cuts_file": {
+                "type": "string",
+                "format": "directory-path",
+                "description" : "file containing a set of default QC cutoffs"
+            },
+            "randomseed" : {
+                "type": "integer",
+                "description": "Random seed",
+                "default": 21212
+            }
+        }
+     },
+     "pools" : {
+        "type" : "array",
+        "description": "list of pools to analyze by name", 
+        "items" : {
+            "type": "object",
+            "properties": {
+                "nsamples" : {
+                    "type" : "integer",
+                    "description": "number of samples in the pool"
+                },
+                "vcf": {
+                    "type": "string",
+                    "format": "directory-path",
+                    "description" : "path to VCF file, if none provided, sample mapping is skipped",
+                    "default" : ""
+                },
+                
+                "libraries" : {
+                    "type": "array",
+                    "description": "list of libraries included by name",
+                    "items" : {
+                        "type": "object",
+                        "properties": {
+                            "ncells_loaded": {
+                                "type" : "integer",
+                                "description": "the number of cells loaded"
+                            },
+                            "data_types" :{
+                                "type" : "array",
+                                "description": "list additional data types included",
+                                "items": {
+                                    "type": "string",
+                                    "enum": ["CITE", "TCR", "BCR"]
+                                }
+                            }
+                        }
+                    },
+                    "minItems": 1,
+                    "uniqueItems": true
+                }
+            }
+        },
+        "minItems" : 1,
+        "uniqueItems": true,
+        "required" : ["libraries"]
+     }
+   },
+   "required" : ["project_dir", "pools"]
+}

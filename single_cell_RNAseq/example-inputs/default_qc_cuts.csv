@@ -1,0 +1,15 @@
+parameter,value
+percent.mt.upper,15
+percent.mt.lower,0
+percent.ribo.upper,60
+percent.ribo.lower,0
+nFeature_RNA.upper,NA
+nFeature_RNA.lower,250
+nCount_RNA.upper,NA
+nCount_RNA.lower,0
+nFeature_ADT.lower,70
+nFeature_ADT.upper,NA
+nCount_ADT.lower,0
+nCount_ADT.upper,5000
+ADT_isotype_ctl.upper,50
+reviewed,FALSE

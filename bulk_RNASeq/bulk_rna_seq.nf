@@ -23,6 +23,7 @@ params.gatk_vf_qd_filter        = ""
 params.umitools_dedup_stats     = ""
 params.dbsnp                    = ""
 params.dbsnp_tbi                = ""
+params.gene_mapper              = ""
 params.contig_format_map        = ""
 params.format_contigs           = ""
 params.tmp_dir                  = ""
@@ -44,6 +45,7 @@ include { CAT_FASTQ                 } from './modules/cat_fastq'
 include { FASTP_TRIM_ADAPTERS       } from './modules/fastp_trim_adapters'
 include { SORTMERNA                 } from './modules/sortmerna_rrna_removal'
 include { KALLISTO_QUANT            } from './modules/kallisto_quant'
+include { CUSTOM_MERGE_COUNTS       } from './modules/custom_merge_counts'
 include { GATK4_SPLITNCIGARREADS    } from './modules/gatk4_splitncigar'
 include { GATK4_BASE_RECALIBRATOR   } from './modules/gatk4_recalibrator'
 include { GATK4_APPLY_BQSR          } from './modules/gatk4_apply_bqsr'
@@ -121,11 +123,20 @@ workflow {
     // MODULE: Quantify transcriptome abundance using Kallisto
     //
     ch_kallisto_multiqc = Channel.empty()
+    ch_kallisto_counts = Channel.empty()
     KALLISTO_QUANT(
         ch_trimmed_reads
     )
+    ch_kallisto_counts = KALLISTO_QUANT.out.abundance_tsv
     ch_kallisto_multiqc = KALLISTO_QUANT.out.log
     ch_reports = ch_reports.mix(KALLISTO_QUANT.out.log.collect{it[1]}.ifEmpty([]))
+    //
+    // MODULE: Merge all transcriptome quantification into a single file
+    //
+    counts = ch_kallisto_counts.map { tuple -> tuple[1]}.collect()
+    CUSTOM_MERGE_COUNTS (
+        counts
+    )
     //
     // SUBWORKFLOW: Align FastQ reads; sort, and index BAM files
     //

@@ -42,7 +42,7 @@ TEST_GZIP_INTEGRITY;
 CELLRANGER;
 CELLRANGER_VDJ;
 SEURAT_PRE_FMX_QC
-} from './pipeline_tasks.nf'
+} from './modules/pipeline_tasks.nf'
 
  
 workflow  {

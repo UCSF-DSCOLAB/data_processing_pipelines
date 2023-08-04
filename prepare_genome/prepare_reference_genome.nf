@@ -13,12 +13,13 @@ params.reference_directory      = ""
 
 
 // Import MODULES
-include { SAMTOOLS_FAIDX } from './modules/samtools_faidx'
-include { STAR_INDEX_GENOME } from './modules/star_index_genome'
+include { SAMTOOLS_FAIDX                     } from './modules/samtools_faidx'
+include { STAR_INDEX_GENOME                  } from './modules/star_index_genome'
 include { GATK4_GENERATE_SEQUENCE_DICTIONARY } from './modules/gatk4_create_sequence_dictionary'
-include { GTF_GENE_FILTER } from './modules/gtf_gene_filter'
-include { RSEM_PREPAREREFERENCE } from './modules/rsem_prepare_reference'
-include { GATK4_INDEX_VCF } from './modules/gatk4_index_vcf'
+include { GTF_GENE_FILTER                    } from './modules/gtf_gene_filter'
+include { RSEM_PREPAREREFERENCE              } from './modules/rsem_prepare_reference'
+include { KALLISTO_INDEX                     } from './modules/kallisto_index'
+include { GATK4_INDEX_VCF                    } from './modules/gatk4_index_vcf'
 
 
 workflow {
@@ -65,7 +66,18 @@ workflow {
         ch_gtf_genes_only
     )
     ch_rsem_index = RSEM_PREPAREREFERENCE.out.index
-    // TODO: ADD STEP TO INDEX VCF IF PROVIDED
+    ch_rsem_transcript = RSEM_PREPAREREFERENCE.out.transcript_fasta
+    //
+    // MODULE: Generate transcriptome index using Kallisto
+    //
+    ch_kallisto_index = Channel.empty()
+    KALLISTO_INDEX (
+        ch_rsem_transcript
+    )
+    ch_kallisto_index = KALLISTO_INDEX.out.transcript_index
+    //
+    // MODULE: INDEX VCF IF PROVIDED
+    //
     if (params.index_vcf && params.dbsnp) {
         ch_vcf_index = Channel.empty()
         GATK4_INDEX_VCF (

@@ -12,9 +12,9 @@ process STAR_ALIGN {
     path genomeDir
 
     output:
-    tuple val(meta), path('*d.sortedByCoord.out.bam'), emit: bam
-    tuple val(meta), path('*d.toTranscriptome.out.bam'), emit: transcriptome_bam
-    tuple val(meta), path('*.ReadsPerGene.out.tab'), emit: gene_counts 
+    tuple val(meta), path('*sortedByCoord.out.bam'), emit: bam
+    tuple val(meta), path('*toTranscriptome.out.bam'), emit: transcriptome_bam
+    tuple val(meta), path('*ReadsPerGene.out.tab'), emit: gene_counts 
     tuple val(meta), path('*Log.final.out'), emit: log_final
 
 

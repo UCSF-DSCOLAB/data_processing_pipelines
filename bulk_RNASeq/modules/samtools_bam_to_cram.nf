@@ -2,7 +2,7 @@ process SAMTOOLS_BAM_TO_CRAM {
     tag "$meta.id"
     cpus 32
     memory '64 GB'
-    publishDir "${params.results_directory}/star", mode: 'copy', pattern: "${prefix}${prefix_addon}.mapped.cram"
+    publishDir "${params.results_directory}/star", mode: 'copy'
     conda "$baseDir/envs/samtools.yml"
 
     input:

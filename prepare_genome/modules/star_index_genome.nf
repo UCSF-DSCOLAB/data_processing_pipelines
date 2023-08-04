@@ -1,6 +1,6 @@
 process STAR_INDEX_GENOME {
     publishDir "${params.reference_directory}", mode: 'copy'
-    cpus 32
+    cpus 64
     memory '256 GB'
     conda "$baseDir/envs/star.yml"
 

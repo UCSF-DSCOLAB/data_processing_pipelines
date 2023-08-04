@@ -1,0 +1,18 @@
+name: kallisto
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - _libgcc_mutex=0.1=conda_forge
+  - _openmp_mutex=4.5=2_gnu
+  - hdf5=1.10.6=nompi_h3c11f04_101
+  - kallisto=0.48.0=h0d531b0_1
+  - libgcc-ng=12.2.0=h65d4601_19
+  - libgfortran-ng=7.5.0=h14aa051_20
+  - libgfortran4=7.5.0=h14aa051_20
+  - libgomp=12.2.0=h65d4601_19
+  - libstdcxx-ng=12.2.0=h46fd767_19
+  - libzlib=1.2.13=h166bdaf_4
+  - zlib=1.2.13=h166bdaf_4
+prefix: /c4/home/alaa/miniconda3/envs/kallisto

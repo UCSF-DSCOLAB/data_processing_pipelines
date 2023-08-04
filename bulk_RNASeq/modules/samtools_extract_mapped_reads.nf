@@ -2,6 +2,7 @@ process EXTRACT_MAPPED_READS {
     tag "$meta.id"
     cpus 32
     memory '64 GB'
+    publishDir "${params.results_directory}/star", mode: 'copy'
     conda "$baseDir/envs/samtools.yml"
 
     input:

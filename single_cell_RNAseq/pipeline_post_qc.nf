@@ -3,7 +3,7 @@ nextflow.enable.dsl=2
 
 include { 
     SEURAT_POST_FILTER
-} from './pipeline_tasks.nf'
+} from './modules/pipeline_tasks.nf'
 
 def get_cutoffs(library){
   return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing/${library}_cutoffs.csv", checkIfExists: true)

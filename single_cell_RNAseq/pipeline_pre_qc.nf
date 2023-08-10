@@ -83,11 +83,12 @@ workflow {
         --------------------------------------------------------
        */
 
+      // TODO: perhaps just shove everything in a bam and h5 channel, and do not differentiate between data types
       ch_gex_cite_bam_h5 = Channel.empty()
       ch_bcr_tcr_bam_h5 = Channel.empty()
 
       if (params.settings.skip_cellranger){
-            ch_gex_cite_bam_h5 =  Channel.from(get_c4_h5_bam()) // [[library, cr_bam, raw_h5]
+            ch_gex_cite_bam_h5 =  Channel.from(get_c4_h5_bam()) // [[library, cell_ranger_bam, raw_h5]
             // TODO expand to work for VDJ as well
       } else {
             library_info = get_libraries_data_type() // -> [[library_dir, data_type]]
@@ -97,7 +98,7 @@ workflow {
             // Run cellranger for GEX and CITE data types
             ch_library_cite_gex = ch_library_info.filter { it[1] in ["GEX", "CITE"] }
             CELLRANGER(ch_library_cite_gex)
-            ch_gex_cite_bam_h5 = CELLRANGER.out.bam_h5 // --> [[library, cr_bam, raw_h5]]
+            ch_gex_cite_bam_h5 = CELLRANGER.out.bam_h5 // --> [[library, cell_ranger_bam, raw_h5]]
 
             // Run cellranger for BCR and TCR data types
             if (params.settings.add_tcr || params.settings.add_bcr ){
@@ -107,8 +108,8 @@ workflow {
             }
         }
 
-    ch_all_bam = ch_gex_cite_bam_h5.mix(ch_bcr_tcr_bam_h5).map { it -> [it[0], it[1]] }
-    ch_all_h5 = ch_gex_cite_bam_h5.mix(ch_bcr_tcr_bam_h5).map { it -> [it[0], it[2]] }
+    ch_all_bam = ch_gex_cite_bam_h5.mix(ch_bcr_tcr_bam_h5).map { it -> [it[0], it[1]] } // [[library, cell_ranger_bam ]]
+    ch_all_h5 = ch_gex_cite_bam_h5.mix(ch_bcr_tcr_bam_h5).map { it -> [it[0], it[2]] } // [[library, raw_h5 ]]
 
     /*
     --------------------------------------------------------
@@ -116,11 +117,8 @@ workflow {
     --------------------------------------------------------
     */
 
-    FILTER_BARCODES(ch_all_h5)
-    ch_barcodes_list = FILTER_BARCODES.out.bc_list // [library, barcodes]
-
-     // split the barcodes list into two channels for next steps
-    ch_barcodes = ch_barcodes_list.multiMap{ it -> bam_in: dsc_in: it }
+    FILTER_BARCODES(ch_all_h5) // [library, barcodes]
+    library_barcode = FILTER_BARCODES.out.bc_list
 
     /*
     --------------------------------------------------------
@@ -128,16 +126,19 @@ workflow {
     --------------------------------------------------------
     */
 
-    // Filter the bam file in prep for freemux
-     FILTER_BAM(ch_cr_out.filter_bam_in
-      .join(ch_barcodes.bam_in)
-      ) // [library, cr_bam, barcodes] --> [library, filtered_bam]
+    // Combine bam files with barcodes
+     ch_library_bam_barcodes = ch_all_bam.join(library_barcode) // [library, cell_ranger_bam, barcodes]
 
-     // run dsc_pileup
-     DSC_PILEUP(ch_barcodes.dsc_in
-      .join(FILTER_BAM.out.bam_file)  // [library, barcodes, filtered_bam]
-      )
+    // Filter the bam file in prep for freemux
+     FILTER_BAM(ch_library_bam_barcodes) // [library, filtered_bam]
+
+    // Combine barcodes with filtered bam files
+     ch_library_barcodes_filtered_bam = library_barcode.join(FILTER_BAM.out.bam_file) // [library, barcodes, filtered_bam]
+
+     // Run dsc_pileup
+     DSC_PILEUP(ch_library_barcodes_filtered_bam) // [library, barcodes, filtered_bam] )
      ch_plp_files = DSC_PILEUP.out.plp_files
+
  }
 
 

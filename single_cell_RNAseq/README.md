@@ -141,11 +141,8 @@ This is deleted on successful completion of an initial run. If the pipeline fail
 #### Pre-QC Pipeline
 
 Please note that the `pipeline_pre_qc.nf` uses a different json structure. 
-You can see an example in `example-inputs/param_2_v2.json`. Eventually all pipelines will use
+You can see an example in `example-inputs/param_2_v2.json`. Eventually all pipelines will conform to this structure
 this structure.
-
-#### Next steps:
-Below are outlined the next steps for turning this into a usable pipeline
 
 key additions:
 

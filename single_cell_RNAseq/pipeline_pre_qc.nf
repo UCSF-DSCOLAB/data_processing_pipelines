@@ -43,6 +43,24 @@ def get_vcf (pool){
   return params.pools[pool].vcf
 }
 
+def get_vdj_name(library, data_type){
+  return library.replace("SCG", "SC" + data_type.substring(0, 1))
+}
+def get_vdj_tuple(library, data_type){
+  return [library, data_type, get_vdj_name(library, data_type)]
+}
+
+def get_clonotypes(library, data_type){
+  vdj_library=get_vdj_name(library, data_type)
+  return file("${params.project_dir}/data/single_cell_${data_type}/processed/${vdj_library}/cellranger/clonotypes.csv")
+}
+def get_contigs(library, data_type){
+  vdj_library=get_vdj_name(library, data_type)
+  return file("${params.project_dir}/data/single_cell_${data_type}/processed/${vdj_library}/cellranger/filtered_contig_annotations.csv")
+}
+
+
+
 def get_cr_h5(library){
   return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/cellranger/raw_feature_bc_matrix.h5", checkIfExists: true)
 }
@@ -151,7 +169,7 @@ workflow  {
         bcr: it[1].contains("BCR")
         tcr: it[1].contains("TCR")
       } // separate the output by data type
-      
+
       // if it passes Gzip --> split the CITE/GEX to downstream channels
       ch_library_dt = ch_gzip_out.cite.mix(ch_gzip_out.gex) 
         .multiMap { it -> 
@@ -166,15 +184,18 @@ workflow  {
     
       // run cellranger for vdj if specified
       if (params.settings.add_tcr || params.settings.add_bcr ){
-          CELLRANGER_VDJ(ch_gzip_out.bcr.mix(ch_gzip_out.tcr)) 
+          ch_vdj_in = ch_gzip_out.bcr.mix(ch_gzip_out.tcr).map{
+            it -> get_vdj_tuple(it[0], it[1])
+          }
+          CELLRANGER_VDJ(ch_vdj_in) 
           
           // add "empty" TCR/BCR libs for missing
-          ch_vdj_libs = CELLRANGER_VDJ.out.bam_h5
+          ch_vdj_libs = CELLRANGER_VDJ.out.vdj_csvs
             .mix(ch_no_vdj)
             .branch { 
-            tcr: it[1].contains("TCR")
-            bcr: it[1].contains("BCR")
-        }
+                tcr: it[1].contains("TCR")
+                bcr: it[1].contains("BCR")
+            }
       }
      } 
      // skip running cellranger and grab output from canonical location
@@ -182,17 +203,35 @@ workflow  {
      else {
 
         cr_bam_h5 = []
+        cr_vdj = []
         list_pools = params.pools.keySet()
         for (pool in list_pools){
           for (library in get_libraries(pool)){
             bam = get_cr_bam(library)
             h5 = get_cr_h5(library)
             cr_bam_h5 << [library, bam, h5]
+            data_type = get_data_types(pool, library)
+            if (params.settings.add_tcr || params.settings.add_bcr ){
+                clonotypes = get_clonotypes(library, data_type)
+                contigs = get_contigs(library, data_type)
+                cr_vdj << [library, data_type, clonotypes, contigs]
+               
+            }
           }
         }
         ch_cr_bam_h5 = Channel.fromList(cr_bam_h5)
         ch_library_dt = Channel.fromList(library_dt).multiMap { it -> seurat_in: it}
 
+        if (params.settings.add_tcr || params.settings.add_bcr ){
+             // add "empty" TCR/BCR libs for missing
+            ch_vdj_libs = Channel.fromList(cr_vdj)
+                    .mix(ch_no_vdj)
+                    .branch { 
+                        tcr: it[1].contains("TCR")
+                        bcr: it[1].contains("BCR")
+                    }
+
+        }
      }
 
      ch_cr_out = ch_cr_bam_h5 
@@ -372,8 +411,8 @@ workflow  {
         LOAD_SOBJ(ch_df_in) 
         ch_initial_sobj = LOAD_SOBJ.out.sobj
       }
-      
-      /* 
+
+            /* 
       --------------------------------------------------------
       Set up seurat object
       --------------------------------------------------------
@@ -381,8 +420,19 @@ workflow  {
       // add TCR & BCR data
       ch_tcr_out = Channel.empty()
       ch_bcr_out = Channel.empty()
-      ch_tcr_out = (params.settings.add_tcr) ? SEURAT_ADD_TCR(ch_initial_sobj.combine(ch_vdj_libs.tcr, by:0)).out.sobj : ch_initial_sobj
-      ch_bcr_out = (params.settings.add_bcr) ? SEURAT_ADD_BCR(ch_tcr_out.combine(ch_vdj_libs.bcr, by:0)).out.sobj : ch_tcr_out
+      if (params.settings.add_tcr){
+        SEURAT_ADD_TCR(ch_initial_sobj.combine(ch_vdj_libs.tcr, by:0))
+        ch_tcr_out = SEURAT_ADD_TCR.out.sobj
+      } else {
+        ch_tcr_out = ch_initial_sobj
+      }
+
+      if (params.settings.add_bcr){
+        SEURAT_ADD_BCR(ch_tcr_out.combine(ch_vdj_libs.bcr, by:0))
+        ch_bcr_out = SEURAT_ADD_BCR.out.sobj
+      } else {
+        ch_bcr_out = ch_tcr_out
+      }
       
       // set up seurat QC
       ch_seurat_qc_in = ch_library_dt.seurat_in
@@ -390,7 +440,8 @@ workflow  {
       .combine(ch_cr_out.seurat_in, by:0) // <-- [lib, data_type, doublet_finder_sobj, raw_h5]
       
       SEURAT_QC(ch_seurat_qc_in) 
-
+      
+  
 }
 
 workflow.onComplete {

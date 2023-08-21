@@ -1,6 +1,7 @@
 // Merge fastq files, if needed
 process CAT_FASTQ {
     tag "$meta.id"
+    label 'cat_fastq'
     cpus 1
     memory '31 GB'
     conda "$baseDir/envs/py311_basic.yml"

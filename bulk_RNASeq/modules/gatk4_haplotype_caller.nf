@@ -1,5 +1,6 @@
 process GATK4_HAPLOTYPECALLER {
     tag "$meta.id"
+    label 'gatk4_haplotypecaller'
     cpus 2
     memory '31 GB'
     publishDir "${params.results_directory}/snps", mode: 'copy'

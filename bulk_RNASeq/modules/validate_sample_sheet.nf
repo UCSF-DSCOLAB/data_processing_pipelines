@@ -1,5 +1,6 @@
 process VALIDATE_SAMPLE_SHEET {
-    tag "$samplesheet"
+    tag "${samplsheet}"
+    label 'validate_sample_sheet'
     conda "$baseDir/envs/py311_basic.yml"
 
     input:

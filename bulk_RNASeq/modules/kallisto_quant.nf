@@ -1,5 +1,6 @@
 process KALLISTO_QUANT {
     tag "$meta.id"
+    label 'kallisto_quant'
     publishDir "${params.results_directory}/kallisto", mode: 'copy'
     cpus 12
     memory '64 GB'
@@ -7,6 +8,7 @@ process KALLISTO_QUANT {
 
     input:
     tuple val(meta), path(reads)
+    path transcript_index
 
     output:
     tuple val(meta), path("${prefix}.kallisto.abundance.h5") , emit: abundance_h5
@@ -20,14 +22,14 @@ process KALLISTO_QUANT {
     prefix   = task.ext.prefix ?: "${meta.id}"
     if (meta.single_end) {
         """
-        kallisto quant --index ${params.transcript_index} --output-dir ${prefix} -t ${task.cpus} --single -l ${params.fragment_length_mean} -s ${params.fragment_length_std} ${reads} > ${prefix}.kallisto.log
+        kallisto quant --index $transcript_index --output-dir ${prefix} -t ${task.cpus} --single -l ${params.fragment_length_mean} -s ${params.fragment_length_std} ${reads} > ${prefix}.kallisto.log
         mv ${prefix}/abundance.h5 ${prefix}.kallisto.abundance.h5
         mv ${prefix}/abundance.tsv ${prefix}.kallisto.abundance.tsv
         mv ${prefix}/run_info.json ${prefix}.kallisto.run_info.json
         """
     } else {
         """
-        kallisto quant --index ${params.transcript_index} --output-dir ${prefix} -t ${task.cpus} ${reads[0]} ${reads[1]} > ${prefix}.kallisto.log
+        kallisto quant --index $transcript_index --output-dir ${prefix} -t ${task.cpus} ${reads[0]} ${reads[1]} > ${prefix}.kallisto.log
         mv ${prefix}/abundance.h5 ${prefix}.kallisto.abundance.h5
         mv ${prefix}/abundance.tsv ${prefix}.kallisto.abundance.tsv
         mv ${prefix}/run_info.json ${prefix}.kallisto.run_info.json

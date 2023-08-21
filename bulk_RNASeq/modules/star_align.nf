@@ -1,5 +1,6 @@
 process STAR_ALIGN {
     tag "$meta.id"
+    label 'star_align'
     cpus 32
     memory '64 GB'
     publishDir "${params.results_directory}/star", mode: 'copy', pattern: "${prefix}ReadsPerGene.out.tab"

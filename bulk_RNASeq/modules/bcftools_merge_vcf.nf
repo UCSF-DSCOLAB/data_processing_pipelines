@@ -1,5 +1,6 @@
 process BCFTOOLS_MERGE_VCF {
     tag "$meta.id"
+    label 'bcftools_merge_vcf'
     cpus 12
     memory '31 GB'
     publishDir "${params.results_directory}/merged_results", mode: 'copy'

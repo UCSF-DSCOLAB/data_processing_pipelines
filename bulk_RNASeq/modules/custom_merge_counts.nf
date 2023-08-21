@@ -1,5 +1,6 @@
 process CUSTOM_MERGE_COUNTS {
     tag "$samplesheet"
+    label 'custom_merge_counts'
     cpus 1
     memory '31 GB'
     publishDir "${params.results_directory}/merged_results", mode: 'copy'

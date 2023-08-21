@@ -1,5 +1,6 @@
-process EXTRACT_MAPPED_READS {
+process SAMTOOLS_EXTRACT_MAPPED_READS {
     tag "$meta.id"
+    label 'samtools_extract_mapped_reads'
     cpus 32
     memory '64 GB'
     publishDir "${params.results_directory}/star", mode: 'copy'

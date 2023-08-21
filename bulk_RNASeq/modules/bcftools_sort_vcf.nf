@@ -1,5 +1,6 @@
 process BCFTOOLS_SORT_VCF {
     tag "$meta.id"
+    label 'bcftools_sort_vcf'
     cpus 2
     memory '31 GB'
     publishDir "${params.results_directory}/snps", mode: 'copy'

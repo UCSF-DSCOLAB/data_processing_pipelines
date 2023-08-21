@@ -1,5 +1,6 @@
 process GATK4_SPLITNCIGARREADS {
     tag "$meta.id"
+    label 'gatk4_splitncigarreads'
     cpus 2
     memory '31 GB'
     conda "$baseDir/envs/gatk.yml"

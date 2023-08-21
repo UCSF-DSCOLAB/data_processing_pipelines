@@ -1,5 +1,6 @@
-process EXTRACT_UNMAPPED_READS {
+process PICARD_EXTRACT_UNMAPPED_READS {
     tag "$meta.id"
+    label 'picard_extract_unmapped_reads'
     cpus 32
     memory '64 GB'
     publishDir "${params.results_directory}/star", mode: 'copy'
@@ -15,18 +16,14 @@ process EXTRACT_UNMAPPED_READS {
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
-    java -Xmx${task.memory.toGiga()-5}g \
-        -jar /opt/picard/picard.jar \
-        ViewSam \
+    picard ViewSam \
         VALIDATION_STRINGENCY=SILENT \
         ALIGNMENT_STATUS=Unaligned \
         PF_STATUS=All \
         I=${bam} \
         > ${prefix}.trimmed.unmapped.bam
 
-    java -Xmx${task.memory.toGiga()-5}g \
-        -jar /opt/picard/picard.jar \
-        SamToFastq \
+    picard SamToFastq \
         VALIDATION_STRINGENCY=SILENT \
         I=${prefix}.trimmed.unmapped.bam \
         FASTQ=${prefix}.trimmed.unmapped.1.fq.gz \

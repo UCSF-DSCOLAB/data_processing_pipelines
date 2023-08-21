@@ -1,6 +1,5 @@
 #!/usr/bin/env nextflow
 nextflow.enable.dsl=2
-
 /*
  * Display the default parameters (configure via nextflow.config)
  */
@@ -30,9 +29,9 @@ params.tmp_dir                  = ""
 params.results_directory        = ""
 params.rrna_db_file             = ""
 
-
 // Check mandatory parameters (sample sheet)
 if (params.input) { ch_input = file(params.input) } else { exit 1, 'Input samplesheet not specified!' } 
+//if (params.transcript_index) { ch_transcript_index = file(params.transcript_index) } else { exit 1, 'Input transcript index not specified!' } 
 
 // Import SUBWORKFLOWS
 include { INPUT_CHECK               } from './subworkflows/validate_input' 
@@ -43,7 +42,7 @@ include { QUANTIFY_SALMON           } from './subworkflows/quantify_transcriptom
 // Import MODULES
 include { CAT_FASTQ                 } from './modules/cat_fastq'
 include { FASTP_TRIM_ADAPTERS       } from './modules/fastp_trim_adapters'
-include { SORTMERNA                 } from './modules/sortmerna_rrna_removal'
+include { SORTMERNA_RIBOSOMAL_RNA_REMOVAL       } from './modules/sortmerna_rrna_removal'
 include { KALLISTO_QUANT            } from './modules/kallisto_quant'
 include { CUSTOM_MERGE_COUNTS       } from './modules/custom_merge_counts'
 include { GATK4_SPLITNCIGARREADS    } from './modules/gatk4_splitncigar'
@@ -57,6 +56,7 @@ include { BCFTOOLS_SORT_VCF   }       from './modules/bcftools_sort_vcf'
 include { BCFTOOLS_INDEX_VCF   }      from './modules/bcftools_index_vcf'
 include { BCFTOOLS_MERGE_VCF        } from './modules/bcftools_merge_vcf'
 include { MULTIQC                   } from './modules/multiqc'
+
 
 
 workflow {
@@ -93,7 +93,7 @@ workflow {
     .reads
     .mix(ch_fastq.single)
     .set { ch_cat_fastq }
-    //
+        //
     // MODULE: Trim adapter sequences from FastQ reads
     //
     ch_trimmed_reads = Channel.empty()
@@ -111,13 +111,13 @@ workflow {
         ch_sortmerna_multiqc = Channel.empty()
         sortmerna_fastas_data = file(params.rrna_db_file).readLines()
         lst_sortmerna_fastas = sortmerna_fastas_data.collect { file(it) }
-        SORTMERNA (
+        SORTMERNA_RIBOSOMAL_RNA_REMOVAL (
             ch_trimmed_reads,
             lst_sortmerna_fastas
         )
-        ch_trimmed_reads = SORTMERNA.out.reads
-        ch_sortmerna_multiqc = SORTMERNA.out.log
-        ch_reports = ch_reports.mix(SORTMERNA.out.log.collect{it[1]}.ifEmpty([]))
+        ch_trimmed_reads = SORTMERNA_RIBOSOMAL_RNA_REMOVAL.out.reads
+        ch_sortmerna_multiqc = SORTMERNA_RIBOSOMAL_RNA_REMOVAL.out.log
+        ch_reports = ch_reports.mix(SORTMERNA_RIBOSOMAL_RNA_REMOVAL.out.log.collect{it[1]}.ifEmpty([]))
     }
     //
     // MODULE: Quantify transcriptome abundance using Kallisto
@@ -125,7 +125,8 @@ workflow {
     ch_kallisto_multiqc = Channel.empty()
     ch_kallisto_counts = Channel.empty()
     KALLISTO_QUANT(
-        ch_trimmed_reads
+        ch_trimmed_reads,
+        params.transcript_index
     )
     ch_kallisto_counts = KALLISTO_QUANT.out.abundance_tsv
     ch_kallisto_multiqc = KALLISTO_QUANT.out.log
@@ -264,7 +265,8 @@ workflow {
         // MODULE: Convert VCF contigs to desired naming format (e.g. ucsc)
         //
         BCFTOOLS_CONTIG_CONVERSION (
-           ch_filtered_vcf
+           ch_filtered_vcf,
+           params.contig_format_map
         )
         ch_filtered_vcf = BCFTOOLS_CONTIG_CONVERSION.out.formatted_vcf
     }

@@ -1,10 +1,7 @@
 process BCFTOOLS_CONTIG_CONVERSION {
     tag "$meta.id"
     label 'bcftools_contig_conversion'
-    cpus 2
-    memory '31 GB'
     publishDir "${params.results_directory}/snps", mode: 'copy'
-    conda "$baseDir/envs/bcftools.yml"
 
     input:
     tuple val(meta), path(vcf)

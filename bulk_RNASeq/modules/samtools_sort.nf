@@ -1,9 +1,6 @@
 process SAMTOOLS_SORT {
     tag "$meta.id"
     label 'samtools_sort'
-    cpus 2
-    memory '31 GB'
-    conda "$baseDir/envs/samtools.yml"
 
     input:
     tuple val(meta), path(bam)

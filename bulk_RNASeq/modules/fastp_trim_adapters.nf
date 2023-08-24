@@ -1,10 +1,6 @@
 process FASTP_TRIM_ADAPTERS {
     tag "$meta.id"
     label 'fastp_trim_adapters'
-    cpus 2
-    memory '31 GB'
-    publishDir "${params.results_directory}/trim", mode: 'copy'
-    conda "$baseDir/envs/fastp.yml"
 
     input:
     tuple val(meta), path(reads)

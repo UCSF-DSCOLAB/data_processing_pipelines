@@ -1,8 +1,6 @@
 process PICARD_EXTRACT_UNMAPPED_READS {
     tag "$meta.id"
     label 'picard_extract_unmapped_reads'
-    cpus 32
-    memory '64 GB'
     publishDir "${params.results_directory}/star", mode: 'copy'
 
     input:

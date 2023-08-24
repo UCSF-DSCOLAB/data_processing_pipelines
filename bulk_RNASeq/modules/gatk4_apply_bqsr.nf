@@ -1,9 +1,6 @@
 process GATK4_APPLY_BQSR {
     tag "$meta.id"
     label 'gatk4_apply_bqsr'
-    cpus 2
-    memory '31 GB'
-    conda "$baseDir/envs/gatk.yml"
 
     input:
     tuple val(meta), path(input), path(input_index), path(bqsr_table)

@@ -1,9 +1,6 @@
 process SAMTOOLS_STATS {
     tag "$meta.id"
     label 'samtools_stats'
-    cpus 2
-    memory '31 GB'
-    conda "$baseDir/envs/samtools.yml"
 
     input:
     tuple val(meta), path(input), path(input_index)

@@ -1,11 +1,8 @@
 process STAR_ALIGN {
     tag "$meta.id"
     label 'star_align'
-    cpus 32
-    memory '64 GB'
     publishDir "${params.results_directory}/star", mode: 'copy', pattern: "${prefix}ReadsPerGene.out.tab"
     publishDir "${params.results_directory}/star", mode: 'copy', pattern: "${prefix}Log.final.out"
-    conda "$baseDir/envs/star.yml"
 
     input:
     tuple val(meta), path(reads)

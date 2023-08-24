@@ -2,9 +2,6 @@ process KALLISTO_QUANT {
     tag "$meta.id"
     label 'kallisto_quant'
     publishDir "${params.results_directory}/kallisto", mode: 'copy'
-    cpus 12
-    memory '64 GB'
-    conda "$baseDir/envs/kallisto.yml"
 
     input:
     tuple val(meta), path(reads)

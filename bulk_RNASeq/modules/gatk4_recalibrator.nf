@@ -1,9 +1,6 @@
 process GATK4_BASE_RECALIBRATOR {
     tag "$meta.id"
     label 'gatk4_recalibrator'
-    cpus 2
-    memory '31 GB'
-    conda "$baseDir/envs/gatk.yml"
 
     input:
     tuple val(meta), path(input)

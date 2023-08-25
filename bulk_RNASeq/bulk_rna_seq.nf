@@ -2,7 +2,7 @@
 nextflow.enable.dsl=2
 /*
  * Display the default parameters (configure via nextflow.config)
- */
+*/
 params.input                    = ""
 params.genome                   = ""
 params.genome_idx               = ""
@@ -37,7 +37,7 @@ if (params.input) { ch_input = file(params.input) } else { exit 1, 'Input sample
 include { INPUT_CHECK               } from './subworkflows/validate_input' 
 include { ALIGN_READS               } from './subworkflows/align_reads'
 include { BAM_MARKDUPLICATES_PICARD } from './subworkflows/post_process_bam'
-include { QUANTIFY_SALMON           } from './subworkflows/quantify_transcriptome'
+// include { QUANTIFY_SALMON           } from './subworkflows/quantify_transcriptome'
 
 // Import MODULES
 include { CAT_FASTQ                 } from './modules/cat_fastq'
@@ -93,7 +93,7 @@ workflow {
     .reads
     .mix(ch_fastq.single)
     .set { ch_cat_fastq }
-        //
+    //
     // MODULE: Trim adapter sequences from FastQ reads
     //
     ch_trimmed_reads = Channel.empty()
@@ -231,7 +231,6 @@ workflow {
     )
     ch_bam_variant_calling = GATK4_APPLY_BQSR.out.bam
     ch_bai_variant_calling = SAMTOOLS_INDEX_BQSR.out.bai
-    // ch_reports = ch_reports.mix(GATK4_APPLY_BQSR.out.qc.collect{it[1]}.ifEmpty([]))
     //
     // MODULE: Call SNPs and Indels using HaplotypeCaller
     //
@@ -273,7 +272,7 @@ workflow {
     //
     // MODULE: Sort and index VCFs
     //
-    ch_sorted_filtered_vcf = Channel.empty()
+    ch_sorted_vcf = Channel.empty()
     BCFTOOLS_SORT_VCF (
         ch_filtered_vcf
     )
@@ -285,6 +284,7 @@ workflow {
     BCFTOOLS_INDEX_VCF (
         ch_sorted_vcf
     )
+    // ch_sorted_vcf = BCFTOOLS_INDEX_VCF.out.sorted_vcf
     ch_vcf_index = BCFTOOLS_INDEX_VCF.out.vcf_index
     ch_vcf = ch_sorted_vcf.join(ch_vcf_index, by: [0])
     // Collect all VCFs and index files from upstream process

@@ -29,7 +29,7 @@ process GATK4_HAPLOTYPECALLER {
         --output ${prefix}.vcf.gz \\
         $reference_command \\
         $dbsnp_command \\
-        --tmp-dir $params.tmp_dir \\
+        --tmp-dir \$PWD \\
         $args
     """
 }

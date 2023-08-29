@@ -24,7 +24,7 @@ process GATK4_APPLY_BQSR {
         --output ${prefix}_bqsr.bam \\
         --reference $genome \\
         --bqsr-recal-file $bqsr_table \\
-        --tmp-dir $params.tmp_dir \\
+        --tmp-dir \$PWD \\
         $args
     """
 }

@@ -43,6 +43,17 @@ def get_nsamples (pool){
 def get_vcf (pool){
   return params.pools[pool].vcf
 }
+
+def get_clonotypes(library, data_type){
+  vdj_library=get_vdj_name(library, data_type)
+  return file("${params.project_dir}/data/single_cell_${data_type}/processed/${vdj_library}/cellranger/clonotypes.csv")
+}
+def get_contigs(library, data_type){
+  vdj_library=get_vdj_name(library, data_type)
+  return file("${params.project_dir}/data/single_cell_${data_type}/processed/${vdj_library}/cellranger/filtered_contig_annotations.csv")
+}
+
+
 def get_cr_h5(library){
   return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/cellranger/raw_feature_bc_matrix.h5", checkIfExists: true)
 }
@@ -109,6 +120,18 @@ workflow {
     }
     ch_lib_bam = Channel.fromList(lib_bam)
 
+    // set up if there's vdj
+    if (params.settings.add_tcr || params.settings.add_bcr ){
+        ch_vdj_in = Channel.fromList(vdj_in).map{
+              it -> [it[0], it[1], get_clonotypes(it[0], it[1]), get_contigs(it[0], it[1])]
+            }
+
+            ch_vdj_libs = ch_vdj_in.mix(ch_no_vdj)
+                    .branch { 
+                        tcr: it[1].contains("TCR")
+                        bcr: it[1].contains("BCR")
+                    }  
+    }
     // ch_cr_out.df_in [lib, raw_h5]
     // ch_cr_out.seurat_in
 
@@ -282,9 +305,19 @@ workflow {
       // add TCR & BCR data
       ch_tcr_out = Channel.empty()
       ch_bcr_out = Channel.empty()
-      ch_tcr_out = (params.settings.add_tcr) ? SEURAT_ADD_TCR(ch_initial_sobj.combine(ch_vdj_libs.tcr, by:0)).out.sobj : ch_initial_sobj
-      ch_bcr_out = (params.settings.add_bcr) ? SEURAT_ADD_BCR(ch_tcr_out.combine(ch_vdj_libs.bcr, by:0)).out.sobj : ch_tcr_out
-      
+      if (params.settings.add_tcr){
+        SEURAT_ADD_TCR(ch_initial_sobj.combine(ch_vdj_libs.tcr, by:0))
+        ch_tcr_out = SEURAT_ADD_TCR.out.sobj
+      } else {
+        ch_tcr_out = ch_initial_sobj
+      }
+
+      if (params.settings.add_bcr){
+        SEURAT_ADD_BCR(ch_tcr_out.combine(ch_vdj_libs.bcr, by:0))
+        ch_bcr_out = SEURAT_ADD_BCR.out.sobj
+      } else {
+        ch_bcr_out = ch_tcr_out
+      } 
       // set up seurat QC
       ch_seurat_qc_in =  ch_library_dt //.seurat_in
       .combine(ch_bcr_out, by:0)

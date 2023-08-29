@@ -28,6 +28,14 @@ def get_data_types (pool, library){
 def get_nsamples (pool){
   return params.pools[pool].nsamples
 }
+
+def get_vdj_name(library, data_type){
+  return library.replace("SCG", "SC" + data_type.substring(0, 1))
+}
+def get_vdj_tuple(library, data_type){
+  return [library, data_type, get_vdj_name(library, data_type)]
+}
+
 def get_cr_h5(library){
   return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/cellranger/raw_feature_bc_matrix.h5", checkIfExists: true)
 }
@@ -118,19 +126,14 @@ workflow  {
     
       // run cellranger for vdj if specified
       if (params.settings.add_tcr || params.settings.add_bcr ){
-          CELLRANGER_VDJ(ch_gzip_out.bcr.mix(ch_gzip_out.tcr)) 
-          
-          // add "empty" TCR/BCR libs for missing
-          ch_vdj_libs = CELLRANGER_VDJ.out.bam_h5
-            .mix(ch_no_vdj)
-            .branch { 
-            tcr: it[1].contains("TCR")
-            bcr: it[1].contains("BCR")
-        }
+          ch_vdj_in = ch_gzip_out.bcr.mix(ch_gzip_out.tcr).map{
+            it -> get_vdj_tuple(it[0], it[1])
+          }
+          CELLRANGER_VDJ(ch_vdj_in) 
+          // output is *not* consumed until post_qc
       }
      } 
      // skip running cellranger and grab output from canonical location
-     // TODO expand to work for VDJ as well
      else {
         lib_h5 = []
         list_pools = params.pools.keySet()

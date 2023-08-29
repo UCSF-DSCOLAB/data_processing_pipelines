@@ -210,27 +210,27 @@ workflow  {
             bam = get_cr_bam(library)
             h5 = get_cr_h5(library)
             cr_bam_h5 << [library, bam, h5]
-            data_type = get_data_types(pool, library)
-            if (params.settings.add_tcr || params.settings.add_bcr ){
-                clonotypes = get_clonotypes(library, data_type)
-                contigs = get_contigs(library, data_type)
-                cr_vdj << [library, data_type, clonotypes, contigs]
-               
-            }
+            
+
           }
         }
+
         ch_cr_bam_h5 = Channel.fromList(cr_bam_h5)
         ch_library_dt = Channel.fromList(library_dt).multiMap { it -> seurat_in: it}
 
+
+        // vdj_in [library, dt]
+
         if (params.settings.add_tcr || params.settings.add_bcr ){
-             // add "empty" TCR/BCR libs for missing
-            ch_vdj_libs = Channel.fromList(cr_vdj)
-                    .mix(ch_no_vdj)
+            ch_vdj_in = Channel.fromList(vdj_in).map{
+              it -> [it[0], it[1], get_clonotypes(it[0], it[1]), get_contigs(it[0], it[1])]
+            }
+
+            ch_vdj_libs = ch_vdj_in.mix(ch_no_vdj)
                     .branch { 
                         tcr: it[1].contains("TCR")
                         bcr: it[1].contains("BCR")
-                    }
-
+                    }  
         }
      }
 

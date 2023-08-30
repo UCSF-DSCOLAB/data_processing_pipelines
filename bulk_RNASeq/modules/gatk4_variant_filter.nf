@@ -28,7 +28,7 @@ process GATK4_VARIANTFILTRATION {
         --reference $fasta \\
         --window $params.gatk_vf_window_size \\
         --output ${prefix}.filtered.vcf.gz \\
-        --tmp-dir . \\
+        --tmp-dir \$PWD \\
         $args
     """
 }

@@ -38,7 +38,7 @@ SEURAT_QC
 
 include {
 get_c4_h5; get_c4_bam; get_c4_h5_bam; get_pool_library_meta; get_libraries_data_type; get_pools_with_multi_library;
-get_pool_by_sample_count; get_library_by_sample_count; get_single_library_by_pool; get_multi_library_by_pool
+get_pool_by_sample_count; get_library_by_sample_count; get_single_library_by_pool; get_multi_library_by_pool ; get_pool_vcf
 } from  './helpers/params_parse.nf'
 
 include {
@@ -116,13 +116,12 @@ workflow {
 
      /*
      --------------------------------------------------------
-     Merge libraries if necessary
+     Merge multiple libraries per pool
      --------------------------------------------------------
      */
 
      ch_merged_libs = Channel.empty()
 
-     // Do we want to merge libraries per pool?
      if (params.settings.merge_for_demux){
         // Only fetch multiple libraries
         ch_multi_lib_pool = Channel.from(get_multi_library_by_pool()) // [[lib_dir, pool], [lib_dir, pool]]
@@ -152,7 +151,6 @@ workflow {
         ch_sample_map_merged = Channel.empty()
         if (params.settings.merge_for_demux) {
 
-
              // Run freemuxlet on merged libraries
              // Attach the number of samples, and re-arrange input
             ch_multi_lib_transformed = ch_merged_libs
@@ -172,13 +170,13 @@ workflow {
                                                 sublist ->
                                                     // Create a new sublist with the filename part and the rest of the original sublist as its own sublistu
                                                     return [
-                                                    [extractFileName(sublist[0].toString()), sublist[1..-1]]
+                                                        [extractFileName(sublist[0].toString()), sublist[0..-1]]
                                                     ]
                                             }
             sample_file_transformed.view()
+            SEPARATE_FMX(sample_file_transformed.filter{it -> it[0] =='TEST-POOL-DM1-SCG1'})
+            //ch_sample_map_merged = SEPARATE_FMX.out.sample_map
 
-            SEPARATE_FMX(sample_file_transformed) // --> lib, fmx_clus
-            ch_sample_map_merged = SEPARATE_FMX.out.sample_map
 
         }
 
@@ -198,6 +196,7 @@ workflow {
 
 
             if (!params.settings.merge_for_demux) {
+
 
                 }
 

@@ -147,14 +147,12 @@ workflow {
 
      if ( params.settings.demux_method == "freemuxlet"){
 
-        // Did we merge any libraries?
         ch_sample_map_merged = Channel.empty()
         if (params.settings.merge_for_demux) {
 
-             // Run freemuxlet on merged libraries
              // Attach the number of samples, and re-arrange input
             ch_multi_lib_transformed = ch_merged_libs
-                                            .join(Channel.from(get_pools_with_multi_library()))
+            // TODO: verify join condition is okay dropped?
                                             .join(Channel.from(get_pool_by_sample_count()))
                                             .map{it -> [it[0], it[6], it[2], it[3], it[4], it[5]]} // [lib, num_of_samples, plp_files]] (excluding .tsv)
             FREEMUXLET_POOL(ch_multi_lib_transformed)
@@ -168,15 +166,15 @@ workflow {
                                             .transpose() // We need to group each sub array by index [[1,2],[a,b]] -> [[1,a],[2,b]]
                                             .collect {
                                                 sublist ->
-                                                    // Create a new sublist with the filename part and the rest of the original sublist as its own sublistu
+                                                    // Create a new sublist with the filename part and the rest of the original sublist as its own sublist
                                                     return [
                                                         [extractFileName(sublist[0].toString()), sublist[0..-1]]
                                                     ]
                                             }
-            sample_file_transformed.view()
-            SEPARATE_FMX(sample_file_transformed.filter{it -> it[0] =='TEST-POOL-DM1-SCG1'})
-            //ch_sample_map_merged = SEPARATE_FMX.out.sample_map
 
+            // TODO: fix this! There is a very bizarre bug here. SEPARATE_FMX errors out on channels > 1 elements?
+            SEPARATE_FMX(sample_file_transformed.filter{it -> it[0] =='TEST-POOL-DM1-SCG2'})
+            ch_sample_map_merged = SEPARATE_FMX.out.sample_map
 
         }
 
@@ -196,12 +194,29 @@ workflow {
 
 
             if (!params.settings.merge_for_demux) {
+                ch_multi_lib_transformed = ch_merged_libs
+                                                   .join(Channel.from(get_pool_vcf()))
+                                                   .map{it -> [it[0], it[6], it[2], it[3], it[4], it[5]]} // [lib, vcf, plp_files]]
 
+                DEMUXLET_POOL(ch_multi_lib_transformed)
 
-                }
+                // TODO: SEPARATE_DMX(ch_separate)
+
+            }
+
+            // Run freemuxlet on single libraries
+            // Attach the number of samples, and re-arrange input
+            ch_single_lib_transformed  = ch_plp_files
+                                              .join(Channel.from(get_single_library_by_pool()))
+                                               .join(Channel.from(get_pool_vcf()))
+                                               .map{it -> [it[0], it[3], it[1]]} // [lib, vcf, plp_files]]
+
+            DEMUXLET_LIBRARY(ch_single_lib_transformed)
+
+            // appended any merged libraries
+            ch_sample_map = ch_sample_map_merged.mix(DEMUXLET_LIBRARY.out.sample_map)
 
         }
-
 
 
 

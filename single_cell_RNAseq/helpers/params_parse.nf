@@ -35,12 +35,12 @@ def get_libraries_data_type(){
            }
 }
 
-def get_pools_with_multi_library() {
-    return get_pool_library_meta().findAll {it.num_of_libraries > 1}.collectMany { pool ->
-            pool.lib_directories.collect { dir ->
-                pool.name
-            }
-        }.unique()
+def get_library_ncells(){
+    return params.pools.collectMany {
+                pool -> pool.libraries.collect {
+                    library -> [library.dir, library.ncells_loaded]
+                }
+           }
 }
 
 def get_multi_library_by_pool() {
@@ -76,4 +76,12 @@ def get_pool_by_sample_count() {
         }
 }
 
+def get_pool_vcf() {
+    return get_pool_library_meta().collectMany { pool ->
+            [
+                [pool.name, pool.vcf]
+            ]
+        }
+
+}
 

@@ -37,8 +37,9 @@ SEURAT_QC
 // Helper functions
 
 include {
-get_c4_h5; get_c4_bam; get_c4_h5_bam; get_pool_library_meta; get_libraries_data_type; get_pools_with_multi_library;
-get_pool_by_sample_count; get_library_by_sample_count; get_single_library_by_pool; get_multi_library_by_pool ; get_pool_vcf
+get_c4_h5; get_c4_bam; get_c4_h5_bam; get_pool_library_meta; get_libraries_data_type;
+get_pool_by_sample_count; get_library_by_sample_count; get_single_library_by_pool;
+get_multi_library_by_pool; get_pool_vcf ; get_library_ncells
 } from  './helpers/params_parse.nf'
 
 include {
@@ -49,10 +50,9 @@ workflow {
 
        /*
         --------------------------------------------------------
-        STEP 1
-              Input:
+        Initial Input:
                 - Libraries: Directory of fastqs
-              Output:
+        Output:
                 - BAM / H5 files for each library
         --------------------------------------------------------
        */
@@ -152,7 +152,6 @@ workflow {
 
              // Attach the number of samples, and re-arrange input
             ch_multi_lib_transformed = ch_merged_libs
-            // TODO: verify join condition is okay dropped?
                                             .join(Channel.from(get_pool_by_sample_count()))
                                             .map{it -> [it[0], it[6], it[2], it[3], it[4], it[5]]} // [lib, num_of_samples, plp_files]] (excluding .tsv)
             FREEMUXLET_POOL(ch_multi_lib_transformed)
@@ -173,7 +172,7 @@ workflow {
                                             }
 
             // TODO: fix this! There is a very bizarre bug here. SEPARATE_FMX errors out on channels > 1 elements?
-            SEPARATE_FMX(sample_file_transformed.filter{it -> it[0] =='TEST-POOL-DM1-SCG2'})
+            SEPARATE_FMX(sample_file_transformed.filter{it -> it[0] == 'TEST-POOL-DM1-SCG2'})
             ch_sample_map_merged = SEPARATE_FMX.out.sample_map
 
         }
@@ -192,15 +191,20 @@ workflow {
 
         } else if ( params.settings.demux_method == "demuxlet"){
 
+        // TODO: try this use new VCF file that lives in home directory
 
-            if (!params.settings.merge_for_demux) {
+            ch_sample_map_merged = Channel.empty()
+            if (params.settings.merge_for_demux) {
                 ch_multi_lib_transformed = ch_merged_libs
                                                    .join(Channel.from(get_pool_vcf()))
                                                    .map{it -> [it[0], it[6], it[2], it[3], it[4], it[5]]} // [lib, vcf, plp_files]]
-
                 DEMUXLET_POOL(ch_multi_lib_transformed)
 
-                // TODO: SEPARATE_DMX(ch_separate)
+                demuxlet_pool_transformed = DEMUXLET_POOL.out.merged_best
+                                                                    .combine(Channel.from(get_multi_library_by_pool()), by: 1)
+                                                                    .map{it -> it[2,1]}
+                SEPARATE_DMX(demuxlet_pool_transformed)
+                ch_sample_map_merged = SEPARATE_DMX.out.sample_map
 
             }
 
@@ -208,65 +212,43 @@ workflow {
             // Attach the number of samples, and re-arrange input
             ch_single_lib_transformed  = ch_plp_files
                                               .join(Channel.from(get_single_library_by_pool()))
-                                               .join(Channel.from(get_pool_vcf()))
-                                               .map{it -> [it[0], it[3], it[1]]} // [lib, vcf, plp_files]]
-
+                                              .join(Channel.from(get_pool_vcf()))
+                                              .map{it -> [it[0], it[3], it[1]]} // [lib, vcf, plp_files]]
             DEMUXLET_LIBRARY(ch_single_lib_transformed)
-
             // appended any merged libraries
             ch_sample_map = ch_sample_map_merged.mix(DEMUXLET_LIBRARY.out.sample_map)
 
         }
 
 
+      /*
+      --------------------------------------------------------
+      Run doublet finder if specified
+      --------------------------------------------------------
+      */
+     ch_initial_sobj = Channel.empty()
+     if (params.settings.run_doubletfinder) {
+        ch_doublet_input = Channel.from(get_library_ncells()).join(ch_all_h5).join(ch_sample_map) // [lib, ncells, raw_h5, fmx_cluster ]
+        FIND_DOUBLETS(ch_doublet_input) // --> [lib, doublet_finder_sobj]
+        ch_initial_sobj = FIND_DOUBLETS.out.sobj
+     } else {
+        ch_doublet_input = ch_all_h5.join(ch_sample_map) // [lib, ncells, raw_h5, fmx_cluster ]
+        LOAD_SOBJ(ch_doublet_input)
+        ch_initial_sobj = LOAD_SOBJ.out.sobj
+     }
 
+     /*
+     --------------------------------------------------------
+     Set up seurat object
+     --------------------------------------------------------
+     */
+     ch_library_info = Channel.from(get_libraries_data_type()) // -> [[library_dir, data_type]]
+     ch_seurat_input = ch_library_info.join(ch_initial_sobj).join(ch_all_h5)
+     // TODO: try this, we now have the cuts.qc file
+     SEURAT_QC(ch_seurat_input)
 
-//
-//       /*
-//       --------------------------------------------------------
-//       Run doublet finder if specified
-//       --------------------------------------------------------
-//       */
-//       ch_initial_sobj = Channel.empty()
-//       ch_df_in = ch_cr_out.df_in.combine(ch_sample_map, by: 0) // --> [lib, ncells, raw_h5, fmx_clusters]
-//       if (params.settings.run_doubletfinder) {
-//         ch_df_in2 = ch_lib_ncells.combine(ch_df_in, by: 0)
-//         FIND_DOUBLETS(ch_df_in2) // --> [lib, doublet_finder_sobj]
-//         ch_initial_sobj = FIND_DOUBLETS.out.sobj
-//       }
-//       else {
-//         LOAD_SOBJ(ch_df_in)
-//         ch_initial_sobj = LOAD_SOBJ.out.sobj
-//       }
-//
-//       /*
-//       --------------------------------------------------------
-//       Set up seurat object
-//       --------------------------------------------------------
-//       */
-//       // add TCR & BCR data
-//       ch_tcr_out = Channel.empty()
-//       ch_bcr_out = Channel.empty()
-//       ch_tcr_out = (params.settings.add_tcr) ? SEURAT_ADD_TCR(ch_initial_sobj.combine(ch_vdj_libs.tcr, by:0)).out.sobj : ch_initial_sobj
-//       ch_bcr_out = (params.settings.add_bcr) ? SEURAT_ADD_BCR(ch_tcr_out.combine(ch_vdj_libs.bcr, by:0)).out.sobj : ch_tcr_out
-//
-//       // set up seurat QC
-//       ch_seurat_qc_in = ch_library_dt.seurat_in
-//       .combine(ch_bcr_out, by:0)
-//       .combine(ch_cr_out.seurat_in, by:0) // <-- [lib, data_type, doublet_finder_sobj, raw_h5]
-//
-//       SEURAT_QC(ch_seurat_qc_in)
-//
-// }
-//
-// workflow.onComplete {
-//     log.info ( workflow.success ? "Done!" : "Oops .. something went wrong" )
-// }
-//
-//
-//
-//
-//
-//
-//
+}
+
+workflow.onComplete {
+    log.info ( workflow.success ? "Done!" : "Oops .. something went wrong" )
 }

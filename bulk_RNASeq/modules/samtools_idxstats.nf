@@ -1,8 +1,6 @@
 process SAMTOOLS_IDXSTATS {
     tag "$meta.id"
-    cpus 2
-    memory '31 GB'
-    conda "$baseDir/envs/samtools.yml"
+    label 'samtools_idxstats'
 
     input:
     tuple val(meta), path(bam), path(bai)

@@ -1,14 +1,13 @@
 process BCFTOOLS_INDEX_VCF {
     tag "$meta.id"
-    cpus 2
-    memory '31 GB'
+    label 'bcftools_index_vcf'
     publishDir "${params.results_directory}/snps", mode: 'copy'
-    conda "$baseDir/envs/bcftools.yml"
 
     input:
     tuple val(meta), path(vcf)
 
     output:
+    // tuple val(meta), path("*.formatted.vcf.gz"), emit: sorted_vcf
     tuple val(meta), path("*.sorted.vcf.gz.tbi"), emit: vcf_index
 
     when:

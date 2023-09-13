@@ -1,9 +1,7 @@
 process GATK4_HAPLOTYPECALLER {
     tag "$meta.id"
-    cpus 2
-    memory '31 GB'
+    label 'gatk4_haplotypecaller'
     publishDir "${params.results_directory}/snps", mode: 'copy'
-    conda "$baseDir/envs/gatk.yml"
 
     input:
     tuple val(meta), path(input), path(input_index)
@@ -31,7 +29,7 @@ process GATK4_HAPLOTYPECALLER {
         --output ${prefix}.vcf.gz \\
         $reference_command \\
         $dbsnp_command \\
-        --tmp-dir $params.tmp_dir \\
+        --tmp-dir \$PWD \\
         $args
     """
 }

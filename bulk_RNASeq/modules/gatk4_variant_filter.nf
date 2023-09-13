@@ -1,9 +1,7 @@
 process GATK4_VARIANTFILTRATION {
     tag "$meta.id"
-    cpus 2
-    memory '31 GB'
+    label 'gatk4_variantfiltration'
     publishDir "${params.results_directory}/snps", mode: 'copy'
-    conda "$baseDir/envs/gatk.yml"
 
     input:
     tuple val(meta), path(vcf), path(tbi)
@@ -30,7 +28,7 @@ process GATK4_VARIANTFILTRATION {
         --reference $fasta \\
         --window $params.gatk_vf_window_size \\
         --output ${prefix}.filtered.vcf.gz \\
-        --tmp-dir . \\
+        --tmp-dir \$PWD \\
         $args
     """
 }

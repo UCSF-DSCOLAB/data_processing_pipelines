@@ -1,8 +1,5 @@
 process UMITOOLS_DEDUP {
     tag "$meta.id"
-    cpus 2
-    memory '31 GB'
-    conda '/c4/home/alaa/miniconda3/envs/umi'
 
     input:
     tuple val(meta), path(bam), path(bai)

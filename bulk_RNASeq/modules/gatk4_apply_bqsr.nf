@@ -1,8 +1,6 @@
 process GATK4_APPLY_BQSR {
     tag "$meta.id"
-    cpus 2
-    memory '31 GB'
-    conda "$baseDir/envs/gatk.yml"
+    label 'gatk4_apply_bqsr'
 
     input:
     tuple val(meta), path(input), path(input_index), path(bqsr_table)
@@ -26,7 +24,7 @@ process GATK4_APPLY_BQSR {
         --output ${prefix}_bqsr.bam \\
         --reference $genome \\
         --bqsr-recal-file $bqsr_table \\
-        --tmp-dir $params.tmp_dir \\
+        --tmp-dir \$PWD \\
         $args
     """
 }

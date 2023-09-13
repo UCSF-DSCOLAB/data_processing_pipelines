@@ -1,10 +1,8 @@
 process STAR_ALIGN {
     tag "$meta.id"
-    cpus 32
-    memory '64 GB'
+    label 'star_align'
     publishDir "${params.results_directory}/star", mode: 'copy', pattern: "${prefix}ReadsPerGene.out.tab"
     publishDir "${params.results_directory}/star", mode: 'copy', pattern: "${prefix}Log.final.out"
-    conda "$baseDir/envs/star.yml"
 
     input:
     tuple val(meta), path(reads)
@@ -12,9 +10,9 @@ process STAR_ALIGN {
     path genomeDir
 
     output:
-    tuple val(meta), path('*d.sortedByCoord.out.bam'), emit: bam
-    tuple val(meta), path('*d.toTranscriptome.out.bam'), emit: transcriptome_bam
-    tuple val(meta), path('*.ReadsPerGene.out.tab'), emit: gene_counts 
+    tuple val(meta), path('*sortedByCoord.out.bam'), emit: bam
+    tuple val(meta), path('*toTranscriptome.out.bam'), emit: transcriptome_bam
+    tuple val(meta), path('*ReadsPerGene.out.tab'), emit: gene_counts 
     tuple val(meta), path('*Log.final.out'), emit: log_final
 
 

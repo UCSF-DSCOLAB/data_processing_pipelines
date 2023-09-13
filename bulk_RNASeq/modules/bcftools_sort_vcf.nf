@@ -1,9 +1,7 @@
 process BCFTOOLS_SORT_VCF {
     tag "$meta.id"
-    cpus 2
-    memory '31 GB'
+    label 'bcftools_sort_vcf'
     publishDir "${params.results_directory}/snps", mode: 'copy'
-    conda "$baseDir/envs/bcftools.yml"
 
     input:
     tuple val(meta), path(vcf)
@@ -18,6 +16,9 @@ process BCFTOOLS_SORT_VCF {
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
-    bcftools sort $vcf -o ${prefix}.sorted.vcf.gz -O z
+    bcftools sort \\
+            --output ${prefix}.sorted.vcf.gz -Oz \\
+            --temp-dir \$PWD \\
+            $vcf
     """
 }

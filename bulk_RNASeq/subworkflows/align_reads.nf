@@ -3,8 +3,8 @@
 //
 
 include { STAR_ALIGN } from '../modules/star_align'
-include { EXTRACT_MAPPED_READS as EXTRACT_MAPPED_GENOME_READS } from '../modules/samtools_extract_mapped_reads'
-include { EXTRACT_MAPPED_READS as EXTRACT_MAPPED_TRANSCRIPTOME_READS } from '../modules/samtools_extract_mapped_reads'
+include { SAMTOOLS_EXTRACT_MAPPED_READS as EXTRACT_MAPPED_GENOME_READS } from '../modules/samtools_extract_mapped_reads'
+include { SAMTOOLS_EXTRACT_MAPPED_READS as EXTRACT_MAPPED_TRANSCRIPTOME_READS } from '../modules/samtools_extract_mapped_reads'
 include { SAMTOOLS_BAM_TO_CRAM as SAMTOOLS_GENOME_BAM_TO_CRAM } from '../modules/samtools_bam_to_cram'
 include { SAMTOOLS_BAM_TO_CRAM as SAMTOOLS_TRANSCRIPTOME_BAM_TO_CRAM } from '../modules/samtools_bam_to_cram'
 include { PICARD_MARKDUPLICATES } from '../modules/picard_markduplicates'

@@ -1,9 +1,7 @@
 // Merge fastq files, if needed
 process CAT_FASTQ {
     tag "$meta.id"
-    cpus 1
-    memory '31 GB'
-    conda "$baseDir/envs/py311_basic.yml"
+    label 'cat_fastq'
 
     input:
     tuple val(meta), path(reads, stageAs: "input*/*")

@@ -1,8 +1,6 @@
-process SORTMERNA {
+process SORTMERNA_RIBOSOMAL_RNA_REMOVAL {
     tag "$meta.id"
-    cpus 16
-    memory '42 GB'
-    conda "$baseDir/envs/sortmerna.yml"
+    label 'sortmerna_ribosomal_rna_removal'
 
     input:
     tuple val(meta), path(reads)

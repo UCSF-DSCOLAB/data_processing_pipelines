@@ -1,8 +1,6 @@
 process GATK4_SPLITNCIGARREADS {
     tag "$meta.id"
-    cpus 2
-    memory '31 GB'
-    conda "$baseDir/envs/gatk.yml"
+    label 'gatk4_splitncigarreads'
 
     input:
     tuple val(meta), path(bam), path(bai)
@@ -26,7 +24,7 @@ process GATK4_SPLITNCIGARREADS {
         --input $bam \\
         --output ${prefix}.bam \\
         --reference $genome \\
-        --tmp-dir $params.tmp_dir \\
+        --tmp-dir \$PWD \\
         $args
     """
 }

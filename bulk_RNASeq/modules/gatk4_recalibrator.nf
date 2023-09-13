@@ -1,8 +1,6 @@
 process GATK4_BASE_RECALIBRATOR {
     tag "$meta.id"
-    cpus 2
-    memory '31 GB'
-    conda "$baseDir/envs/gatk.yml"
+    label 'gatk4_recalibrator'
 
     input:
     tuple val(meta), path(input)
@@ -30,7 +28,7 @@ process GATK4_BASE_RECALIBRATOR {
         --output ${prefix}.table \\
         --reference $fasta \\
         $sites_command \\
-        --tmp-dir $params.tmp_dir \\
+        --tmp-dir \$PWD \\
         $args
     """
 }

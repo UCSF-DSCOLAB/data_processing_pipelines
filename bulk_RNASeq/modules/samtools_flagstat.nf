@@ -1,8 +1,6 @@
 process SAMTOOLS_FLAGSTAT {
     tag "$meta.id"
-    cpus 2
-    memory '31 GB'
-    conda "$baseDir/envs/samtools.yml"
+    label 'samtools_flagstat'
 
     input:
     tuple val(meta), path(bam), path(bai)

@@ -48,14 +48,14 @@ extractFileName
 
 workflow {
 
-       /*
-        --------------------------------------------------------
-        Initial Input:
-                - Libraries: Directory of fastqs
-        Output:
-                - BAM / H5 files for each library
-        --------------------------------------------------------
-       */
+//        /*
+//         --------------------------------------------------------
+//         Initial Input:
+//                 - Libraries: Directory of fastqs
+//         Output:
+//                 - BAM / H5 files for each library
+//         --------------------------------------------------------
+//        */
 
       // TODO: perhaps just shove everything in a bam and h5 channel, and do not differentiate between data types
       ch_gex_cite_bam_h5 = Channel.empty()
@@ -131,7 +131,6 @@ workflow {
                                             .join(ch_multi_lib_pool)
                                             .groupTuple(by: 2)
                                             .map {it -> [it[2], it[1].flatten()]} // [pool [plp_files]]
-
         MERGE_DSC(ch_multi_lib_pool_transformed)
         ch_merged_libs = MERGE_DSC.out.merged_files
       }
@@ -163,23 +162,17 @@ workflow {
             UNMERGE_FMX(ch_freemux_transformed)
             sample_file_transformed = UNMERGE_FMX.out.samples_file
                                             .transpose() // We need to group each sub array by index [[1,2],[a,b]] -> [[1,a],[2,b]]
-                                            .collect {
-                                                sublist ->
+                                            .map {sublist ->
                                                     // Create a new sublist with the filename part and the rest of the original sublist as its own sublist
-                                                    return [
-                                                        [extractFileName(sublist[0].toString()), sublist[0..-1]]
-                                                    ]
+                                                    [extractFileName(sublist[0].toString()), sublist[0..-1]].flatten()
                                             }
-
-            // TODO: fix this! There is a very bizarre bug here. SEPARATE_FMX errors out on channels > 1 elements?
-            SEPARATE_FMX(sample_file_transformed.filter{it -> it[0] == 'TEST-POOL-DM1-SCG2'})
+            SEPARATE_FMX(sample_file_transformed)
             ch_sample_map_merged = SEPARATE_FMX.out.sample_map
 
         }
-
         // Run freemuxlet on single libraries
         // Attach the number of samples, and re-arrange input
-         ch_single_lib_transformed  = ch_plp_files
+        ch_single_lib_transformed  = ch_plp_files
                                                .join(Channel.from(get_single_library_by_pool()))
                                                .join(Channel.from(get_library_by_sample_count()))
                                                .map{it -> [it[0], it[3], it[1]]} // [lib, num_of_samples, plp_files]]
@@ -191,7 +184,7 @@ workflow {
 
         } else if ( params.settings.demux_method == "demuxlet"){
 
-        // TODO: try this use new VCF file that lives in home directory
+            // TODO: try this use new VCF file that lives in home directory
 
             ch_sample_map_merged = Channel.empty()
             if (params.settings.merge_for_demux) {
@@ -232,7 +225,7 @@ workflow {
         FIND_DOUBLETS(ch_doublet_input) // --> [lib, doublet_finder_sobj]
         ch_initial_sobj = FIND_DOUBLETS.out.sobj
      } else {
-        ch_doublet_input = ch_all_h5.join(ch_sample_map) // [lib, ncells, raw_h5, fmx_cluster ]
+        ch_doublet_input = ch_all_h5.join(ch_sample_map) // [lib, ncells, raw_h5, fmx_cluster]
         LOAD_SOBJ(ch_doublet_input)
         ch_initial_sobj = LOAD_SOBJ.out.sobj
      }

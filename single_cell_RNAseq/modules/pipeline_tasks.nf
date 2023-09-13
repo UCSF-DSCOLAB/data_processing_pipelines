@@ -249,6 +249,7 @@ process MERGE_DSC {
   container "${params.container.python}"
 
   input:
+  // TODO: expand out what these path files are...
   tuple val(pool), path(pool_files)
   
   output:
@@ -444,7 +445,8 @@ process SEPARATE_FMX {
 
 
   input: 
-   tuple val(library), path(library_files)
+   tuple val(library), path(vcf_file), path(sample_file), path(lmix_file)
+
   output:
    tuple path("${library}.clust1.samples.gz"), path("${library}.clust1.vcf.gz"), path("${library}.lmix"), emit: fmx_files
    tuple val(library), path("${library}.clust1.samples.reduced.tsv"), emit: sample_map

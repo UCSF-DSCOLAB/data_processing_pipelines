@@ -24,7 +24,7 @@ process GATK4_HAPLOTYPECALLER {
     def dbsnp_command = known_sites ? "--dbsnp $known_sites" : ""
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
-    gatk --java-options "-Xmx${task.memory.toGiga()}g" HaplotypeCaller \\
+    gatk --java-options "-Xmx${task.memory.toGiga()-1}g" HaplotypeCaller \\
         --input $input \\
         --output ${prefix}.vcf.gz \\
         $reference_command \\

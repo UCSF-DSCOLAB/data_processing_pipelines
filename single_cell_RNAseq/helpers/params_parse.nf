@@ -19,6 +19,7 @@ def get_pool_library_meta(){
         return [
             [
                 name: pool.name,
+                vcf: pool.vcf,
                 nsamples: pool.nsamples,
                 num_of_libraries: pool.libraries.size(),
                 lib_directories: pool.libraries*.dir

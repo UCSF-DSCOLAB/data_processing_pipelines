@@ -184,8 +184,6 @@ workflow {
 
         } else if ( params.settings.demux_method == "demuxlet"){
 
-            // TODO: try this use new VCF file that lives in home directory
-
             ch_sample_map_merged = Channel.empty()
             if (params.settings.merge_for_demux) {
                 ch_multi_lib_transformed = ch_merged_libs
@@ -205,8 +203,9 @@ workflow {
             // Attach the number of samples, and re-arrange input
             ch_single_lib_transformed  = ch_plp_files
                                               .join(Channel.from(get_single_library_by_pool()))
+                                              .map{it -> [it[2], it[0], it[1]]} // [pool, lib, files]
                                               .join(Channel.from(get_pool_vcf()))
-                                              .map{it -> [it[0], it[3], it[1]]} // [lib, vcf, plp_files]]
+                                              .map{it -> [it[1], it[3], it[2]]} // [lib, vcf, plp_files]]
             DEMUXLET_LIBRARY(ch_single_lib_transformed)
             // appended any merged libraries
             ch_sample_map = ch_sample_map_merged.mix(DEMUXLET_LIBRARY.out.sample_map)
@@ -237,7 +236,6 @@ workflow {
      */
      ch_library_info = Channel.from(get_libraries_data_type()) // -> [[library_dir, data_type]]
      ch_seurat_input = ch_library_info.join(ch_initial_sobj).join(ch_all_h5)
-     // TODO: try this, we now have the cuts.qc file
      SEURAT_QC(ch_seurat_input)
 
 }

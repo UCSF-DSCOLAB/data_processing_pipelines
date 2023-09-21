@@ -1,0 +1,41 @@
+#1. Merge individual Seurat library objects
+#2. Run RNA batch correction (normally harmony)
+#   run_harmony.R, ef/add_wnn_utils branch
+#3. Run ADT batch correction (normally Seurat’s rpca-based integration pipeline, can alternatively allow harmony which is coded in Dan’s function)
+#   citeseq/run_rpca.R, ef/add_wnn_utils branch
+#4. Once 2,3 are complete —> run WNN
+#   citeseq/run_wnn.R, ef/add_wnn_utils branch
+configfile: "config.yml"
+
+rule all:
+    input:
+        "merge.plot.png"
+
+rule run_plot_diagnostics:
+    input:
+        "merge.wnn.rds"
+    output:
+        "merge.plot.png"
+
+rule merge_objects:
+    input:
+        config['files']
+    output:
+        "merge.rds"
+
+rule run_rna_correction:
+    input:
+        "merge.rds"
+    output:
+        "merge.rna.corrected.rds"
+
+rule run_adt_correction:
+    input:
+        "merge.rds"
+    output:
+        "merge.adt.corrected.rds"
+
+rule run_nn:
+    input: [ "merge.rna.corrected.rds", "merge.adt.corrected.rds" ]
+    output:
+        "merge.wnn.rds"

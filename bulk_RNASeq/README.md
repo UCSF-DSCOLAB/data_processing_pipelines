@@ -22,6 +22,27 @@ git clone https://github.com/UCSF-DSCOLAB/data_processing_pipelines.git
 ```bash
 cd data_processing_pipelines/bulk_RNAseq
 ```
+* in your `home` directory, install java
+    1. `wget https://download.oracle.com/java/17/archive/jdk-17.0.7_linux-x64_bin.tar.gz`
+    2. `tar -xf jdk-17.0.7_linux-x64_bin.tar.gz`
+    3. `mkdir jdk`
+    4. `mv jdk-17.0.7 jdk/`
+    5. add the following to your `~/.bashrc`: 
+
+    ```bash
+    # global environment variables
+    export JAVA_HOME="/c4/home/${USER}/jdk/jdk-17.0.7"
+    export NXF_JAVA_HOME="/c4/home/${USER}/jdk/jdk-17.0.7"
+    export PATH=$JAVA_HOME/bin:$PATH
+    ```
+
+* in your `home` directory, install nextflow
+    1. If `bin` does not exist: `mkdir bin`
+    2. `cd bin`
+    3. `wget -qO- https://get.nextflow.io | bash`
+    4. `chmod +x nextflow`
+
+
 ## Configuration
 * Create sample sheet specifying each sample, locations of their sequencing reads (FASTQ), and whether they are single-end or paired-end reads. The figure below is an example of a correctly formatted sample sheet:
 ![sample_sheet](docs/figs/sample_sheet_example.png)
@@ -37,11 +58,25 @@ cd data_processing_pipelines/bulk_RNAseq
 sbatch ./run_pipeline.sh -c config/base.config -profile hpc
 ```
 
+* Resume a run 
+```bash
+sbatch ./run_pipeline.sh -c config/base.config -profile hpc -resume
+```
+
 ### Local Usage
 * Run the DSL2 pipeline using Anaconda
 ```bash
 nextflow run bulk_rna_seq.nf -c config/base.config -w your/tmp/directory -profile local
 ```
+
+* Resume a run 
+```bash
+nextflow run bulk_rna_seq.nf -c config/base.config -w your/tmp/directory -profile local -resume
+```
+
+### Troubleshooting
+* If a run fails, examine log ouputs to identify and resolve issues before resuming run
+* Common cause of failure includes insufficent memory allocated for jobs (solution: for the process that ran out of memory, adjust the amount of computational resource allocated in `container.config` for _HPC Usage_ or `conda.config` for _Local Usage_)
 
 ## Authors
 Emily Flynn

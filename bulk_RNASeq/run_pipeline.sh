@@ -5,12 +5,13 @@
 #SBATCH --time=7-00:00:00
 #SBATCH --output=/krummellab/data1/%u/logs/bulk_rnaseq_nf_%j.log
 #SBATCH --partition=krummellab,common
+#SBATCH --exclude=c4-n20
 
 # to run:
-#   sbatch ./run.sh <parameter_file>.json <step>
+#   sbatch ./run_pipeline.sh -profile hpc
 
 # Arugments:
-# pass as many additional arguments to nextflow as you'd like (e.g. -with-timeline, -profile test)
+# pass as many additional arguments to nextflow as you'd like (e.g. -resume, -with-timeline, -profile test)
 
 function cleanup()
 {
@@ -38,5 +39,5 @@ else
     export NXF_WORK=${nf_work}
     export APPTAINERENV_TMPDIR=${nf_work}
     # run the pipeline
-    nextflow run bulk_rna_seq.nf "${@:1}"
+    nextflow run bulk_rna_seq.nf -c config/base.config "${@:1}"
 fi

@@ -20,7 +20,7 @@ process GATK4_VARIANTFILTRATION {
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
-    gatk --java-options "-Xmx${task.memory.toGiga()}G" VariantFiltration \\
+    gatk --java-options "-Xmx${task.memory.toGiga()-1}g" VariantFiltration \\
         --variant $vcf \\
         --cluster $params.gatk_vf_cluster_size \\
         --filter-name FS -filter "FS > $params.gatk_vf_fs_filter" \\

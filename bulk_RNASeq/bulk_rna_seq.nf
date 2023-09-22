@@ -3,7 +3,7 @@ nextflow.enable.dsl=2
 /*
  * Display the default parameters (configure via nextflow.config)
 */
-params.input                    = ""
+params.input_sample_sheet       = ""
 params.genome                   = ""
 params.genome_idx               = ""
 params.genome_dict              = ""
@@ -30,7 +30,7 @@ params.results_directory        = ""
 params.rrna_db_file             = ""
 
 // Check mandatory parameters (sample sheet)
-if (params.input) { ch_input = file(params.input) } else { exit 1, 'Input samplesheet not specified!' } 
+if (params.input_sample_sheet) { ch_input = file(params.input_sample_sheet) } else { exit 1, 'Input samplesheet not specified!' } 
 //if (params.transcript_index) { ch_transcript_index = file(params.transcript_index) } else { exit 1, 'Input transcript index not specified!' } 
 
 // Import SUBWORKFLOWS

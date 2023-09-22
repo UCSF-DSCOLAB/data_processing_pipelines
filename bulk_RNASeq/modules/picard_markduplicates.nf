@@ -20,7 +20,7 @@ process PICARD_MARKDUPLICATES {
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
     gatk \\
-        --java-options "-Xmx${task.memory.toGiga()}g" MarkDuplicates \\
+        --java-options "-Xmx${task.memory.toGiga()-1}g" MarkDuplicates \\
         $args \\
         --INPUT $bam \\
         --OUTPUT ${prefix}.picard.bam \\

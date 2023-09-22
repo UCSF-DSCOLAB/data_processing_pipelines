@@ -20,7 +20,7 @@ process GATK4_SPLITNCIGARREADS {
     def prefix = task.ext.prefix ?: "${meta.id}"
     // def interval_command = intervals ? "--intervals $intervals" : ""
     """
-    gatk --java-options "-Xmx${task.memory.toGiga()}g" SplitNCigarReads \\
+    gatk --java-options "-Xmx${task.memory.toGiga()-1}g" SplitNCigarReads \\
         --input $bam \\
         --output ${prefix}.bam \\
         --reference $genome \\

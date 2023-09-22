@@ -23,7 +23,7 @@ process GATK4_BASE_RECALIBRATOR {
     // def interval_command = intervals ? "--intervals $intervals" : ""
     def sites_command = known_sites.collect{"--known-sites $it"}.join(' ')
     """
-    gatk --java-options "-Xmx${task.memory.toGiga()}g" BaseRecalibrator  \\
+    gatk --java-options "-Xmx${task.memory.toGiga()-1}g" BaseRecalibrator  \\
         --input $input \\
         --output ${prefix}.table \\
         --reference $fasta \\

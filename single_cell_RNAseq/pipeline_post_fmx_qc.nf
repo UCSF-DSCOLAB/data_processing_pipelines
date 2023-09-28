@@ -20,6 +20,7 @@ LOAD_SOBJ;
 SEURAT_ADD_BCR;
 SEURAT_ADD_TCR;
 SEURAT_QC;
+FMX_ASSIGN_TO_GT;
 SEURAT_POST_FILTER
 } from './modules/pipeline_tasks.nf'
 
@@ -195,7 +196,12 @@ workflow {
         // first separate for dsc vs fmx steps
         ch_merge_in_split = ch_merge_in.merge.multiMap{ it ->
           dsc_merge_in: it[0,3] // pool, files
-          pool_ns_vcf: it[0,1,2] // pool, nsamples, vcf
+          pool_ns: it[0,1] // pool, nsamples
+          pool_vcf: it[0,2] // pool, ref_vcf
+        }
+        ch_skip_merge_in_split = ch_merge_in.skip_merge.multiMap{ it ->
+          lib_ns_files: it[0,1,3] // lib, nsamples
+          lib_vcf: it[0,2] // lib, ref_vcf
         }
           
         MERGE_DSC(ch_merge_in_split.dsc_merge_in) // --> [pool1, pool1.tsv, merged_plp, merged_cl, merged_var, barcodes]       
@@ -208,15 +214,23 @@ workflow {
 
         if (params.settings.demux_method == "freemuxlet"){
           // run single library FMX on the single-lib ones
-          FREEMUXLET_LIBRARY(ch_merge_in.skip_merge.map{
-            it -> it[0,1,3] // remove VCF
-            })
+          FREEMUXLET_LIBRARY(ch_skip_merge_in_split.lib_ns_files)
           
           // run freemuxlet on merged
-          ch_fmx_in = ch_merge_in_split.pool_ns_vcf
-            .map{ it -> it[0,1]} // remove vcf
+          ch_fmx_in = ch_merge_in_split.pool_ns
             .combine(ch_merged.demux_in, by: 0) // --> [pool1,  numsamples, ...]
           FREEMUXLET_POOL(ch_fmx_in) 
+
+          if (params.settings.fmx_assign_to_gt){
+            // TODO add checks that the reference file exists
+              
+            ch_ref_vcf = ch_skip_merge_in_split.lib_vcf.
+              mix(ch_merge_in_split.pool_vcf) // [lib/pool, ref_vcf])
+            ch_fmx_vcf = FREEMUXLET_LIBRARY.out.vcf.mix(FREEMUXLET_POOL.out.vcf) // [lib/pool, fmx_vcf]
+            FMX_ASSIGN_TO_GT(ch_ref_vcf.combine(
+              ch_fmx_vcf, by: 0) // [lib/pool, ref_vcf, fmx_vcf])
+            )
+          } 
 
           // separate demulitplexing output files
           ch_unmerge_in = ch_merged.unmerge_in.combine( FREEMUXLET_POOL.out.merged_files, by: 0)
@@ -259,6 +273,7 @@ workflow {
        else { 
          // ch_plp_files, ch_lib_pools, ch_pool_vcf
          if (params.settings.demux_method == "freemuxlet"){
+
           ch_fmx_in = ch_plp_files
               .combine(ch_lib_pools, by: 0)
               .map{it -> it[2,0,1]}
@@ -266,6 +281,15 @@ workflow {
               .map {it -> it[1,3,2]} //  --> [library, nsamples, files]
           FREEMUXLET_LIBRARY(ch_fmx_in)
           ch_sample_map = FREEMUXLET_LIBRARY.out.sample_map
+
+          if (params.settings.fmx_assign_to_gt){
+              // TODO add checks that the reference file exists
+              FMX_ASSIGN_TO_GT(ch_pool_vcf.combine(
+                FREEMUXLET_LIBRARY.out.vcf, by: 0) // [lib, ref_vcf, fmx_vcf])
+              )
+          } 
+
+
          }
          if (params.settings.demux_method == "demuxlet"){
           ch_dmx_in = ch_plp_files
@@ -318,6 +342,7 @@ workflow {
       } else {
         ch_bcr_out = ch_tcr_out
       } 
+
       // set up seurat QC
       ch_seurat_qc_in =  ch_library_dt //.seurat_in
       .combine(ch_bcr_out, by:0)

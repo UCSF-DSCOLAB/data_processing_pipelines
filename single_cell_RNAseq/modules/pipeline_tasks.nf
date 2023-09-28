@@ -86,9 +86,22 @@ process CELLRANGER_VDJ {
  
   vdj_path=${params.project_dir}/data/single_cell_${data_type}/raw/${vdj_library}
   
+  # TODO: update so that this only occurs on retries if there is a chain error
+  if [ \${data_type} == "TCR" ]
+  then
+    chain_type="TR"
+  elif [ \${data_type} == "BCR" ] 
+  then
+    chain_type="IG"
+  else 
+    echo "Warning - chain type should be one of TCR or BCR"
+    chain_type="auto"
+  fi
+
   cellranger vdj --id=${vdj_library}  \
     --fastqs=\${vdj_path} \
-    --reference=${params.ref.vdj_ref} 
+    --reference=${params.ref.vdj_ref} \
+    --chain=\${chain_type}
   
   mv ${vdj_library}/outs cellranger
 

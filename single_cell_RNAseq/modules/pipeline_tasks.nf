@@ -331,6 +331,33 @@ process FREEMUXLET_LIBRARY {
   """
 } 
 
+/*
+ * Run assign to gt for a pool or library 
+ */
+process FMX_ASSIGN_TO_GT {
+  publishDir "${params.project_dir}/fmx_assign_to_gt/${pool}/", mode: 'copy', pattern: "${pool}*"
+  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${pool}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "fmx_assign_to_gt.log" }
+
+  container "${params.container.rplus_bcftools}"
+  containerOptions "-B ${params.project_dir}"
+
+  input:
+  tuple val(pool), val(ref_vcf), path(fmx_vcf) 
+  
+  output:
+  tuple val(pool), path("${pool}*"), emit: outfiles
+  path(".command.log"), emit: log
+
+
+  """
+  bash ${projectDir}/bin/run_gtcheck.sh ${pool} ${ref_vcf} ${fmx_vcf}
+
+  Rscript ${projectDir}/bin/process_vcf_map.R ${pool} ${pool}_gtcheck.out
+  """
+
+}
+
+
 
 /*
  * Run demuxlet for a library
@@ -383,6 +410,8 @@ process DEMUXLET_POOL {
    """
 }
 
+
+
 process SEPARATE_DMX {
    publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/demuxlet", mode: 'copy', pattern: "${library}*"
    publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", 
@@ -404,8 +433,6 @@ process SEPARATE_DMX {
   gzip -f ${library}.clust1.samples
   """
 }
-
-
 
 
 
@@ -491,12 +518,6 @@ process LOAD_SOBJ {
   
   """
 }
-
-
-
-
-
-
 
 
 /* 
@@ -605,4 +626,7 @@ process SEURAT_POST_FILTER {
   Rscript ${projectDir}/bin/process_with_seurat_post_filter.R ${library} ${projectDir} ${raw_h5} ${params.settings.remove_demux_DBL} ${params.settings.remove_all_DBL}
   """
 }
+
+
+
 

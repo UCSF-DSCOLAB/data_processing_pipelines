@@ -1,0 +1,147 @@
+nextflow_pipeline {
+
+    name "Test Workflow pipeline_pre_qc.nf"
+    script "pipeline_pre_qc.nf"
+    tag "qc-quantiles"
+
+    test("Should successfully demultiplex merged files using freemuxlet and run doublet finder") {
+
+        when {
+            params {
+                load("example-inputs/param_2_v2.json")
+                settings = {
+                    add_tcr = false
+                    add_bcr = false
+                    skip_cellranger = true
+                    merge_for_demux = true
+                    merge_demux_dir = "/krummellab/data1/amazzara/tutorial_lib_sep/freemuxlet_data/"
+                    demux_method = "freemuxlet"
+                    run_doubletfinder = true
+                    mincell = 3
+                    minfeature = 100
+                    default_qc_cuts_dir = "/krummellab/data1/amazzara/tutorial_lib_sep/"
+                    default_qc_cuts_file = "default_qc_cuts.csv"
+                    randomseed = 21212
+                    remove_demux_DBL = true
+                    remove_all_DBL = true
+                }
+            }
+        }
+
+        then {
+            assert snapshot(
+                workflow,
+                path("${workDir}/data/single_cell_GEX/processed/TEST-POOL-DM1-SCG1/automated_processing/TEST-POOL-DM1-SCG1_quantiles_pre.tsv"),
+                path("${workDir}/data/single_cell_GEX/processed/TEST-POOL-DM1-SCG2/automated_processing/TEST-POOL-DM1-SCG2_quantiles_pre.tsv"),
+                path("${workDir}/data/single_cell_GEX/processed/TEST-POOL-DM2-SCG1/automated_processing/TEST-POOL-DM2-SCG1_quantiles_pre.tsv"),
+            ).match()
+        }
+    }
+
+    test("Should successfully demultiplex merged files using freemuxlet") {
+
+        when {
+            params {
+                load("example-inputs/param_2_v2.json")
+                settings = {
+                    add_tcr = false
+                    add_bcr = false
+                    skip_cellranger = true
+                    merge_for_demux = true
+                    merge_demux_dir = "/krummellab/data1/amazzara/tutorial_lib_sep/freemuxlet_data/"
+                    demux_method = "freemuxlet"
+                    run_doubletfinder = false
+                    mincell = 3
+                    minfeature = 100
+                    default_qc_cuts_dir = "/krummellab/data1/amazzara/tutorial_lib_sep/"
+                    default_qc_cuts_file = "default_qc_cuts.csv"
+                    randomseed = 21212
+                    remove_demux_DBL = true
+                    remove_all_DBL = true
+                }
+            }
+        }
+
+         then {
+             assert snapshot(
+                 workflow,
+                 path("${workDir}/data/single_cell_GEX/processed/TEST-POOL-DM1-SCG1/automated_processing/TEST-POOL-DM1-SCG1_quantiles_pre.tsv"),
+                 path("${workDir}/data/single_cell_GEX/processed/TEST-POOL-DM1-SCG2/automated_processing/TEST-POOL-DM1-SCG2_quantiles_pre.tsv"),
+                 path("${workDir}/data/single_cell_GEX/processed/TEST-POOL-DM2-SCG1/automated_processing/TEST-POOL-DM2-SCG1_quantiles_pre.tsv"),
+             ).match()
+         }
+
+    }
+
+     test("Should successfully run demuxlet and run doublet finder") {
+
+            when {
+                params {
+                    load("example-inputs/param_2_v2.json")
+                    settings = {
+                        add_tcr = false
+                        add_bcr = false
+                        skip_cellranger = true
+                        merge_for_demux = false
+                        merge_demux_dir = "/krummellab/data1/amazzara/tutorial_lib_sep/freemuxlet_data/"
+                        demux_method = "freemuxlet"
+                        run_doubletfinder = true
+                        mincell = 3
+                        minfeature = 100
+                        default_qc_cuts_dir = "/krummellab/data1/amazzara/tutorial_lib_sep/"
+                        default_qc_cuts_file = "default_qc_cuts.csv"
+                        randomseed = 21212
+                        remove_demux_DBL = true
+                        remove_all_DBL = true
+                    }
+                }
+            }
+
+             then {
+                 assert snapshot(
+                     workflow,
+                     path("${workDir}/data/single_cell_GEX/processed/TEST-POOL-DM1-SCG1/automated_processing/TEST-POOL-DM1-SCG1_quantiles_pre.tsv"),
+                     path("${workDir}/data/single_cell_GEX/processed/TEST-POOL-DM1-SCG2/automated_processing/TEST-POOL-DM1-SCG2_quantiles_pre.tsv"),
+                     path("${workDir}/data/single_cell_GEX/processed/TEST-POOL-DM2-SCG1/automated_processing/TEST-POOL-DM2-SCG1_quantiles_pre.tsv"),
+                 ).match()
+             }
+
+        }
+
+
+    test("Should successfully run demuxlet") {
+
+            when {
+                params {
+                    load("example-inputs/param_2_v2.json")
+                    settings = {
+                        add_tcr = false
+                        add_bcr = false
+                        skip_cellranger = true
+                        merge_for_demux = false
+                        merge_demux_dir = "/krummellab/data1/amazzara/tutorial_lib_sep/freemuxlet_data/"
+                        demux_method = "freemuxlet"
+                        run_doubletfinder = false
+                        mincell = 3
+                        minfeature = 100
+                        default_qc_cuts_dir = "/krummellab/data1/amazzara/tutorial_lib_sep/"
+                        default_qc_cuts_file = "default_qc_cuts.csv"
+                        randomseed = 21212
+                        remove_demux_DBL = true
+                        remove_all_DBL = true
+                    }
+                }
+            }
+
+             then {
+                 assert snapshot(
+                     workflow,
+                     path("${workDir}/data/single_cell_GEX/processed/TEST-POOL-DM1-SCG1/automated_processing/TEST-POOL-DM1-SCG1_quantiles_pre.tsv"),
+                     path("${workDir}/data/single_cell_GEX/processed/TEST-POOL-DM1-SCG2/automated_processing/TEST-POOL-DM1-SCG2_quantiles_pre.tsv"),
+                     path("${workDir}/data/single_cell_GEX/processed/TEST-POOL-DM2-SCG1/automated_processing/TEST-POOL-DM2-SCG1_quantiles_pre.tsv"),
+                 ).match()
+             }
+
+        }
+
+}

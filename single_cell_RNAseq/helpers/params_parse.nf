@@ -60,6 +60,14 @@ def get_single_library_by_pool() {
         }
 }
 
+def get_library_by_pool() {
+    return get_pool_library_meta().collectMany { pool ->
+            pool.lib_directories.collect { dir ->
+                [dir, pool.name]
+            }
+        }
+}
+
 
 def get_library_by_sample_count() {
     return get_pool_library_meta().collectMany { pool ->

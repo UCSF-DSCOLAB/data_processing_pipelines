@@ -39,7 +39,7 @@ SEURAT_QC
 include {
 get_c4_h5; get_c4_bam; get_c4_h5_bam; get_pool_library_meta; get_libraries_data_type;
 get_pool_by_sample_count; get_library_by_sample_count; get_single_library_by_pool;
-get_multi_library_by_pool; get_pool_vcf ; get_library_ncells
+get_library_by_pool; get_multi_library_by_pool; get_pool_vcf ; get_library_ncells
 } from  './helpers/params_parse.nf'
 
 include {
@@ -146,9 +146,8 @@ workflow {
 
      if ( params.settings.demux_method == "freemuxlet"){
 
-        ch_sample_map_merged = Channel.empty()
+        // This assumes you have at least one pool with > 1 libraries!!!
         if (params.settings.merge_for_demux) {
-
              // Attach the number of samples, and re-arrange input
             ch_multi_lib_transformed = ch_merged_libs
                                             .join(Channel.from(get_pool_by_sample_count()))
@@ -167,24 +166,33 @@ workflow {
                                                     [extractFileName(sublist[0].toString()), sublist[0..-1]].flatten()
                                             }
             SEPARATE_FMX(sample_file_transformed)
-            ch_sample_map_merged = SEPARATE_FMX.out.sample_map
 
-        }
-        // Run freemuxlet on single libraries
-        // Attach the number of samples, and re-arrange input
-        ch_single_lib_transformed  = ch_plp_files
-                                               .join(Channel.from(get_single_library_by_pool()))
+            // Run freemuxlet on remaining pools with single libraries
+            // Attach the number of samples, and re-arrange input
+            ch_single_lib_transformed  = ch_plp_files
+                                            .join(Channel.from(get_single_library_by_pool()))
+                                            .join(Channel.from(get_library_by_sample_count()))
+                                            .map{it -> [it[0], it[3], it[1]]} // [lib, num_of_samples, plp_files]]
+
+            FREEMUXLET_LIBRARY(ch_single_lib_transformed)
+
+            // appended any merged libraries
+            ch_sample_map = SEPARATE_FMX.out.sample_map.mix(FREEMUXLET_LIBRARY.out.sample_map)
+
+        } else {
+                // Run freemuxlet on all libraries, regardless if there are many libraries per pool
+                // Attach the number of samples, and re-arrange input
+                ch_single_lib_transformed  = ch_plp_files
                                                .join(Channel.from(get_library_by_sample_count()))
-                                               .map{it -> [it[0], it[3], it[1]]} // [lib, num_of_samples, plp_files]]
+                                               .map{it -> [it[0], it[2], it[1]]} // [lib, num_of_samples, plp_files]]
+                FREEMUXLET_LIBRARY(ch_single_lib_transformed)
 
-        FREEMUXLET_LIBRARY(ch_single_lib_transformed)
-
-        // appended any merged libraries
-        ch_sample_map = ch_sample_map_merged.mix(FREEMUXLET_LIBRARY.out.sample_map)
+                // appended any merged libraries
+                ch_sample_map = FREEMUXLET_LIBRARY.out.sample_map
+            }
 
         } else if ( params.settings.demux_method == "demuxlet"){
-
-            ch_sample_map_merged = Channel.empty()
+             // This assumes you have at least one pool with > 1 libraries!!!
             if (params.settings.merge_for_demux) {
                 ch_multi_lib_transformed = ch_merged_libs
                                                    .join(Channel.from(get_pool_vcf()))
@@ -195,20 +203,31 @@ workflow {
                                                                     .combine(Channel.from(get_multi_library_by_pool()), by: 1)
                                                                     .map{it -> it[2,1]}
                 SEPARATE_DMX(demuxlet_pool_transformed)
-                ch_sample_map_merged = SEPARATE_DMX.out.sample_map
 
-            }
-
-            // Run freemuxlet on single libraries
-            // Attach the number of samples, and re-arrange input
-            ch_single_lib_transformed  = ch_plp_files
+                // Run demuxlet on remaining single libraries
+                // Attach the number of samples, and re-arrange input
+                ch_single_lib_transformed  = ch_plp_files
                                               .join(Channel.from(get_single_library_by_pool()))
                                               .map{it -> [it[2], it[0], it[1]]} // [pool, lib, files]
                                               .join(Channel.from(get_pool_vcf()))
                                               .map{it -> [it[1], it[3], it[2]]} // [lib, vcf, plp_files]]
-            DEMUXLET_LIBRARY(ch_single_lib_transformed)
-            // appended any merged libraries
-            ch_sample_map = ch_sample_map_merged.mix(DEMUXLET_LIBRARY.out.sample_map)
+                DEMUXLET_LIBRARY(ch_single_lib_transformed)
+                // appended any merged libraries
+                ch_sample_map = SEPARATE_DMX.out.sample_map.mix(DEMUXLET_LIBRARY.out.sample_map)
+
+            } else {
+                // Run demuxlet on all libraries, regardless if there are many libraries per pool
+                // Attach the number of samples, and re-arrange input
+                 ch_single_lib_transformed  = ch_plp_files
+                                                  .join(Channel.from(get_library_by_pool()))
+                                                  .map{it -> [it[2], it[0], it[1]]} // [pool, lib, files]
+                                                  .join(Channel.from(get_pool_vcf()))
+                                                  .map{it -> [it[1], it[3], it[2]]} // [lib, vcf, plp_files]]
+
+                DEMUXLET_LIBRARY(ch_single_lib_transformed)
+                // appended any merged libraries
+                ch_sample_map = DEMUXLET_LIBRARY.out.sample_map
+            }
 
         }
 

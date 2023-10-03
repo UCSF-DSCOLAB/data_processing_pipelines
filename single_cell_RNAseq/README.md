@@ -62,9 +62,31 @@ called pooling.
 
 Note: Pooling is very specific to Colabs
 
-#### What is the input and output of this pipeline?
+## Testing
 
-TODO -> Complete once the input parameters are refactored
+### Regression tests
+
+You will need nf-test installed. Please follow the instructions here: https://github.com/askimed/nf-test#installation
+
+To run regression tests: `nf-test test tests/pipeline_pee_qc.nf.test`
+
+### Test data
+
+In general test data should be located in: `/krummellab/data1/pipeline_test_data/`.
+
+Currently we only have GEX (Gene expression data) to use as a means of testing our pipeline.
+
+The fastqs and variants can be found in the following directory:
+
+`/krummellab/data1/pipeline_test_data/assays/scRNA_seq/modality/gex/downsampled_jurkat_tcell/inputs/fastqs/`
+`/krummellab/data1/pipeline_test_data/assays/scRNA_seq/modality/gex/downsampled_jurkat_tcell/inputs/variants/`
+
+Ideally we want:
+
+- CITE (Protein level data)
+- BCR (B-cell receptor)
+- TCR (T-cell receptor)
+
 
 ## Conventions
 

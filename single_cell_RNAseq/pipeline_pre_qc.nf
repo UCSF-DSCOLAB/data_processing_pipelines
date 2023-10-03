@@ -25,7 +25,7 @@ DEMUXLET_POOL;
 DEMUXLET_LIBRARY;
 SEPARATE_DMX;
 UNMERGE_FMX;
-SEPARATE_FMX;
+SEPARATE_FMX_PRE;
 FIND_DOUBLETS;
 LOAD_SOBJ;
 SEURAT_ADD_BCR;
@@ -165,7 +165,7 @@ workflow {
                                                     // Create a new sublist with the filename part and the rest of the original sublist as its own sublist
                                                     [extractFileName(sublist[0].toString()), sublist[0..-1]].flatten()
                                             }
-            SEPARATE_FMX(sample_file_transformed)
+            SEPARATE_FMX_PRE(sample_file_transformed)
 
             // Run freemuxlet on remaining pools with single libraries
             // Attach the number of samples, and re-arrange input

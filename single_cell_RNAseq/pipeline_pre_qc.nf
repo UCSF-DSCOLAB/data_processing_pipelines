@@ -177,7 +177,7 @@ workflow {
             FREEMUXLET_LIBRARY(ch_single_lib_transformed)
 
             // appended any merged libraries
-            ch_sample_map = SEPARATE_FMX.out.sample_map.mix(FREEMUXLET_LIBRARY.out.sample_map)
+            ch_sample_map = SEPARATE_FMX_PRE.out.sample_map.mix(FREEMUXLET_LIBRARY.out.sample_map)
 
         } else {
                 // Run freemuxlet on all libraries, regardless if there are many libraries per pool

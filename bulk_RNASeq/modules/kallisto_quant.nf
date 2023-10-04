@@ -2,6 +2,11 @@ process KALLISTO_QUANT {
     tag "$meta.id"
     label 'kallisto_quant'
     publishDir "${params.results_directory}/kallisto", mode: 'copy'
+    memory {
+        // File size in GB
+        fileSize = reads.size() / (1024 * 1024 * 1024)
+        return 7.GB + (1.GB * fileSize * 0.005)
+    }
 
     input:
     tuple val(meta), path(reads)

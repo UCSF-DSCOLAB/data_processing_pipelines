@@ -2,6 +2,11 @@ process BCFTOOLS_MERGE_VCF {
     tag "$meta.id"
     label 'bcftools_merge_vcf'
     publishDir "${params.results_directory}/merged_results", mode: 'copy'
+    memory {
+        // File size in GB
+        fileSize = vcfs.size() / (1024 * 1024 * 1024)
+        return 1.GB + (1.GB * fileSize * 0.01)
+    }
 
     input:
     val meta 

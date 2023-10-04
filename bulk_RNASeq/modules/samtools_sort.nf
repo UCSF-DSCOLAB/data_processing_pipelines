@@ -1,6 +1,11 @@
 process SAMTOOLS_SORT {
     tag "$meta.id"
     label 'samtools_sort'
+    memory {
+        // File size in GB
+        fileSize = bam.size() / (1024 * 1024 * 1024)
+        return 3.GB + (1.GB * fileSize * 0.001)
+    }
 
     input:
     tuple val(meta), path(bam)

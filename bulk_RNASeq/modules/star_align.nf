@@ -3,6 +3,11 @@ process STAR_ALIGN {
     label 'star_align'
     publishDir "${params.results_directory}/star", mode: 'copy', pattern: "${prefix}ReadsPerGene.out.tab"
     publishDir "${params.results_directory}/star", mode: 'copy', pattern: "${prefix}Log.final.out"
+    memory {
+        // File size in GB
+        fileSize = reads.size() / (1024 * 1024 * 1024)
+        return 37.GB + (1.GB * fileSize)
+    }
 
     input:
     tuple val(meta), path(reads)

@@ -1,6 +1,11 @@
 process SAMTOOLS_INDEX {
     tag "$meta.id"
     label 'samtools_index'
+    memory {
+        // File size in GB
+        fileSize = input.size() / (1024 * 1024 * 1024)
+        return 1.GB + (1.GB * fileSize * 0.0001)
+    }
 
     input:
     tuple val(meta), path(input)

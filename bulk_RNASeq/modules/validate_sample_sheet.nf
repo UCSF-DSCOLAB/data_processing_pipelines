@@ -1,6 +1,11 @@
 process VALIDATE_SAMPLE_SHEET {
     tag "${samplsheet}"
     label 'validate_sample_sheet'
+    memory {
+        // File size in GB
+        fileSize = samplesheet.size() / (1024 * 1024 * 1024)
+        return 5.GB * fileSize 
+    }
 
     input:
     path samplesheet

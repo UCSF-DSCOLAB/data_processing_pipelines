@@ -1,6 +1,11 @@
 process GATK4_APPLY_BQSR {
     tag "$meta.id"
     label 'gatk4_apply_bqsr'
+    memory {
+        // File size in GB
+        fileSize = input.size() / (1024 * 1024 * 1024)
+        return 1.GB + (1.GB * fileSize * 0.1)
+    }
 
     input:
     tuple val(meta), path(input), path(input_index), path(bqsr_table)
@@ -19,7 +24,7 @@ process GATK4_APPLY_BQSR {
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
-    gatk --java-options "-Xmx${task.memory.toGiga()-1}g" ApplyBQSR \\
+    gatk --java-options "-Xmx${task.memory.toGiga()}g" ApplyBQSR \\
         --input $input \\
         --output ${prefix}_bqsr.bam \\
         --reference $genome \\

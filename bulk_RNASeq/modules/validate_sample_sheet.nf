@@ -4,7 +4,7 @@ process VALIDATE_SAMPLE_SHEET {
     memory {
         // File size in GB
         fileSize = samplesheet.size() / (1024 * 1024 * 1024)
-        return 5.GB * fileSize 
+        return 5.GB * (1+fileSize)
     }
 
     input:

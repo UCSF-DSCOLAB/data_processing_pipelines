@@ -2,9 +2,15 @@ process FASTP_TRIM_ADAPTERS {
     tag "$meta.id"
     label 'fastp_trim_adapters'
     memory {
-        // File size in GB
-        fileSize = reads.size() / (1024 * 1024 * 1024)
-        return 1.GB + (1.GB * fileSize)
+        if (meta.single_end) {
+          // File size in GB
+          fileSize = reads.size() / (1024 * 1024 * 1024)
+        } else {
+          // File size in GB
+          fileSize = reads[0].size() / (1024 * 1024 * 1024)
+        }
+
+        return 32.GB * (1 + (fileSize * 4))
     }
 
     input:

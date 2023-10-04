@@ -3,9 +3,14 @@ process KALLISTO_QUANT {
     label 'kallisto_quant'
     publishDir "${params.results_directory}/kallisto", mode: 'copy'
     memory {
-        // File size in GB
-        fileSize = reads.size() / (1024 * 1024 * 1024)
-        return 7.GB + (1.GB * fileSize * 0.005)
+        if {meta.single_end} {
+            // File size in GB
+            fileSize = reads.size() / (1024 * 1024 * 1024)
+        } else {
+            // File size in GB
+            fileSize = reads[0].size() / (1024 * 1024 * 1024)
+        }
+        return 7.GB * (1 + (fileSize * 0.5))
     }
 
     input:

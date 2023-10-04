@@ -1,10 +1,9 @@
 #!/bin/bash
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --mem=10G
+#SBATCH --mem=1G
 #SBATCH --time=7-00:00:00
 #SBATCH --output=/krummellab/data1/%u/logs/bulk_rnaseq_nf_%j.log
-#SBATCH --partition=krummellab,common
 #SBATCH --exclude=c4-n20
 
 # to run:

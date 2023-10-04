@@ -5,7 +5,7 @@ process BCFTOOLS_MERGE_VCF {
     memory {
         // File size in GB
         fileSize = vcfs.size() / (1024 * 1024 * 1024)
-        return 1.GB + (1.GB * fileSize * 0.01)
+        return 5.GB * (1 + (fileSize * 0.01))
     }
 
     input:

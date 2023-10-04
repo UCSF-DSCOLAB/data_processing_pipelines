@@ -1,17 +1,18 @@
 process KALLISTO_QUANT {
     tag "$meta.id"
     label 'kallisto_quant'
-    publishDir "${params.results_directory}/kallisto", mode: 'copy'
     memory {
-        if {meta.single_end} {
-            // File size in GB
-            fileSize = reads.size() / (1024 * 1024 * 1024)
+        if (meta.single_end) {
+          // File size in GB
+          fileSize = reads.size() / (1024 * 1024 * 1024)
         } else {
-            // File size in GB
-            fileSize = reads[0].size() / (1024 * 1024 * 1024)
+          // File size in GB
+          fileSize = reads[0].size() / (1024 * 1024 * 1024)
         }
-        return 7.GB * (1 + (fileSize * 0.5))
+
+        return 7.GB * (1 + (fileSize * 4))
     }
+    publishDir "${params.results_directory}/kallisto", mode: 'copy'
 
     input:
     tuple val(meta), path(reads)

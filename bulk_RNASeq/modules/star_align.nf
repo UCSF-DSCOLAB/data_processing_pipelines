@@ -4,9 +4,15 @@ process STAR_ALIGN {
     publishDir "${params.results_directory}/star", mode: 'copy', pattern: "${prefix}ReadsPerGene.out.tab"
     publishDir "${params.results_directory}/star", mode: 'copy', pattern: "${prefix}Log.final.out"
     memory {
-        // File size in GB
-        fileSize = reads.size() / (1024 * 1024 * 1024)
-        return 37.GB + (1.GB * fileSize)
+        if meta.single_end {
+            // File size in GB
+            fileSize = reads.size() / (1024 * 1024 * 1024)
+        } else {
+            // File size in GB
+            fileSize = reads[0].size() / (1024 * 1024 * 1024)
+        }
+        
+        return 37.GB + (2.GB * fileSize)
     }
 
     input:

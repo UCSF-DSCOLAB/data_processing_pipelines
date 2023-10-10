@@ -1,6 +1,17 @@
 process SORTMERNA_RIBOSOMAL_RNA_REMOVAL {
     tag "$meta.id"
     label 'sortmerna_ribosomal_rna_removal'
+    memory {
+        if (meta.single_end) {
+          // File size in GB
+          fileSize = reads.size() / (1024 * 1024 * 1024)
+        } else {
+          // File size in GB
+          fileSize = reads[0].size() / (1024 * 1024 * 1024)
+        }
+
+        return 64.GB * (1 + (fileSize * 4))
+    }
 
     input:
     tuple val(meta), path(reads)

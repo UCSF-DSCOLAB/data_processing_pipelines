@@ -1,0 +1,6 @@
+# Nextflow specific
+*.uuid
+**/.nextflow/
+
+# Jetbrains
+.idea/

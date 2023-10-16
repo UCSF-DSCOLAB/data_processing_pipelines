@@ -36,9 +36,104 @@ Install nextflow
 
 #### What do I need to configure?
 
-All of the parameters you need to supply for the pipeline can be found at: `nextflow.config`.
+Unfortunately there is a ton of input that is required for pipelines to run. Such as:
+
+- Directories with fastq files
+- Location of reference genomes
+- Process specific settings and flags
+
+In order to view what all of these settings are, you can check out `nextflow.config`. 
 To actually supply the parameters to this pipeline, you must submit a json file with these values.
-There are two examples located at: `example-inputs/param_1.json` `example-inputs/param_2.json`
+Some examples include: `example-inputs/param_1.json` `example-inputs/param_2_v2.json`.
+
+There is also a directory called `config/` however these are settings that specific to c4 and typically
+do not need to be tweaked. `nextflow.config` imports these settings for you.
+
+#### Data Generation
+
+For those that are not familiar with sequencing and data generation, recall that:
+
+1. We obtain $s$ biological samples / biospecimens. Each sample maps to a unique individual and  
+contains $c$ cells.
+2. For each sample we isolate $n$ cells, and then load those cells into the sequencer. When $s > 1$ this is
+called pooling. 
+3. The sequencer runs and generates a library. Each library can contain $r$ reads.
+4. We repeat steps 2-3, except we load in a new set of cells.
+
+Note: Pooling is very specific to Colabs
+
+## Testing
+
+### Regression tests
+
+You will need nf-test installed. Please follow the instructions here: https://github.com/askimed/nf-test#installation
+
+To run regression tests: `nf-test test tests/pipeline_pee_qc.nf.test`
+
+### Test data
+
+In general test data should be located in: `/krummellab/data1/pipeline_test_data/`.
+
+Currently we only have GEX (Gene expression data) to use as a means of testing our pipeline.
+
+The fastqs and variants can be found in the following directory:
+
+`/krummellab/data1/pipeline_test_data/assays/scRNA_seq/modality/gex/downsampled_jurkat_tcell/inputs/fastqs/`
+`/krummellab/data1/pipeline_test_data/assays/scRNA_seq/modality/gex/downsampled_jurkat_tcell/inputs/variants/`
+
+Ideally we want:
+
+- CITE (Protein level data)
+- BCR (B-cell receptor)
+- TCR (T-cell receptor)
+
+
+## Conventions
+
+
+### Params
+
+If you have a process that requires input from the `params` keyword, do NOT parse/extract it
+at the beginning of the pipeline and supply those inputs to processes downstream. 
+
+Ex:
+```
+some_param = params.collectMany{ ... }
+another_param = params.collectMany { ... }
+
+PROCESS_1()
+
+PROCESS_2(another_param)
+
+PROCESS_3(some_param)
+```
+
+Do this instead:
+
+```
+// Extract library directories and their corresponding data types
+some_param = params.collectMany { ... }
+
+PROCESS_1(some_param)
+
+another_param = params.collectMany { ... }
+
+PROCESS_2(another_param)
+```
+
+It is much easier to determine which params belong to which processes this way.
+
+If your params require heavy parsing and manipulation it is probably a sign your 
+param structure must be re-designed. 
+
+### Variable names
+
+Groovy is JVM-esque so it might have made sense to use `camelCase` for variable names.
+However, most of the code written in this repo is `snake_case`, so lets continue with this
+convention.
+
+It is also helpful to prefix channels with the `ch_` prefix.
+
 
 ### Initial SC-Seq Pipeline in Nextflow
 
@@ -65,10 +160,11 @@ By default, the nextflow working directory is:
 `/c4/scratch/<user>/nextflow/<original_job_id>`
 This is deleted on successful completion of an initial run. If the pipeline fails, you can resume it with `run_repeat.sh` (which uses the same working directory), or you should manually remove this directory. After `run_repeat.sh`, you must manually remove this directory. 
 
+#### Pre-QC Pipeline
 
-
-#### Next steps:
-Below are outlined the next steps for turning this into a usable pipeline
+Please note that the `pipeline_pre_qc.nf` uses a different json structure. 
+You can see an example in `example-inputs/param_2_v2.json`. Eventually all pipelines will conform to this structure
+this structure.
 
 key additions:
 

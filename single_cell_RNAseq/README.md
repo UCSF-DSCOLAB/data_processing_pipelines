@@ -1,48 +1,86 @@
-### Update: 07/17/2023
 
 This code was initially developed at https://github.com/UCSF-DSCOLAB/sc_seq_nextflow/. Please note that the original
 repository is no longer maintained and has been marked as deprecated. Going forward, all enhancements, bug fixes, 
 and active development are to be carried out in this repository.
 
+This pipeline is a nextflow implementation of the `sicca_sc-seq_pipeline` written by Kim Taylor and Ravi Patel, with the following modifications: (1) addition of a freemuxlet merge step to combine across pools and (2) addition of an option to filter based on QC pre-freemuxlet. Future efforts will make this more flexible for different inputs.
+
+The pipeline performs the following steps:
+1. Alignment with cellranger (optional - you can start with aligned data)
+2. Freemuxlet or Demuxlet: Deconvolute sample identities and finds interindividual doublets (unsupervised vs. supervised) 
+3. DoubletFinder: Used to identify intraindividual doublets (optional)
+4. Filtering: Manually set qc filters (Note: this can be performed before step 2 with `pre_fmx_qc` and `post_fmx_qc`, this is recommended for tissue data with high ambient RNA)
+5. Seurat: Normalize and scale RNA data, perform dimensionality reduction, and generate initial clusterings and visualizations of the data. (ADT data will be DSB-normalized)
+
+
 ## How to
 
 ### Running on c4
 
-#### Pre-reqs
-
-In order to run nextflow we need to install a compatible version of java. We unfortunately can't use a package manager
-(because of sudo restrictions), so we must download it manually.
-
-1. In your home directory: `mkdir jdk`
-2. `wget https://download.oracle.com/java/17/archive/jdk-17.0.7_linux-x64_bin.tar.gz`
-3. `mv jdk-17.0.7_linux-x64_bin.tar.gz jdk/`
-4. `cd jdk`
-5. `tar -xf jdk-17.0.7_linux-x64_bin.tar.gz`
-6. Add the following to your `~/.bashrc`: 
+#### Pre-reqs: Java and Nextflow
+Add the following to your `~/.bashrc`:
 
 ```bash
 # global environment variables
-export JAVA_HOME="/c4/home/${USER}/jdk/jdk-17.0.6"
-export NXF_JAVA_HOME="/c4/home/${USER}/jdk/jdk-17.0.6"
+export JAVA_HOME="/krummellab/data1/software/jdk/jdk-17.0.5"
+export NXF_JAVA_HOME="/krummellab/data1/software/jdk/jdk-17.0.5"
+export PATH=$PATH:"/krummellab/data1/software/nextflow/22.10.4_build_5836/"
 ```
 
-Install nextflow
+#### How to run with SLURM
+Please note that the `pipeline_pre_qc.nf` uses a different json structure. 
+You can see an example in `example-inputs/param_2_v2.json`. Eventually all steps will conform to this structure
+this structure.
 
-1. In your home directory: `mkdir bin` (If it doesn't exist)
-2. `cd bin`
-3. `wget -qO- https://get.nextflow.io | bash`
-4. `chmod +x nextflow`
-5. Make sure `${USER}/bin` is added to your path
+To run:
+ `sbatch run.sh <path_to_config.json> <step>`
 
-#### What do I need to configure?
+To resume a previous run:
+ `sbatch run_resume.sh <path_to_config.json> <step> <job_id_for_original_run>`
 
-Unfortunately there is a ton of input that is required for pipelines to run. Such as:
+The `step` must be one of ['pre_qc', 'post_qc', pre_fmx_qc', 'post_fmx_qc'].
+The pipeline is designed to be run either in the standard way, with (1) pre_qc, (2) setting cutoffs, then (3) post_qc.
+If filtering before freemuxlet is desired, such as for tissue data, instead do: (1) pre_fmx_qc, (2) setting cutoffs, then (3) post_fmx_qc.
+
+See `nextflow_schema.json` or `example/library.json` for how to set up the config files.
+
+By default, the nextflow working directory is:
+`/c4/scratch/<user>/nextflow/<original_job_id>`
+This is deleted on successful completion of an initial run. If the pipeline fails, you can resume it with `run_repeat.sh` (which uses the same working directory), or you should manually remove this directory. After `run_repeat.sh`, you must manually remove this directory. 
+
+#### Example run with toy data
+0. Download and unzip this github.
+1. Create a directory for this run, let's call it `${TOY_PROJECT_DIR}`
+2. Create the following subdirectiories:
+`mkdir -p ${TOY_PROJECT_DIR}/data/single_cell_GEX/raw/; mkdir -p ${TOY_PROJECT_DIR}/freemuxlet_data/`
+3. Copy the toy data from c4 to your raw directory `cp /krummellab/data1/pipeline_test_data/assays/scRNA_seq/modality/gex/downsampled_jurkat_tcell/inputs/ ${TOY_PROJECT_DIR}/data/single_cell_GEX/raw/`
+4. Make a copy of the run's config file.
+`cp example-inputs/param_2_v2.json example-inputs/my_toy_config.json`
+
+5. Open the run's config file and edit the first two directiories to point to `${TOY_PROJECT_DIR}`, and `${TOY_PROJECT_DIR}/freemuxlet_data/` respectively. The third should point to the directory this repository is in, specifically the subdirectory: `${DATA_PROCESSING_PIPELINE_REPO}/single_cell_RNAseq/example-inputs/`
+6. Submit the run. Note we are using `-profile test` for these data because they are much smaller, remove this for a true run.
+`sbatch run.sh example-inputs/my_toy_config.json pre_qc -profile test`
+
+
+### Notes and limitations
+
+* the pipeline assumes the standard immunox directory structure
+* data *must* be pooled libraries that require genetic demultiplexing to use the pipeline
+* the references are all for human hg38, you will need to edit `config/reference.config` if you want different refs
+* this branch does not yet work for VDJ (this functionality will be added soon)
+* this does not work for HTO data
+* for snRNA-seq: you will need to edit the cellranger step to include introns if you are using cellranger < v7.0.0
+
+
+#### What else I need to configure?
+
+There are multiple inputs that are required for pipelines to run, including:
 
 - Directories with fastq files
-- Location of reference genomes
+- Location of reference genomes and containers
 - Process specific settings and flags
 
-In order to view what all of these settings are, you can check out `nextflow.config`. 
+In order to view what all of these settings are, you can check out `nextflow.config`.
 To actually supply the parameters to this pipeline, you must submit a json file with these values.
 Some examples include: `example-inputs/param_1.json` `example-inputs/param_2_v2.json`.
 
@@ -58,9 +96,8 @@ contains $c$ cells.
 2. For each sample we isolate $n$ cells, and then load those cells into the sequencer. When $s > 1$ this is
 called pooling. 
 3. The sequencer runs and generates a library. Each library can contain $r$ reads.
-4. We repeat steps 2-3, except we load in a new set of cells.
 
-Note: Pooling is very specific to Colabs
+Note: Pooling is somewhat specific to Colabs
 
 ## Testing
 
@@ -78,14 +115,16 @@ Currently we only have GEX (Gene expression data) to use as a means of testing o
 
 The fastqs and variants can be found in the following directory:
 
-`/krummellab/data1/pipeline_test_data/assays/scRNA_seq/modality/gex/downsampled_jurkat_tcell/inputs/fastqs/`
-`/krummellab/data1/pipeline_test_data/assays/scRNA_seq/modality/gex/downsampled_jurkat_tcell/inputs/variants/`
+`/krummellab/data1/pipeline_test_data/assays/scRNA_seq/modality/gex/downsampled_jurkat_tcell/inputs/`
 
-Ideally we want:
+We also want:
 
 - CITE (Protein level data)
 - BCR (B-cell receptor)
 - TCR (T-cell receptor)
+
+
+
 
 
 ## Conventions
@@ -135,57 +174,4 @@ convention.
 It is also helpful to prefix channels with the `ch_` prefix.
 
 
-### Initial SC-Seq Pipeline in Nextflow
 
-Update 1/25/2023: Separated the pipeline into two steps for pre+post QC.
-
-
-This is a nextflow implementation of the `sicca_sc-seq_pipeline` written by Kim Taylor and Ravi Patel, with the following modifications: (1) addition of a freemuxlet merge step to combine across pools, (2) addition of an option to filter based on QC pre-freemuxlet, and (3) making inclusion of VDJ data optional. Future efforts will make this more flexible for different inputs.
-
-Note: this pipeline assumes the project structure we use in `immunox`
-
-To run:
- `sbatch run.sh <path_to_config.json> <step>`
-
-To resume a previous run:
- `sbatch run_resume.sh <path_to_config.json> <step> <job_id_for_original_run>`
-
-The `step` must be one of ['pre_qc', 'post_qc', pre_fmx_qc', 'post_fmx_qc'].
-The pipeline is designed to be run either in the standard way, with (1) pre_qc, (2) setting cutoffs, then (3) post_qc.
-If filtering before freemuxlet is desired, such as for tissue data, instead do: (1) pre_fmx_qc, (2) setting cutoffs, then (3) post_fmx_qc.
-
-See `nextflow_schema.json` or `example/library.json` for how to set up the config files.
-
-By default, the nextflow working directory is:
-`/c4/scratch/<user>/nextflow/<original_job_id>`
-This is deleted on successful completion of an initial run. If the pipeline fails, you can resume it with `run_repeat.sh` (which uses the same working directory), or you should manually remove this directory. After `run_repeat.sh`, you must manually remove this directory. 
-
-#### Pre-QC Pipeline
-
-Please note that the `pipeline_pre_qc.nf` uses a different json structure. 
-You can see an example in `example-inputs/param_2_v2.json`. Eventually all pipelines will conform to this structure
-this structure.
-
-key additions:
-
-- input validation
-- improve toy/test cases
-- add additional outputs to final seurat step
-- create a new singularity container with all R packages needed (e.g. doubletfinder, dsb)
-- dynamic memory allotment, retries
-
-
-missing steps:
-
-- add in freemuxlet assign to genotype step
-- add demuxlet step
-- ?separate ADT step from seurat_qc?
-- ?Harmony/RPCA/WNN?
-
-parameters:
-
-- add options to keep.FMX or DF.SNG only
-- options to skip freemuxlet / use demuxlet
-- decide which parameters go in `tool.config` vs `<sample>.config`
-- possibly move the default QC cuts parameter to library-level, add use case where not present
-- freemuxlet merge directory location?

@@ -47,9 +47,9 @@ You can see an example in `example-inputs/param_2_v2.json`. Eventually all steps
 **To resume a previous run:**
  `sbatch run_resume.sh <path_to_config.json> <step> <job_id_for_original_run>`
 
- &nbsp;&nbsp;&nbsp;&nbsp; For the <job_id_for_original_run>, this is the number reported back to you as "Submitted batch job #######" when you 
+**The `step` input:**
 
-The `step` must be one of ['pre_qc', 'post_qc', pre_fmx_qc', 'post_fmx_qc'].
+`step` must be one of ['pre_qc', 'post_qc', pre_fmx_qc', 'post_fmx_qc'].
 The pipeline is designed to be run in either of 2 ways, and both involve an internal breakpoint where you will need to supply cell filtration cutoffs:
 - Path 1 is the "standard" method, run with (1) step as `pre_qc`, (2) setting of cutoffs, then (3) step as `post_qc`.
 - Path 2 allows for QC filtering to be performed before freemuxlet/demuxlet which can be useful for tissue data, and is used with: (1) step as `pre_fmx_qc`, (2) setting of cutoffs, then (3) step as `post_fmx_qc`.

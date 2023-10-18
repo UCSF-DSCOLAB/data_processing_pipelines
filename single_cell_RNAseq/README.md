@@ -35,7 +35,7 @@ See [example-inputs/param_2_v2.json](example-inputs/param_2_v2.json) for how to 
 
 #### How to run with SLURM
 Please note that the `pipeline_pre_qc.nf` uses an updated json structure compared to the structure from our previous repo. 
-You can see an example in `example-inputs/param_2_v2.json`. Eventually all steps will conform to this structure this structure.
+You can see an example in `example-inputs/param_2_v2.json`. Eventually all steps will conform to this structure.
 
 **To run:**
  `sbatch run.sh <path_to_config.json> <step>`

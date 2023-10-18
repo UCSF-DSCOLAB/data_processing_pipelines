@@ -14,12 +14,11 @@ The pipeline performs the following steps:
 4. Filtering: Manually set qc filters (Note: this can be performed before step 2 with `pre_fmx_qc` and `post_fmx_qc` step path, which is recommended for tissue data with high ambient RNA. Further details below.)
 5. Seurat: Normalize and scale RNA data, perform dimensionality reduction, and generate initial clusterings and visualizations of the data. (ADT data will be DSB-normalized)
 
+## How to run on the c4 cluster
 
-## How to
+Although this pipeline is not specific to the HPC cluster we use within DSCoLab, we have not tested it outside of c4.
 
-### Running on c4
-
-#### Pre-reqs: Java and Nextflow
+### Pre-reqs: Java and Nextflow
 You can add the following to your `~/.bashrc`, then run `source ~/.bashrc` to connect with publicly-accessible locations where we have installed nextflow and java:
 
 ```bash
@@ -29,20 +28,24 @@ export NXF_JAVA_HOME="/krummellab/data1/software/jdk/jdk-17.0.5"
 export PATH=$PATH:"/krummellab/data1/software/nextflow/22.10.4_build_5836/"
 ```
 
-#### Before running
-First, you will need to create config files that are adjusted for your target data.
-See [example-inputs/param_2_v2.json](example-inputs/param_2_v2.json) for how to set up the config file.
+### Before running
+First, you will need to create a config file that is adjusted for your target data.
+- See [example-inputs/param_2_v2.json](example-inputs/param_2_v2.json) for an example config file for running with step as 'pre_qc'.
+- See [example-inputs/param_2.json](example-inputs/param_2.json) for an example config file for running with step as 'post_qc', 'pre_fmx_qc', or 'post_fmx_qc'.
 
-#### How to run with SLURM
-Please note that the `pipeline_pre_qc.nf` uses an updated json structure compared to the structure from our previous repo. 
-You can see an example in `example-inputs/param_2_v2.json`. Eventually all steps will conform to this structure.
+Within these files, you will need to update certain parameters in order to specify:
+1. "project_dir" should point to the /krummellab/data1/immunox/<project_name> directory for your project. Standard DSCoLab structure for the contents of this directory are expected: Fastqs are expected to come from within 'data/<modality>/raw' folders within here, and outputs will be created within 'data/single_cell_GEX/processed/<pool_names>' here as well.
+2. any "settings" should be adjusted for your data type and how you want your run to be configured.
+3. "pools" contents must be adjusted to give the names and characteristics of your own libraries
+
+### How to run
 
 **To run:**
- `sbatch run.sh <path_to_config.json> <step>`
+`sbatch run.sh <path_to_config.json> <step>`
 
 &nbsp;&nbsp;&nbsp;&nbsp; A more literal example: `sbatch run.sh path/to/my/config.json pre_qc`
 
-&nbsp;&nbsp;&nbsp;&nbsp; Also be sure to take note of the number reported back to you as "Submitted batch job #######" after running this command. That number is what to used as <job_id_for_original_run> if you have need to resume the job later.
+&nbsp;&nbsp;&nbsp;&nbsp; Also be sure to take note of the number reported back to you as "Submitted batch job #######" after running this command. That number is what to use as <job_id_for_original_run> if you have need to resume the job later.
 
 **To resume a previous run:**
  `sbatch run_resume.sh <path_to_config.json> <step> <job_id_for_original_run>`
@@ -54,14 +57,15 @@ The pipeline is designed to be run in either of 2 ways, and both involve an inte
 - Path 1 is the "standard" method, run with (1) step as `pre_qc`, (2) setting of cutoffs, then (3) step as `post_qc`.
 - Path 2 allows for QC filtering to be performed before freemuxlet/demuxlet which can be useful for tissue data, and is used with: (1) step as `pre_fmx_qc`, (2) setting of cutoffs, then (3) step as `post_fmx_qc`.
 
-#### After run cleanup
+### After run cleanup
 By default, the nextflow working directory will be:
 `/c4/scratch/<user>/nextflow/<original_job_id>`
-This directory is deleted on successful completion of an initial run. But if the pipeline fails, the directory is left in place.
-You can resume a failed run with `run_repeat.sh` (which uses the same working directory), or you should manually remove this directory.
-**After a resumed completes, or you decide not to follow up a failed run, you will need to manually remove this directory.**
+This directory is automatically deleted on successful completion of an initial run, thus there is often no manual cleanup needed.
 
-#### Example run with toy data
+However, if the pipeline fails, the directory is left in place. Please deleted this directory if you do not plan to try again, or you can resume a failed run with the `run_resume.sh` method described in the "How to run" section. When resuming a run this way, the same working directory will be used, but regardless of whether the resumed run is successful or not the directory will not be deleted.
+**After your resumed run completes, or you decide not to follow up a failed run, please manually remove this directory.**
+
+### Example run with toy data
 0. Download and unzip this github.
 1. Create a directory for this run, let's call it `${TOY_PROJECT_DIR}`
 2. Create the following subdirectiories:
@@ -74,6 +78,7 @@ You can resume a failed run with `run_repeat.sh` (which uses the same working di
 6. Submit the run. Note we are using `-profile test` for these test data because they are much smaller. Be sure to remove this flag for any real run as it scales down the resources requested for each task to levels that are not viable for real data.
 `sbatch run.sh example-inputs/my_toy_config.json pre_qc -profile test`
 
+## Additional Details
 
 ### Notes and limitations
 
@@ -84,23 +89,12 @@ You can resume a failed run with `run_repeat.sh` (which uses the same working di
 * this does not work for HTO data
 * for snRNA-seq: you will need to edit the cellranger step to include introns if you are using cellranger < v7.0.0
 
+### Side-effects of the Default QC Cutoffs
+In addition to being used as the initial values for your 'qc_cuts.csv', the values in the file pointed to by your config file's "default_qc_cuts_dir" & "default_qc_cuts_file" elements also determine where initial lines are drawn in QC plots output by the `pre_qc` and `pre_fmx_qc` steps.
 
-#### What else might I need to configure?
+Of note, it can be useful to adjust these values sensibly before / for all runs by adjusting this file.  This can be especially useful with tissue data where it is often useful to compare across libraries and batches, with consistent cutoff values, as a method of assessing relative quality across the entire project.
 
-There are multiple inputs that are required for pipelines to run, including:
-
-- Directories with fastq files
-- Location of reference genomes and containers
-- Process specific settings and flags
-
-In order to view what all of these settings are, you can check out `nextflow.config`.
-To actually supply the parameters to this pipeline, you must submit a json file with these values.
-Some examples include: `example-inputs/param_1.json` `example-inputs/param_2_v2.json`.
-
-There is also a directory called `config/` however these are settings that specific to c4 and typically
-do not need to be tweaked. `nextflow.config` imports these settings for you.
-
-#### Data Generation
+### Data Generation
 
 For those that are not familiar with sequencing and data generation, recall that:
 
@@ -111,6 +105,20 @@ called pooling.
 3. The sequencer runs and generates a library. Each library can contain $r$ reads.
 
 Note: Pooling is somewhat specific to Colabs
+
+### What else might I need to configure?
+
+There are multiple less standard inputs that are required for pipelines to run, including:
+
+- Location of reference genomes and containers
+- Process specific settings and flags
+
+In order to view what all of these settings are, you can check out `nextflow.config`.
+To actually supply the parameters to this pipeline, you must submit a json file with these values.
+Some examples include: `example-inputs/param_1.json` `example-inputs/param_2_v2.json`.
+
+There is also a directory called `config/` however these are settings that specific to c4 and typically
+do not need to be tweaked. `nextflow.config` imports these settings for you.
 
 ---
 

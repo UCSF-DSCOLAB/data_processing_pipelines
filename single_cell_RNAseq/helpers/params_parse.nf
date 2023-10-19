@@ -1,14 +1,35 @@
 def get_c4_h5(library){
   return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/cellranger/raw_feature_bc_matrix.h5", checkIfExists: true)
 }
+
 def get_c4_bam(library){
   return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/cellranger/possorted_genome_bam.bam", checkIfExists: true)
+}
+
+def get_cutoffs(library){
+  return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing/${library}_cutoffs.csv", checkIfExists: true)
+}
+
+def get_sobj(library){
+  return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing/${library}_raw.rds", checkIfExists: true)
+}
+
+def get_cr_h5(library){
+  return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/cellranger/raw_feature_bc_matrix.h5", checkIfExists: true)
 }
 
 def get_c4_h5_bam(){
     return params.pools.collectMany {
            pool -> pool.libraries.collect {
                library -> [library.dir, get_c4_bam(library.dir), get_c4_h5(library.dir)]
+           }
+        }
+}
+
+def get_pre_qc_outputs(){
+	return params.pools.collectMany {
+           pool -> pool.libraries.collect {
+               library -> [library.dir, get_cutoffs(library), get_sobj(library), get_cr_h5(library)]
            }
         }
 }

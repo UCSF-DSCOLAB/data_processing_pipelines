@@ -15,49 +15,60 @@
     "remove_demux_DBL": true,
     "remove_all_DBL": true
   },
-  "pools" : {
-    "GN1" : {
-      "nsamples" : "12",
+{
+  "pools": [
+    {
+      "name": "GN1",
+      "nsamples": "12",
       "vcf": "my_vcf.gz",
-      "libraries": {
-        "TEST1-POOL-GN1-SCG1": {
+      "libraries": [
+        {
+          "dir": "TEST1-POOL-GN1-SCG1",
           "ncells_loaded": 40000,
           "data_types": ["CITE"]
         },
-        "TEST1-POOL-GN1-SCG2" : {
+        {
+          "dir": "TEST1-POOL-GN1-SCG2",
           "ncells_loaded": 40000,
           "data_types": ["CITE"]
         },
-        "TEST1-POOL-GN1-SCG3": {
+        {
+          "dir": "TEST1-POOL-GN1-SCG3",
           "ncells_loaded": 40000,
           "data_types": ["CITE"]
         }
-      }
-    } ,
-    "GN2" : {
-      "nsamples" : "6",
-      "vcf": "",
-      "libraries": {
-        "TEST1-POOL-GN2-SCG1": {
-          "ncells_loaded": 40000,
-          "data_types": ["TCR", "BCR"]
-        },
-        "TEST1-POOL-GN2-SCG2" : {
-          "ncells_loaded": 40000,
-          "data_types": ["TCR", "BCR"]
-        }
-      }
+      ]
     },
-    "GN3" : {
-      "nsamples" : "6",
+    {
+      "name": "GN2",
+      "nsamples": "6",
       "vcf": "",
-      "libraries": {
-        "TEST1-POOL-GN3-SCG1": {
+      "libraries": [
+        {
+          "dir": "TEST1-POOL-GN2-SCG1",
+          "ncells_loaded": 40000,
+          "data_types": ["TCR", "BCR"]
+        },
+        {
+          "dir": "TEST1-POOL-GN2-SCG2",
+          "ncells_loaded": 40000,
+          "data_types": ["TCR", "BCR"]
+        }
+      ]
+    },
+    {
+      "name": "GN3",
+      "nsamples": "6",
+      "vcf": "",
+      "libraries": [
+        {
+          "dir": "TEST1-POOL-GN3-SCG1",
           "ncells_loaded": 40000,
           "data_types": ""
         }
+      ]
     }
-  }
+  ]
+}
 
   }
-}

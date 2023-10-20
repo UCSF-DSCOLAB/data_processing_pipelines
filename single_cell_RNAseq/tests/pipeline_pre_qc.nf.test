@@ -8,7 +8,7 @@ nextflow_pipeline {
 
         when {
             params {
-                load("example-inputs/param_2_v2.json")
+                load("example-inputs/param_2.json")
                 settings = {
                     add_tcr = false
                     add_bcr = false
@@ -42,7 +42,7 @@ nextflow_pipeline {
 
         when {
             params {
-                load("example-inputs/param_2_v2.json")
+                load("example-inputs/param_2.json")
                 settings = {
                     add_tcr = false
                     add_bcr = false
@@ -77,7 +77,7 @@ nextflow_pipeline {
 
             when {
                 params {
-                    load("example-inputs/param_2_v2.json")
+                    load("example-inputs/param_2.json")
                     settings = {
                         add_tcr = false
                         add_bcr = false
@@ -113,7 +113,7 @@ nextflow_pipeline {
 
             when {
                 params {
-                    load("example-inputs/param_2_v2.json")
+                    load("example-inputs/param_2.json")
                     settings = {
                         add_tcr = false
                         add_bcr = false

@@ -30,8 +30,8 @@ export PATH=$PATH:"/krummellab/data1/software/nextflow/22.10.4_build_5836/"
 
 ### Before running
 First, you will need to create a config file that is adjusted for your target data.
-- See [example-inputs/param_2_v2.json](example-inputs/param_2_v2.json) for an example config file for running with step as 'pre_qc'.
-- See [example-inputs/param_2.json](example-inputs/param_2.json) for an example config file for running with step as 'post_qc', 'pre_fmx_qc', or 'post_fmx_qc'.
+- See[example-inputs/param_1.json](example-inputs/param_1.json), [example-inputs/param_2.json](example-inputs/param_2.json) for an example config file for running with step as 'pre_qc', 'post_qc.
+- See [example-inputs/fmx_param_1.json](example-inputs/param_2.json) for an example config file for running with step as pre_fmx_qc', or 'post_fmx_qc'.
 
 Within these files, you will need to update certain parameters in order to specify:
 1. "project_dir" should point to the /krummellab/data1/immunox/<project_name> directory for your project. Standard DSCoLab structure for the contents of this directory are expected: Fastqs are expected to come from within 'data/<modality>/raw' folders within here, and outputs will be created within 'data/single_cell_GEX/processed/<pool_names>' here as well.
@@ -72,7 +72,7 @@ However, if the pipeline fails, the directory is left in place. Please deleted t
 `mkdir -p ${TOY_PROJECT_DIR}/data/single_cell_GEX/raw/; mkdir -p ${TOY_PROJECT_DIR}/freemuxlet_data/`
 3. Copy the toy data from c4 to your raw directory `cp /krummellab/data1/pipeline_test_data/assays/scRNA_seq/modality/gex/downsampled_jurkat_tcell/inputs/ ${TOY_PROJECT_DIR}/data/single_cell_GEX/raw/`
 4. Make a copy of the run's config file.
-`cp example-inputs/param_2_v2.json example-inputs/my_toy_config.json`
+`cp example-inputs/param_2.json example-inputs/my_toy_config.json`
 
 5. Open the run's config file and edit the first two directiories to point to `${TOY_PROJECT_DIR}`, and `${TOY_PROJECT_DIR}/freemuxlet_data/` respectively. The third should point to the directory this repository is in, specifically the subdirectory: `${DATA_PROCESSING_PIPELINE_REPO}/single_cell_RNAseq/example-inputs/`
 6. Submit the run. Note we are using `-profile test` for these test data because they are much smaller. Be sure to remove this flag for any real run as it scales down the resources requested for each task to levels that are not viable for real data.
@@ -115,7 +115,7 @@ There are multiple less standard inputs that are required for pipelines to run, 
 
 In order to view what all of these settings are, you can check out `nextflow.config`.
 To actually supply the parameters to this pipeline, you must submit a json file with these values.
-Some examples include: `example-inputs/param_1.json` `example-inputs/param_2_v2.json`.
+Some examples include: `example-inputs/param_1.json` `example-inputs/param_2.json`.
 
 There is also a directory called `config/` however these are settings that specific to c4 and typically
 do not need to be tweaked. `nextflow.config` imports these settings for you.

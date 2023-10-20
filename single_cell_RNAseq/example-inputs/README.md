@@ -2,9 +2,9 @@
 ### Files
 This `example-inputs` directory contains the following files:
 * `default_qc_cuts.csv`: file with default QC cutoffs which can be helpful for visualizing initial QC. You will set the true cutoffs for each library, but this can provide a helpful starting point. Note that for particular tissues or datasets, you may want to adjust the default cutoffs for all libraries in a project to help better visualize between-library differences.
-* `param_1.json`: an example parameter config file, which additionally shows how to specify a vcf and a variety of different data types. This parameter file does not refer to any existing toy data, it is just an example.
-* `param_2.json`: example parameter config file for the toy dataset. See below for additional info on the toy dataset.
-* `param_2_v2.json`: updated version of `param_2.json` for `pre_qc` step only.
+* `param_1.json`: an example parameter config file for the `pre` and `post` pipelines. Which additionally shows how to specify a vcf and a variety of different data types. This parameter file does not refer to any existing toy data, it is just an example. 
+* `param_2.json`: an example parameter config file for the toy dataset (`pre` and `post` pipelines). See below for additional info on the toy dataset.
+* `fmx_param_1.json`: Similar to `param_1.json` except its format is intended for the `pre_fmx` and `post_fmx` pipelines.
 
 
 ### Toy Data

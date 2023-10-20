@@ -22,12 +22,12 @@
       "vcf": "",
       "libraries": [
         {
-          "dir": "TEST-POOL-DM1-SCG1",
+          "name": "TEST-POOL-DM1-SCG1",
           "ncells_loaded": 200,
           "data_types": ["GEX"]
         },
         {
-          "dir": "TEST-POOL-DM1-SCG2",
+          "name": "TEST-POOL-DM1-SCG2",
           "ncells_loaded": 200,
           "data_types": ["GEX"]
         }
@@ -39,7 +39,7 @@
       "name": "DM2",
       "libraries": [
         {
-          "dir": "TEST-POOL-DM2-SCG1",
+          "name": "TEST-POOL-DM2-SCG1",
           "ncells_loaded": 100,
           "data_types": ["GEX"]
         }

@@ -1,0 +1,44 @@
+{ "project_dir" : "/krummellab/data1/erflynn/tutorial_lib_sep",
+  "settings" : {
+    "add_tcr" : false,
+    "add_bcr" : false,
+    "skip_cellranger": false,
+    "merge_for_demux" : true,
+    "merge_demux_dir" : "/krummellab/data1/erflynn/tutorial_lib_sep/freemuxlet_data/",
+    "demux_method" : "freemuxlet",
+    "run_doubletfinder" : true,
+    "mincell" : 3,
+    "minfeature" : 100,
+    "default_qc_cuts_dir": "/krummellab/data1/erflynn/sc_seq_pipeline/sc_seq_nextflow/example/",
+    "default_qc_cuts_file": "default_qc_cuts.csv",
+    "randomseed" : 21212,
+    "remove_demux_DBL": true,
+    "remove_all_DBL": true
+  },
+  "pools" : {
+    "DM1" : {
+      "nsamples" : "2",
+      "vcf": "",
+      "libraries": {
+        "TEST-POOL-DM1-SCG1": {
+          "ncells_loaded": 200,
+          "data_types": ""
+        },
+        "TEST-POOL-DM1-SCG2": {
+          "ncells_loaded": 200,
+          "data_types": ""
+        }
+      }
+    },
+    "DM2" : {
+      "nsamples" : "2",
+      "vcf": "",
+      "libraries": {
+        "TEST-POOL-DM2-SCG1": {
+          "ncells_loaded": 100,
+          "data_types": ""
+        }
+      }
+    }
+  }
+}

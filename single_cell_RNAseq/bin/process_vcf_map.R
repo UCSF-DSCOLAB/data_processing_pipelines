@@ -10,14 +10,7 @@
 # below is visible in singularity env
 library(pheatmap)
 
-
-args = commandArgs(trailingOnly=TRUE)
-if (length(args)<1) {
-  stop("Please provide pool")
-}
-pool=args[1]
-
-matrix <- as.matrix(read.table(mapFile, header=TRUE, row.names=1, sep ="\t"))
+matrix <- as.matrix(read.table("VCFmapping.tsv", header=TRUE, row.names=1, sep ="\t"))
 
 # z standardization by rows
 matrix.zR <- t(scale(t(matrix),center=TRUE,scale=TRUE))
@@ -62,7 +55,7 @@ for (i in 1:dim(matrix)[1]) {
 		}
 	}
 }
-write.csv(map,file=paste(mapDir,"VCFmap.csv",sep=""),row.names=FALSE,quote=FALSE)
+write.csv(map,file="VCFmap.csv",row.names=FALSE,quote=FALSE)
 
 
 quit(status=1-result)

@@ -85,12 +85,12 @@ process CELLRANGER_VDJ {
   """
  
   vdj_path=${params.project_dir}/data/single_cell_${data_type}/raw/${vdj_library}
-  
+  dt=${data_type}
   # TODO: update so that this only occurs on retries if there is a chain error
-  if [ \${data_type} == "TCR" ]
+  if [ \${dt} == "TCR" ]
   then
     chain_type="TR"
-  elif [ \${data_type} == "BCR" ] 
+  elif [ \${dt} == "BCR" ] 
   then
     chain_type="IG"
   else 

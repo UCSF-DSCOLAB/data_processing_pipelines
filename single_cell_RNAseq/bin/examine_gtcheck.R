@@ -5,6 +5,17 @@ args = commandArgs(trailingOnly=T)
 POOL = args[1]
 gtcheck_out = args[2]
 
+### for 1.3.1
+# my_tab = read_tsv(gtcheck_out,
+#          comment="#", col_names=F)  %>%
+#   filter(X1=="CN") %>%
+#   filter(!str_detect(X5, "CLUST"), str_detect(X6, "CLUST")) %>%
+#   select(-X1, -X3, -X4) %>%
+#   mutate(X5=str_replace_all(X5, "_[0-9]+", "")) %>%
+#   dplyr::rename(individual=X5, cluster=X6) %>%
+#   mutate(err=as.numeric(X2)) %>%
+#   select(-X2)
+
 my_tab = read_tsv(gtcheck_out,
          comment="#", col_names=F) %>%
   filter(!str_detect(X4, "CLUST"), str_detect(X5, "CLUST"), X1=="ERR") %>%

@@ -1,14 +1,5 @@
 nextflow.enable.dsl=2
 
-log.info """\
-         DSCoLab scRNASeq Pipeline
-         =============================
-         project_dir: ${params.project_dir}
-         pools : ${params.pools}
-         """
-         .stripIndent()
-
-
 // Processes
 
 include {
@@ -39,12 +30,20 @@ SEURAT_QC
 include {
 get_c4_h5; get_c4_bam; get_c4_h5_bam; get_pool_library_meta; get_libraries_data_type;
 get_pool_by_sample_count; get_library_by_sample_count; get_single_library_by_pool;
-get_library_by_pool; get_multi_library_by_pool; get_pool_vcf ; get_library_ncells
+get_multi_pool_by_library ; get_library_by_pool; get_multi_library_by_pool; get_pool_vcf ; get_library_ncells
 } from  './helpers/params_parse.nf'
 
 include {
 extractFileName
 } from "./helpers/utils.nf"
+
+log.info """\
+         DSCoLab scRNASeq Pipeline
+         =============================
+         project_dir: ${params.project_dir}
+         """
+         .stripIndent()
+
 
 workflow {
 
@@ -200,8 +199,9 @@ workflow {
                 DEMUXLET_POOL(ch_multi_lib_transformed)
 
                 demuxlet_pool_transformed = DEMUXLET_POOL.out.merged_best
-                                                                    .combine(Channel.from(get_multi_library_by_pool()), by: 1)
-                                                                    .map{it -> it[2,1]}
+                                                  .cross(Channel.from(get_multi_pool_by_library()))
+                                                  .map{it -> [it[1][1],it[0][1]]} // [lib, merged.best]
+
                 SEPARATE_DMX(demuxlet_pool_transformed)
 
                 // Run demuxlet on remaining single libraries
@@ -214,6 +214,7 @@ workflow {
                 DEMUXLET_LIBRARY(ch_single_lib_transformed)
                 // appended any merged libraries
                 ch_sample_map = SEPARATE_DMX.out.sample_map.mix(DEMUXLET_LIBRARY.out.sample_map)
+                ch_sample_map.view()
 
             } else {
                 // Run demuxlet on all libraries, regardless if there are many libraries per pool
@@ -230,7 +231,6 @@ workflow {
             }
 
         }
-
 
       /*
       --------------------------------------------------------

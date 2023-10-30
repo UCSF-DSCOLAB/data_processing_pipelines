@@ -73,6 +73,16 @@ def get_multi_library_by_pool() {
         }
 }
 
+def get_multi_pool_by_library() {
+    return get_pool_library_meta().findAll {it.num_of_libraries > 1}.collectMany { pool ->
+            pool.lib_directories.collect { name ->
+                [pool.name, name]
+            }
+        }
+}
+
+
+
 def get_single_library_by_pool() {
     return get_pool_library_meta().findAll {it.num_of_libraries == 1}.collectMany { pool ->
             pool.lib_directories.collect { name ->

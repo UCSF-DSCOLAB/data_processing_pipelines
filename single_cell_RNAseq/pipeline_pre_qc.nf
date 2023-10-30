@@ -214,7 +214,6 @@ workflow {
                 DEMUXLET_LIBRARY(ch_single_lib_transformed)
                 // appended any merged libraries
                 ch_sample_map = SEPARATE_DMX.out.sample_map.mix(DEMUXLET_LIBRARY.out.sample_map)
-                ch_sample_map.view()
 
             } else {
                 // Run demuxlet on all libraries, regardless if there are many libraries per pool

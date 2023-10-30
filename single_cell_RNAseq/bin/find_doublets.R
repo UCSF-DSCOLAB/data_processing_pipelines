@@ -43,7 +43,7 @@ genDoubletTable = function(doublet_stats, ncells_loaded, nsamples){
   dbl_rate_10x_loaded = predict(DBL_MODEL_loaded, new=data.frame(num_cells_loaded=ncells_loaded)) / 100
   predicted_recovery = predict(MODEL_recovered, new=data.frame(num_cells_loaded=ncells_loaded))
 
-  num_mx_dbls = doublet_stats$fmlDropletTypeComp["DBL",][[1]]
+  ifelse("DBL" %in% sngObj@misc$scStat$fmlDropletTypeProp, sngObj@misc$scStat$fmlDropletTypeProp["DBL",], 10)
   num_mx_sngs = doublet_stats$fmlDropletTypeComp["SNG",][[1]]
 
   fmlDblRate = num_mx_dbls/(num_mx_sngs+num_mx_dbls)
@@ -72,7 +72,7 @@ runDoubletFinder <- function(sObj, freemuxlet=TRUE) {
     sngObj = subset(sObj, cells=present.cells)
 
     # freemuxlet doublet (DBL) rate
-    fmlDblRate = sngObj@misc$scStat$fmlDropletTypeProp["DBL",]
+    fmlDblRate = ifelse("DBL" %in% sngObj@misc$scStat$fmlDropletTypeProp, sngObj@misc$scStat$fmlDropletTypeProp["DBL",], 10)
 
     # Determine the number of samples pooled per 10x lane from the freemuxlet output.
     

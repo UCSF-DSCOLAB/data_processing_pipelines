@@ -9,7 +9,9 @@ process FASTP_TRIM_ADAPTERS {
           // File size in GB
           fileSize = reads[0].size() / (1024 * 1024 * 1024)
         }
-
+	if (fileSize > 5){
+	   fileSize = 5
+	}
         return 32.GB * (1 + (fileSize * 4))
     }
 

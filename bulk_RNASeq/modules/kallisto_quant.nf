@@ -9,8 +9,7 @@ process KALLISTO_QUANT {
           // File size in GB
           fileSize = reads[0].size() / (1024 * 1024 * 1024)
         }
-
-        return 7.GB * (1 + (fileSize * 4))
+	return 7.GB * (1 + (fileSize * 4))
     }
     publishDir "${params.results_directory}/kallisto", mode: 'copy'
 

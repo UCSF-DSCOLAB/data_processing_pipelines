@@ -1,15 +1,15 @@
-{ "project_dir" : "/krummellab/data1/amazzara/tutorial_lib_sep",
+{ "project_dir" : "/krummellab/data1/${USER}/tutorial_lib_sep",
   "settings" : {
     "add_tcr" : false,
     "add_bcr" : false,
-    "skip_cellranger": false,
+    "skip_cellranger": true,
     "merge_for_demux" : true,
-    "merge_demux_dir" : "/krummellab/data1/amazzara/tutorial_lib_sep/freemuxlet_data/",
-    "demux_method" : "freemuxlet",
+    "merge_demux_dir" : "/krummellab/data1/${USER}/tutorial_lib_sep/freemuxlet_data/",
+    "demux_method" : "demuxlet",
     "run_doubletfinder" : true,
     "mincell" : 3,
     "minfeature" : 100,
-    "default_qc_cuts_dir": "/krummellab/data1/amazzara/sc_seq_pipeline/sc_seq_nextflow/example/",
+    "default_qc_cuts_dir": "/krummellab/data1/${USER}/data_processing_pipelines/single_cell_RNAseq/example-inputs/",
     "default_qc_cuts_file": "default_qc_cuts.csv",
     "randomseed" : 21212,
     "remove_demux_DBL": true,
@@ -19,7 +19,7 @@
     {
       "name": "DM1",
       "nsamples" : "2",
-      "vcf": "",
+      "vcf": "/krummellab/data1/pipeline_test_data/assays/scRNA_seq/modality/gex/downsampled_jurkat_tcell/inputs/variants/jurkat_293t_exons_only_w_chr_hg38.vcf",
       "libraries": [
         {
           "name": "TEST-POOL-DM1-SCG1",
@@ -35,7 +35,7 @@
     },
     {
       "nsamples": "2",
-      "vcf": "",
+      "vcf": "/krummellab/data1/pipeline_test_data/assays/scRNA_seq/modality/gex/downsampled_jurkat_tcell/inputs/variants/jurkat_293t_exons_only_w_chr_hg38.vcf",
       "name": "DM2",
       "libraries": [
         {

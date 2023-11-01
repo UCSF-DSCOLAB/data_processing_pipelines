@@ -218,7 +218,7 @@ process DSC_PILEUP{
   container "${params.container.popscle}"
   containerOptions "-B ${params.ref.fmx_dir}"
   publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "dsc_pileup.log" }
-  publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/freemuxlet/", mode: 'copy', pattern: "${library}*.gz"
+  publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/${params.settings.demux_method}/", mode: 'copy', pattern: "${library}*.gz"
 
   input:
   tuple val(library), path(barcodes), path(filtered_bam)

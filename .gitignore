@@ -1,6 +1,8 @@
 # Nextflow specific
 *.uuid
 **/.nextflow/
-
+*.nextflow*
+*~
+*trace*.txt
 # Jetbrains
 .idea/

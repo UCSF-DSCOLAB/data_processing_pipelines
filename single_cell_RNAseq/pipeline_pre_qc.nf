@@ -12,6 +12,8 @@ DSC_PILEUP;
 MERGE_DSC;
 FREEMUXLET_POOL;
 FREEMUXLET_LIBRARY;
+FMX_ASSIGN_TO_GT;
+FMX_ASSIGN_TO_GT as FMX_ASSIGN_TO_GT_LIBRARY;
 DEMUXLET_POOL;
 DEMUXLET_LIBRARY;
 SEPARATE_DMX;
@@ -153,6 +155,13 @@ workflow {
                                             .map{it -> [it[0], it[6], it[2], it[3], it[4], it[5]]} // [lib, num_of_samples, plp_files]] (excluding .tsv)
             FREEMUXLET_POOL(ch_multi_lib_transformed)
 
+            if (params.settings.fmx_assign_to_gt){
+                  // TODO add checks that the reference file exists
+                  FMX_ASSIGN_TO_GT(Channel.from(get_pool_vcf())
+                  .join( FREEMUXLET_POOL.out.vcf ) // [pool, ref_vcf, fmx_vcf])
+                  )
+            } 
+
             // Combine merged files and merged tsv
             pool_tsv = ch_merged_libs.map{it -> it[0,1]} // [pool, pool_tsv]
             ch_freemux_transformed = pool_tsv.join(FREEMUXLET_POOL.out.merged_files)
@@ -175,9 +184,20 @@ workflow {
 
             FREEMUXLET_LIBRARY(ch_single_lib_transformed)
 
+            if (params.settings.fmx_assign_to_gt){
+               ch_gt_input =  Channel.from(get_pool_vcf()) // [pool, vcf]
+                .combine(Channel.from(get_library_by_pool()).map{ it -> [it[1], it[0]] }, by: 0) // [pool, vcf, lib]
+                .map{it -> [it[2], it[1]]} // [lib, vcf]
+                .join(FREEMUXLET_LIBRARY.out.vcf )  // [lib, ref_vcf, fmx_vcf]
+
+                  // TODO add checks that the reference file exists
+                  FMX_ASSIGN_TO_GT_LIBRARY(ch_gt_input) 
+                    
+            } 
+
             // appended any merged libraries
             ch_sample_map = SEPARATE_FMX_PRE.out.sample_map.mix(FREEMUXLET_LIBRARY.out.sample_map)
-
+            
         } else {
                 // Run freemuxlet on all libraries, regardless if there are many libraries per pool
                 // Attach the number of samples, and re-arrange input
@@ -188,7 +208,17 @@ workflow {
 
                 // appended any merged libraries
                 ch_sample_map = FREEMUXLET_LIBRARY.out.sample_map
-            }
+                
+            if (params.settings.fmx_assign_to_gt){
+               ch_gt_input =  Channel.from(get_pool_vcf()) // [pool, vcf]
+                .combine(Channel.from(get_library_by_pool()).map{ it -> [it[1], it[0]] }, by: 0) // [pool, vcf, lib]
+                .map{it -> [it[2], it[1]]} // [lib, vcf]
+                .join(FREEMUXLET_LIBRARY.out.vcf )  // [lib, ref_vcf, fmx_vcf]
+                  // TODO add checks that the reference file exists
+                FMX_ASSIGN_TO_GT_LIBRARY(ch_gt_input) 
+                    
+            } 
+          }
 
         } else if ( params.settings.demux_method == "demuxlet"){
              // This assumes you have at least one pool with > 1 libraries!!!

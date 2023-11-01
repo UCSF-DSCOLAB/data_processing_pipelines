@@ -285,8 +285,7 @@ process FREEMUXLET_POOL {
   publishDir "${params.project_dir}/data/single_cell_GEX/logs/${pool}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "freemuxlet.log" }
 
   container "${params.container.popscle}"
-  containerOptions "-B ${params.ref.fmx_dir}"
-  
+
   input:
   tuple val(pool), val(nsamples), path(merged_plp), path(merged_var), path(merged_cel), path(merged_barcodes)
   
@@ -315,8 +314,7 @@ process FREEMUXLET_LIBRARY {
   publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "freemuxlet.log" }
 
   container "${params.container.popscle}"
-  containerOptions "-B ${params.ref.fmx_dir}"
-  
+
   input:
   tuple val(library), val(nsamples), path(plp_files)
   
@@ -340,6 +338,32 @@ process FREEMUXLET_LIBRARY {
 
   """
 } 
+
+
+/*
+ * Run assign to gt for a pool or library 
+ */
+process FMX_ASSIGN_TO_GT {
+  publishDir "${params.project_dir}/fmx_assign_to_gt/${pool}/", mode: 'copy', pattern: "${pool}_gtcheck*"
+  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${pool}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "fmx_assign_to_gt.log" }
+
+  container "${params.container.rplus_bcftools}"
+  containerOptions "-B ${params.project_dir} -B ${params.settings.ref_vcf_dir}"
+
+  input:
+  tuple val(pool), val(ref_vcf), path(fmx_vcf) 
+
+  output:
+  tuple val(pool), path("${pool}*"), emit: outfiles
+  path(".command.log"), emit: log
+
+
+  """
+  bash ${projectDir}/bin/run_gtcheck.sh ${pool} ${params.settings.ref_vcf_dir}/${ref_vcf} ${fmx_vcf}
+  Rscript ${projectDir}/bin/examine_gtcheck.R ${pool} ${pool}_gtcheck.out
+  """
+
+}
 
 
 /*

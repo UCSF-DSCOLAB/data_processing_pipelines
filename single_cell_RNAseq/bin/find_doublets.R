@@ -2,7 +2,7 @@ library(Seurat)
 library(tidyverse)
 library(DoubletFinder)
 # Default parameters
-minCellsForDoubletFinder=30   # Run doubletFinder only if there are at least minCellsForDoubletFinder cells per sample/freemuxlet cluster
+minCellsForDoubletFinder=30   # Run doubletFinder only if there are at least minCellsForDoubletFinder cells 
 
 
 
@@ -43,7 +43,7 @@ genDoubletTable = function(doublet_stats, ncells_loaded, nsamples){
   dbl_rate_10x_loaded = predict(DBL_MODEL_loaded, new=data.frame(num_cells_loaded=ncells_loaded)) / 100
   predicted_recovery = predict(MODEL_recovered, new=data.frame(num_cells_loaded=ncells_loaded))
 
-  ifelse("DBL" %in% sngObj@misc$scStat$fmlDropletTypeProp, sngObj@misc$scStat$fmlDropletTypeProp["DBL",], 10)
+  num_mx_dbls = ifelse("DBL" %in% rownames(doublet_stats$fmlDropletTypeProp), doublet_stats$fmlDropletTypeProp["DBL",][[1]], 10)
   num_mx_sngs = doublet_stats$fmlDropletTypeComp["SNG",][[1]]
 
   fmlDblRate = num_mx_dbls/(num_mx_sngs+num_mx_dbls)
@@ -72,11 +72,17 @@ runDoubletFinder <- function(sObj, freemuxlet=TRUE) {
     sngObj = subset(sObj, cells=present.cells)
 
     # freemuxlet doublet (DBL) rate
-    fmlDblRate = ifelse("DBL" %in% sngObj@misc$scStat$fmlDropletTypeProp, sngObj@misc$scStat$fmlDropletTypeProp["DBL",], 10)
+    # handle the case where there are no doublets
+    if (!"DBL" %in% rownames(sngObj@misc$scStat$fmlDropletTypeProp)){
+      print_message("Warning there are no doublets, setting doublet rate to 0.01")
+      fmlDblRate = 0.01
+    } else {
+      fmlDblRate = sngObj@misc$scStat$fmlDropletTypeProp["DBL",][[1]]
+    }
 
     # Determine the number of samples pooled per 10x lane from the freemuxlet output.
     
-    ## TODO: do this by config?
+    ## TODO: do this based on config?
     noOfSmpls = length( unique( sngObj$BEST.GUESS[ sngObj$DROPLET.TYPE == "SNG" ] ) )
 
     dblRateIntra = fmlDblRate/(noOfSmpls-1)
@@ -179,8 +185,12 @@ if(is.null(FMX_SAMPLE_PATH)) {
   seuratObj = loadFreemuxletData(seuratObj, FMX_SAMPLE_PATH)
 }
 
-
-print(colnames(seuratObj@meta.data))
+# TODO: should this cause an error?
+if (!"SNG" %in% rownames(seuratObj@misc$scStat$fmlDropletTypeComp)){
+  print_message("Warning - there are no singlets in your demultiplexing output. 
+                Please re-run free/demuxlet with alternate parameters or filtering before running doublet finder.")
+  exit()
+}
 
 # Identify intra-sample doublets
 seuratObj = runDoubletFinder(seuratObj, freemuxlet)

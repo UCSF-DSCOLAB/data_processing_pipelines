@@ -4,7 +4,7 @@ process GATK4_APPLY_BQSR {
     memory {
         // File size in GB
         fileSize = input.size() / (1024 * 1024 * 1024)
-        return 1.GB + (1.GB * fileSize * 0.1)
+        return 1.GB + (2.GB * fileSize * 0.1)
     }
 
     input:

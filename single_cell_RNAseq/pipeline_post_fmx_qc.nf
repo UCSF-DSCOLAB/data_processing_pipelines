@@ -13,6 +13,7 @@ FREEMUXLET_LIBRARY;
 DEMUXLET_POOL;
 DEMUXLET_LIBRARY;
 SEPARATE_DMX;
+FMX_ASSIGN_TO_GT;
 UNMERGE_FMX;
 SEPARATE_FMX;
 FIND_DOUBLETS;
@@ -109,6 +110,19 @@ workflow {
     }
     ch_lib_bam = Channel.fromList(lib_bam)
 
+
+    // set up if there's vdj
+    if (params.settings.add_tcr || params.settings.add_bcr ){
+        ch_vdj_in = Channel.fromList(vdj_in).map{
+              it -> [it[0], it[1], get_clonotypes(it[0], it[1]), get_contigs(it[0], it[1])]
+            }
+
+            ch_vdj_libs = ch_vdj_in.mix(ch_no_vdj)
+                    .branch { 
+                        tcr: it[1].contains("TCR")
+                        bcr: it[1].contains("BCR")
+                    }  
+    }
     // ch_cr_out.df_in [lib, raw_h5]
     // ch_cr_out.seurat_in
 
@@ -172,8 +186,13 @@ workflow {
         // first separate for dsc vs fmx steps
         ch_merge_in_split = ch_merge_in.merge.multiMap{ it ->
           dsc_merge_in: it[0,3] // pool, files
-          pool_ns_vcf: it[0,1,2] // pool, nsamples, vcf
+          pool_ns: it[0,1] // pool, nsamples
+          pool_vcf: it[0,2] // pool, ref_vcf
         }
+         ch_skip_merge_in_split = ch_merge_in.skip_merge.multiMap{ it ->
+          lib_ns_files: it[0,1,3] // lib, nsamples
+          lib_vcf: it[0,2] // lib, ref_vcf
+         }
           
         MERGE_DSC(ch_merge_in_split.dsc_merge_in) // --> [pool1, pool1.tsv, merged_plp, merged_cl, merged_var, barcodes]       
         
@@ -190,10 +209,21 @@ workflow {
             })
           
           // run freemuxlet on merged
-          ch_fmx_in = ch_merge_in_split.pool_ns_vcf
-            .map{ it -> it[0,1]} // remove vcf
-            .combine(ch_merged.demux_in, by: 0) // --> [pool1,  numsamples, ...]
+          ch_fmx_in = ch_merge_in_split.pool_ns
+            .combine(ch_merged_demux_in, by: 0) // --> [pool1, numsamples, ...]
           FREEMUXLET_POOL(ch_fmx_in) 
+
+
+        if (params.settings.fmx_assign_to_gt){
+            // TODO add checks that the reference file exists
+
+            ch_ref_vcf = ch_skip_merge_in_split.lib_vcf.
+              mix(ch_merge_in_split.pool_vcf) // [lib/pool, ref_vcf])
+            ch_fmx_vcf = FREEMUXLET_LIBRARY.out.vcf.mix(FREEMUXLET_POOL.out.vcf) // [lib/pool, fmx_vcf]
+            FMX_ASSIGN_TO_GT(ch_ref_vcf.combine(
+              ch_fmx_vcf, by: 0) // [lib/pool, ref_vcf, fmx_vcf])
+            )
+          } 
 
           // separate demulitplexing output files
           ch_unmerge_in = ch_merged.unmerge_in.combine( FREEMUXLET_POOL.out.merged_files, by: 0)
@@ -243,6 +273,14 @@ workflow {
               .map {it -> it[1,3,2]} //  --> [library, nsamples, files]
           FREEMUXLET_LIBRARY(ch_fmx_in)
           ch_sample_map = FREEMUXLET_LIBRARY.out.sample_map
+          
+          if (params.settings.fmx_assign_to_gt){
+              // TODO add checks that the reference file exists
+              FMX_ASSIGN_TO_GT(ch_pool_vcf.combine(
+                FREEMUXLET_LIBRARY.out.vcf, by: 0) // [lib, ref_vcf, fmx_vcf])
+              )
+          } 
+          
          }
          if (params.settings.demux_method == "demuxlet"){
           ch_dmx_in = ch_plp_files
@@ -282,9 +320,21 @@ workflow {
       // add TCR & BCR data
       ch_tcr_out = Channel.empty()
       ch_bcr_out = Channel.empty()
-      ch_tcr_out = (params.settings.add_tcr) ? SEURAT_ADD_TCR(ch_initial_sobj.combine(ch_vdj_libs.tcr, by:0)).out.sobj : ch_initial_sobj
-      ch_bcr_out = (params.settings.add_bcr) ? SEURAT_ADD_BCR(ch_tcr_out.combine(ch_vdj_libs.bcr, by:0)).out.sobj : ch_tcr_out
       
+      if (params.settings.add_tcr){
+        SEURAT_ADD_TCR(ch_initial_sobj.combine(ch_vdj_libs.tcr, by:0))
+
+        ch_tcr_out = SEURAT_ADD_TCR.out.sobj
+      } else {
+        ch_tcr_out = ch_initial_sobj
+      }
+
+      if (params.settings.add_bcr){
+        SEURAT_ADD_BCR(ch_tcr_out.combine(ch_vdj_libs.bcr, by:0))
+        ch_bcr_out = SEURAT_ADD_BCR.out.sobj
+      } else {
+        ch_bcr_out = ch_tcr_out
+      } 
       // set up seurat QC
       ch_seurat_qc_in =  ch_library_dt //.seurat_in
       .combine(ch_bcr_out, by:0)

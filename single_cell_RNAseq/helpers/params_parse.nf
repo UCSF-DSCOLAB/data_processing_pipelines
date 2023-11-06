@@ -25,6 +25,22 @@ def get_c4_h5_bam(){
            }
     }
 }
+def get_vdj_name(library, data_type){
+  return library.replace("SCG", "SC" + data_type.substring(0, 1))
+}
+def get_vdj_tuple(library, data_type){
+  return [library, data_type, get_vdj_name(library, data_type)]
+}
+
+def get_clonotypes(library, data_type){
+  vdj_library=get_vdj_name(library, data_type)
+  return file("${params.project_dir}/data/single_cell_${data_type}/processed/${vdj_library}/cellranger/clonotypes.csv")
+}
+def get_contigs(library, data_type){
+  vdj_library=get_vdj_name(library, data_type)
+  return file("${params.project_dir}/data/single_cell_${data_type}/processed/${vdj_library}/cellranger/filtered_contig_annotations.csv")
+}
+
 
 def get_pre_qc_outputs(){
 	return params.pools.collectMany {

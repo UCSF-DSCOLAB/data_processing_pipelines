@@ -118,14 +118,10 @@ workflow  {
     
       // run cellranger for vdj if specified
       if (params.settings.add_tcr || params.settings.add_bcr ){
-          CELLRANGER_VDJ(ch_gzip_out.bcr.mix(ch_gzip_out.tcr)) 
-          
-          // add "empty" TCR/BCR libs for missing
-          ch_vdj_libs = CELLRANGER_VDJ.out.bam_h5
-            .mix(ch_no_vdj)
-            .branch { 
-            tcr: it[1].contains("TCR")
-            bcr: it[1].contains("BCR")
+          ch_vdj_in = ch_gzip_out.bcr.mix(ch_gzip_out.tcr).map{
+            it -> get_vdj_tuple(it[0], it[1])
+          }
+          CELLRANGER_VDJ(ch_vdj_in) 
         }
       }
      } 

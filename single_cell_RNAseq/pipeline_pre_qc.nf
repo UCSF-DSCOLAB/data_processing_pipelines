@@ -65,6 +65,17 @@ workflow {
       if (params.settings.skip_cellranger){
             ch_gex_cite_bam_h5 =  Channel.from(get_c4_h5_bam()) // [[library, cell_ranger_bam, raw_h5]
             // TODO expand to work for VDJ as well
+             ch_library_bcr_tcr = ch_library_info.filter { it[1] in ["BCR", "TCR"] }
+                
+              ch_vdj_libs = ch_library_bcr_tcr
+              .map{
+                it -> [it[0], it[1], get_clonotypes(it[0], it[1]), get_contigs(it[0], it[1])]
+              }
+              .branch { 
+                        tcr: it[1].contains("TCR")
+                        bcr: it[1].contains("BCR")
+                    }  
+            
       } else {
             library_info = get_libraries_data_type() // -> [[library_dir, data_type]]
             ch_library_info = Channel.from(library_info)
@@ -78,8 +89,18 @@ workflow {
             // Run cellranger for BCR and TCR data types
             if (params.settings.add_tcr || params.settings.add_bcr ){
                 ch_library_bcr_tcr = ch_library_info.filter { it[1] in ["BCR", "TCR"] }
-                CELLRANGER_VDJ(ch_library_bcr_tcr)
-                ch_bcr_tcr_bam_h5 = CELLRANGER_VDJ.out.bam_h5
+                
+                ch_vdj_in = ch_library_bcr_tcr.map{
+                  it -> get_vdj_tuple(it[0], it[1])
+                }
+                CELLRANGER_VDJ(ch_vdj_in) 
+                
+                ch_vdj_libs = CELLRANGER_VDJ.out.vdj_csvs
+                .branch{
+                  tcr: it[1].contains("TCR")
+                  bcr: it[1].contains("BCR")
+                }
+ 
             }
         }
 
@@ -276,6 +297,23 @@ workflow {
         LOAD_SOBJ(ch_doublet_input)
         ch_initial_sobj = LOAD_SOBJ.out.sobj
      }
+     
+    
+     
+
+     if (params.settings.add_tcr){
+        SEURAT_ADD_TCR(ch_initial_sobj.join(ch_vdj_libs.tcr, by:0, remainder: true))
+        ch_tcr_out = SEURAT_ADD_TCR.out.sobj
+      } else {
+        ch_tcr_out = ch_initial_sobj
+      }
+
+      if (params.settings.add_bcr){
+        SEURAT_ADD_BCR(ch_tcr_out.join(ch_vdj_libs.bcr, by:0, remainder: true))
+        ch_bcr_out = SEURAT_ADD_BCR.out.sobj
+      } else {
+        ch_bcr_out = ch_tcr_out
+      } 
 
      /*
      --------------------------------------------------------
@@ -283,7 +321,7 @@ workflow {
      --------------------------------------------------------
      */
      ch_library_info = Channel.from(get_libraries_data_type()) // -> [[library_dir, data_type]]
-     ch_seurat_input = ch_library_info.join(ch_initial_sobj).join(ch_all_h5)
+     ch_seurat_input = ch_library_info.join(ch_bcr_out).join(ch_all_h5)
      SEURAT_QC(ch_seurat_input)
 
 }

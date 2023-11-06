@@ -15,10 +15,6 @@ process TEST_GZIP_INTEGRITY {
 
     gzip --test ${params.project_dir}/data/single_cell_${data_type}/raw/\${lib_to_use}/\${lib_to_use}*.fastq.gz
     
-    if [[ "${data_type}" == "CITE" ]]
-    then
-      gzip --test ${params.project_dir}/data/single_cell_GEX/raw/${library}/${library}*.fastq.gz
-    fi
 
     """
 }
@@ -74,33 +70,42 @@ ${params.project_dir}/data/single_cell_GEX/raw/${library},${library},Gene Expres
  * Step 1b. Run Cellranger vdj
  */
 process CELLRANGER_VDJ {
-  publishDir "${params.project_dir}/data/single_cell_${data_type}/processed/${library}/cellranger", mode: 'copy'
-  publishDir "${params.project_dir}/data/single_cell_${data_type}/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "cellranger.log" }
+  publishDir "${params.project_dir}/data/single_cell_${data_type}/processed/${vdj_library}/", pattern=: "cellranger/*", mode: 'copy'
+  publishDir "${params.project_dir}/data/single_cell_${data_type}/logs/${vdj_library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "cellranger.log" }
 
   container "${params.container.cellranger}"
   containerOptions "-B ${params.ref.dir} -B ${params.project_dir}"
   
   input:
-  tuple val(library), val(data_type) 
+  tuple val(library), val(data_type), val(vdj_library) 
   
   output:
-  tuple val(library), val(data_type), path("clonotypes.csv"), path("filtered_contig_annotations.csv"), emit: bam_h5
+  tuple val(library), val(data_type), path("cellranger/clonotypes.csv"), path("cellranger/filtered_contig_annotations.csv"), emit: vdj_csvs
   path("cellranger/*"), emit: cr_out_files
   path(".command.log"), emit: log
   
   """
-  gex_library=${library}
-  data_type_name = "${data_type}"
-  vdj_library=\${gex_library/"SCG"/"SC\${data_type_name:0:1}"}
 
-  vdj_path=\${params.project_dir}/data/single_cell_${data_type}/raw/\${vdj_library}
+  vdj_path=${params.project_dir}/data/single_cell_${data_type}/raw/${vdj_library}
+  dt=${data_type}
+    # TODO: update so that this only occurs on retries if there is a chain error
+  if [ \${dt} == "TCR" ]
+  then
+    chain_type="TR"
+  elif [ \${dt} == "BCR" ] 
+  then
+    chain_type="IG"
+  else 
+    echo "Warning - chain type should be one of TCR or BCR"
+    chain_type="auto"
+  fi
   
-  cellranger vdj --id="\${vdj_library}"  \
+  cellranger vdj --id=${vdj_library}  \
     --fastqs=\${vdj_path} \
-    --reference="\${vdj_library}" \
-    --reference=${params.ref.vdj_ref} 
+    --reference=${params.ref.vdj_ref} \
+    --chain=\${chain_type}
   
-  mv ${library}/outs cellranger
+  mv ${vdj_library}/outs cellranger
 
   """
 }
@@ -511,7 +516,7 @@ process FIND_DOUBLETS {
   publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "run_df.log" }
 
 
-  container "${params.container.rsinglecell}" // todo update to one with DF
+  container "${params.container.rsinglecell}" 
 
   input:
   tuple val(library), val(ncells_loaded), path(raw_h5), path(fmx_clusters)
@@ -567,15 +572,15 @@ process SEURAT_ADD_BCR {
   tuple val(library), path(sobj), val(data_type), path(clonotypes_csv), path(contig_csv)
   
   output:
-  tuple val(library), path("${library}_w_BCR.Rds"), emit: sobj
+  tuple val(library), path("${library}_w_BCR.RDS"), emit: sobj
   path(".command.log"), emit: log
 
   """
   if [[ "${data_type}" == "no BCR" ]]
   then
-    cp ${sobj} "${library}_w_BCR.Rds" # todo - switch to soft link
+    cp ${sobj} "${library}_w_BCR.RDS" # todo - switch to soft link
   else
-    Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${projectDir}
+    Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${clonotypes_csv} ${contig_csv} ${projectDir}
   fi
   
   """
@@ -596,15 +601,15 @@ process SEURAT_ADD_TCR {
   tuple val(library), path(sobj), val(data_type), path(clonotypes_csv), path(contig_csv)
   
   output:
-  tuple val(library), path("${library}_w_TCR.Rds"), emit: sobj
+  tuple val(library), path("${library}_w_TCR.RDS"), emit: sobj
   path(".command.log"), emit: log
 
   """
   if [[ "${data_type}" == "no TCR" ]]
   then
-    cp ${sobj} "${library}_w_TCR.Rds" # todo - switch to soft link
+    cp ${sobj} "${library}_w_TCR.RDS" # todo - switch to soft link
   else
-    Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${projectDir}
+    Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${clonotypes_csv} ${contig_csv} ${projectDir}
   fi
   
   """

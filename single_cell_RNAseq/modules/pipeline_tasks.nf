@@ -466,30 +466,10 @@ process SEPARATE_FMX {
    publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/freemuxlet", mode: 'copy', pattern: "${library}*"
    publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "separate_fmx.log" }
   input:
-   tuple val(library), path(library_files)
-
-  output:
-   tuple path("${library}.clust1.samples.gz"), path("${library}.clust1.vcf.gz"), path("${library}.lmix"), emit: fmx_files
-   tuple val(library), path("${library}.clust1.samples.reduced.tsv"), emit: sample_map
-   path(".command.log"), emit: log
-
-  """
-  gunzip -f ${library}.clust1.samples.gz
-  awk {'printf (\"%s\t%s\t%s\t%s\t%s\\n\", \$2, \$3, \$4, \$5, \$6)'} ${library}.clust1.samples > ${library}.clust1.samples.reduced.tsv
-  gzip -f ${library}.clust1.samples
-  """
-}
-
-// TODO: unify the two processes
-process SEPARATE_FMX_PRE {
-   publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/freemuxlet", mode: 'copy', pattern: "${library}*"
-   publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "separate_fmx.log" }
-
-  input:
    tuple val(library), path(vcf_file), path(sample_file), path(lmix_file)
 
   output:
-   tuple path("${library}.clust1.samples.gz"), path("${library}.clust1.vcf.gz"), path("${library}.lmix"), emit: fmx_files
+   tuple val(library), path("${library}.clust1.samples.gz"), path("${library}.clust1.vcf.gz"), path("${library}.lmix"), emit: fmx_files
    tuple val(library), path("${library}.clust1.samples.reduced.tsv"), emit: sample_map
    path(".command.log"), emit: log
 
@@ -499,8 +479,6 @@ process SEPARATE_FMX_PRE {
   gzip -f ${library}.clust1.samples
   """
 }
-
-
 
 
 /*

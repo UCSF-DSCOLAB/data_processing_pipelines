@@ -135,6 +135,9 @@ To run regression tests:
 
 `nf-test test tests/pipeline_pre_qc.nf.test`
 
+The tests run in a directory pre-configured with all the necessary inputs to run the `pre_qc` pipeline. That directory
+is: `/krummellab/data1/integration_test_user/tutorial_lib_sep`
+
 #### Test data
 
 In general test data should be located in: `/krummellab/data1/pipeline_test_data/`.

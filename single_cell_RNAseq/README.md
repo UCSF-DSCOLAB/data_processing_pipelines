@@ -129,7 +129,11 @@ do not need to be tweaked. `nextflow.config` imports these settings for you.
 
 You will need nf-test installed. Please follow the instructions here: https://github.com/askimed/nf-test#installation
 
-To run regression tests: `nf-test test tests/pipeline_pee_qc.nf.test`
+To run regression tests: 
+
+`cd single_cell_RNAseq`
+
+`nf-test test tests/pipeline_pre_qc.nf.test`
 
 #### Test data
 

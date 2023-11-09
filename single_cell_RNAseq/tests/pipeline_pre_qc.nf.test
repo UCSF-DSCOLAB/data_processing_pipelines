@@ -4,11 +4,11 @@ nextflow_pipeline {
     script "pipeline_pre_qc.nf"
     tag "qc-quantiles"
 
-    test("Should successfully demultiplex merged files using freemuxlet and run doublet finder") {
+    test("Should successfully demultiplex merged libraries using freemuxlet and run doublet finder") {
 
         when {
             params {
-                load("./inputs/pre_qc.json")
+                load("./tests/inputs/pre_qc.json")
                 settings = {
                     add_tcr = false
                     add_bcr = false
@@ -38,11 +38,11 @@ nextflow_pipeline {
         }
     }
 
-    test("Should successfully demultiplex merged files using freemuxlet") {
+    test("Should successfully demultiplex merged libraries using freemuxlet") {
 
         when {
             params {
-                load("./inputs/pre_qc.json")
+                load("./tests/inputs/pre_qc.json")
                 settings = {
                     add_tcr = false
                     add_bcr = false
@@ -73,11 +73,11 @@ nextflow_pipeline {
 
     }
 
-     test("Should successfully demultiplex using freemuxlet and run doublet finder") {
+     test("Should successfully demultiplex individual libraries using freemuxlet and run doublet finder") {
 
             when {
                 params {
-                    load("./inputs/pre_qc.json")
+                    load("./tests/inputs/pre_qc.json")
                     settings = {
                         add_tcr = false
                         add_bcr = false
@@ -109,11 +109,11 @@ nextflow_pipeline {
         }
 
 
-    test("Should successfully demultiplex using freemuxlet ") {
+    test("Should successfully demultiplex individual libraries using freemuxlet ") {
 
             when {
                 params {
-                    load("./inputs/pre_qc.json")
+                    load("./tests/inputs/pre_qc.json")
                     settings = {
                         add_tcr = false
                         add_bcr = false
@@ -144,11 +144,11 @@ nextflow_pipeline {
 
         }
 
-        test("Should successfully demultiplex merged files using demuxlet and run doublet finder") {
+        test("Should successfully demultiplex merged libraries using demuxlet and run doublet finder") {
 
             when {
                 params {
-                    load("./inputs/pre_qc.json")
+                    load("./tests/inputs/pre_qc.json")
                     settings = {
                         add_tcr = false
                         add_bcr = false
@@ -178,11 +178,11 @@ nextflow_pipeline {
             }
         }
 
-        test("Should successfully demultiplex merged files using freemuxlet") {
+        test("Should successfully demultiplex merged libraries using freemuxlet") {
 
             when {
                 params {
-                    load("./inputs/pre_qc.json")
+                    load("./tests/inputs/pre_qc.json")
                     settings = {
                         add_tcr = false
                         add_bcr = false
@@ -213,11 +213,11 @@ nextflow_pipeline {
 
         }
 
-         test("Should successfully demultiplex using demuxlet and run doublet finder") {
+         test("Should successfully demultiplex individual libraries using demuxlet and run doublet finder") {
 
                 when {
                     params {
-                        load("./inputs/pre_qc.json")
+                        load("./tests/inputs/pre_qc.json")
                         settings = {
                             add_tcr = false
                             add_bcr = false
@@ -249,11 +249,11 @@ nextflow_pipeline {
             }
 
 
-        test("Should successfully demultiplex using demuxlet") {
+        test("Should successfully demultiplex individual libraries using demuxlet") {
 
                 when {
                     params {
-                        load("./inputs/pre_qc.json")
+                        load("./tests/inputs/pre_qc.json")
                         settings = {
                             add_tcr = false
                             add_bcr = false
@@ -283,8 +283,5 @@ nextflow_pipeline {
                  }
 
             }
-
-    }
-
 
 }

@@ -16,7 +16,7 @@ bcftools index ${POOL}_filtered.bcf
 bcftools isec -O b -p ${POOL}_with_ground_truth -n =2 ${POOL}_filtered.bcf ground_truth.bcf
 
 bcftools merge --merge snps -o pool_with_ground_truth.bcf -O b ${POOL}_with_ground_truth/0000.bcf \
-    ${POOL}_with_ground_truth/0001.bcf
+        ${POOL}_with_ground_truth/0001.bcf
 bcftools index pool_with_ground_truth.bcf
 
 bcftools gtcheck pool_with_ground_truth.bcf | grep -v "^INFO" > ${POOL}_gtcheck.out

@@ -1,4 +1,4 @@
-{ "project_dir" : "/krummellab/data1/amazzara/tutorial_lib_sep",
+{ "project_dir" : "/krummellab/data1/integration_test_user/tutorial_lib_sep/",
   "settings" : {
     "add_tcr" : false,
     "add_bcr" : false,
@@ -9,7 +9,7 @@
     "run_doubletfinder" : true,
     "mincell" : 3,
     "minfeature" : 100,
-    "default_qc_cuts_dir": "",
+    "default_qc_cuts_dir": "/krummellab/data1/integration_test_user/tutorial_lib_sep/",
     "default_qc_cuts_file": "default_qc_cuts.csv",
     "randomseed" : 21212,
     "remove_demux_DBL": true,

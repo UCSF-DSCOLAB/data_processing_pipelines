@@ -1,0 +1,49 @@
+{ "project_dir" : "/krummellab/data1/integration_test_user/tutorial_lib_sep/",
+  "settings" : {
+    "add_tcr" : false,
+    "add_bcr" : false,
+    "skip_cellranger": false,
+    "merge_for_demux" : true,
+    "merge_demux_dir" : "",
+    "demux_method" : "",
+    "run_doubletfinder" : true,
+    "mincell" : 3,
+    "minfeature" : 100,
+    "default_qc_cuts_dir": "/krummellab/data1/integration_test_user/tutorial_lib_sep/",
+    "default_qc_cuts_file": "default_qc_cuts.csv",
+    "randomseed" : 21212,
+    "remove_demux_DBL": true,
+    "remove_all_DBL": true
+  },
+  "pools" : [
+    {
+      "name": "DM1",
+      "nsamples" : "2",
+      "vcf": "/krummellab/data1/pipeline_test_data/assays/scRNA_seq/modality/gex/downsampled_jurkat_tcell/inputs/variants/jurkat_293t_exons_only_w_chr_hg38.vcf",
+      "libraries": [
+        {
+          "name": "TEST-POOL-DM1-SCG1",
+          "ncells_loaded": 200,
+          "data_types": ["GEX"]
+        },
+        {
+          "name": "TEST-POOL-DM1-SCG2",
+          "ncells_loaded": 200,
+          "data_types": ["GEX"]
+        }
+      ]
+    },
+    {
+      "nsamples": "2",
+      "vcf": "/krummellab/data1/pipeline_test_data/assays/scRNA_seq/modality/gex/downsampled_jurkat_tcell/inputs/variants/jurkat_293t_exons_only_w_chr_hg38.vcf",
+      "name": "DM2",
+      "libraries": [
+        {
+          "name": "TEST-POOL-DM2-SCG1",
+          "ncells_loaded": 100,
+          "data_types": ["GEX"]
+        }
+      ]
+    }
+  ]
+}

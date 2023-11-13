@@ -133,7 +133,7 @@ To run regression tests:
 
 `cd single_cell_RNAseq`
 
-`nf-test test tests/pipeline_pre_qc.nf.test`
+`nf-test test tests/pipeline_pre_qc.nf.test --without-trace`
 
 The tests run in a directory pre-configured with all the necessary inputs to run the `pre_qc` pipeline. That directory
 is: `/krummellab/data1/integration_test_user/tutorial_lib_sep`

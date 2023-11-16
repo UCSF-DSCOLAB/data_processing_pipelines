@@ -1,0 +1,14 @@
+configfile: "config.yaml"
+
+rule depooling:
+    input:
+        input_files = config["depooling"]["input_files"]
+    output:
+        output_files = config["depooling"]["output_files"]
+    params:
+        container = config["container"]["r"],
+        script="../../bin/de_pool.R"
+    shell:
+        """
+        singularity exec {params.container} Rscript {params.script} {input} {output}
+        """

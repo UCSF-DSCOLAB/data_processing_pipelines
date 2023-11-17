@@ -9,9 +9,9 @@ process SORTMERNA_RIBOSOMAL_RNA_REMOVAL {
           // File size in GB
           fileSize = reads[0].size() / (1024 * 1024 * 1024)
         }
-	if (fileSize > 3){
-	   fileSize = 3
-	}
+        if (fileSize > 3) {
+            fileSize = 3
+        }
         return 64.GB * (1 + (fileSize * 4))
     }
 

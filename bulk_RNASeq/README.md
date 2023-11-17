@@ -41,6 +41,7 @@ cd data_processing_pipelines/bulk_RNAseq
 
 ## Configuration
 * Create a sample sheet (CSV) specifying each sample, locations of their sequencing reads (FASTQ), and whether they are single-end or paired-end reads. The figure below is an example of a correctly formatted sample sheet:
+* Avoid creating the csv using Microsoft Excel because it can add weird symbols (eg. <U+FEFF>) to the beginning of the file causing issues for the pipeline
 ![sample_sheet](docs/figs/sample_sheet_example.png)
 * If one or more of your samples have multiple FASTQ reads (i.e. multiple lanes), the sample sheet should contain a row for each lane with an identical name under the `sample` column
 * Open `config/user_directories.config` using your favorite text editor, and specify the following parameters before saving the file:
@@ -50,6 +51,7 @@ cd data_processing_pipelines/bulk_RNAseq
 
 ### Usage (on C4 compute nodes)
 * Run the DSL2 pipeline using Slurm and Singularity
+    * NOTE: you must run the following command inside `data_processing_pipelines/bulk_RNASeq/`
 ```bash
 sbatch ./run_pipeline.sh -profile hpc
 ```

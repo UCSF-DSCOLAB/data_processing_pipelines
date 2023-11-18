@@ -53,13 +53,13 @@ cd data_processing_pipelines/bulk_RNAseq
 * Run the DSL2 pipeline using Slurm and Singularity
     * NOTE: you must run the following command inside `data_processing_pipelines/bulk_RNASeq/`
 ```bash
-sbatch ./run_pipeline.sh -profile hpc
+sbatch ./run_pipeline.sh
 ```
 
 #### Additional Functionality
 * To resume a pipeline run on Slurm 
 ```bash
-sbatch ./run_pipeline.sh -profile hpc -resume
+sbatch ./run_pipeline.sh -resume
 ```
 
 ### Local Usage

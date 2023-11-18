@@ -38,5 +38,5 @@ else
     export NXF_WORK=${nf_work}
     export APPTAINERENV_TMPDIR=${nf_work}
     # run the pipeline
-    nextflow run bulk_rna_seq.nf -c config/base.config "${@:1}"
+    nextflow run bulk_rna_seq.nf -c config/base.config -profile hpc "${@:1}"
 fi

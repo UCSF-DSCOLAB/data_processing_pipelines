@@ -1,10 +1,9 @@
 #!/bin/bash
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --mem=10G
+#SBATCH --mem=2G
 #SBATCH --time=7-00:00:00
 #SBATCH --output=/krummellab/data1/%u/logs/bulk_rnaseq_nf_%j.log
-#SBATCH --partition=krummellab,common
 #SBATCH --exclude=c4-n20
 
 # to run:
@@ -39,5 +38,5 @@ else
     export NXF_WORK=${nf_work}
     export APPTAINERENV_TMPDIR=${nf_work}
     # run the pipeline
-    nextflow run bulk_rna_seq.nf -c config/base.config "${@:1}"
+    nextflow run bulk_rna_seq.nf -c config/base.config -profile hpc "${@:1}"
 fi

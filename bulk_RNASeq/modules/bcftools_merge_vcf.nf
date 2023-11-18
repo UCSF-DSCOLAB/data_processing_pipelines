@@ -22,12 +22,24 @@ process BCFTOOLS_MERGE_VCF {
     script:
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
-    """
-    # Create a comma-separated list of VCF file names
-    bcftools merge \\
-    --threads $task.cpus \\
-    --output-type b \\
-    --output merged_snps.bcf \\
-    ${vcfs.join(' ')}
-    """
+
+    if (vcfs.toList().size() > 1) {
+        """
+        # Create a comma-separated list of VCF file names
+        bcftools merge \\
+        --threads $task.cpus \\
+        --output-type b \\
+        --output merged_snps.bcf \\
+        ${vcfs.join(' ')}
+        """
+    } else {
+        """
+        bcftools view \\
+        --output-type b \\
+        --output merged_snps.bcf \\
+        ${vcfs.join(' ')}
+        """
+    }
+
+    
 }

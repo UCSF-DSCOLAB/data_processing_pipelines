@@ -78,14 +78,16 @@ nextflow run bulk_rna_seq.nf -c config/base.config -w your/tmp/directory -profil
 * Common cause of failure includes insufficent memory allocated for jobs (solution: for the process that ran out of memory, adjust the amount of computational resource allocated in `container.config` for _HPC Usage_ or `conda.config` for _Local Usage_)
 
 ## Authors
-Emily Flynn
+Emily Flynn (@erflynn)
 
-Al Latif
+Al Latif (@AlaaALatif)
 
-Amadeo Mazzara
+Lily Zemelko (@lzemelko)
 
-Tammie Tam
+Amadeo Mazzara (@amadeovezz)
 
-Daniel Bunis
+Tammie Tam (@tastam)
+
+Daniel Bunis (@dtm2451)
 
 Walter Eckalbar

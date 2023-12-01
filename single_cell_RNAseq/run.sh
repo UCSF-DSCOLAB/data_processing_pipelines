@@ -49,6 +49,8 @@ if [ "$failed" = true ];
 then
   exit 1
 else
+    unset SBATCH_PARTITION
+
     # create a working directory
     nf_work=/c4/scratch/${USER}/nextflow/${SLURM_JOB_ID}/
     mkdir -p $nf_work

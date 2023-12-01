@@ -61,7 +61,8 @@ if [ "$failed" = true ];
 then
   exit 1
 else
-#    mkdir -p $nf_work
+    unset SBATCH_PARTITION
+
     export NXF_WORK=${nf_work}
 
     # run the pipeline

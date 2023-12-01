@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --mem=15G
-#SBATCH --time=24:00:00
+#SBATCH --mem=2G
+#SBATCH --time=7-00:00:00
 #SBATCH --output=/krummellab/data1/%u/logs/scseq_nf_%j.log
 #SBATCH --partition=krummellab,common
 

@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --mem=15G
-#SBATCH --time=48:00:00
+#SBATCH --mem=2G
+#SBATCH --time=7-00:00:00
 #SBATCH --output=/krummellab/data1/%u/logs/scseq_nf_resume_%j.log
 #SBATCH --partition=krummellab,common
 
@@ -61,12 +61,10 @@ if [ "$failed" = true ];
 then
   exit 1
 else
-    # create a working directory
-
 #    mkdir -p $nf_work
     export NXF_WORK=${nf_work}
 
     # run the pipeline
-    nextflow run pipeline_${STEP}.nf -c tool.config -params-file $PARAM_FILE -resume "${@:4}" 
+    nextflow run pipeline_${STEP}.nf -params-file $PARAM_FILE -resume "${@:4}" 
 fi
 

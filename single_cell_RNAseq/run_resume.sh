@@ -15,25 +15,14 @@
 # $3 is the JOB_ID of the main run that you want to resume
 # then pass as many additional arguments to nextflow as you'd like (e.g. -with-timeline, -profile test, etc.)
 
-function cleanup()
-{   
-    if [ $? -eq 0 ]
-    then
-	echo "COMPLETED on a resume! Please delete the working directory"
-    else 
-	echo "FAILED with exit code $?"
-    fi
-}
-trap cleanup EXIT
-
-export NXF_JAVA_HOME="/krummellab/data1/erflynn/software/java/jdk-17.0.5"
-export PATH=$PATH:/krummellab/data1/erflynn/software/nextflow/22.10.4_build_5836/
-
-# check on arguments
-failed=false
 PARAM_FILE=$1
 STEP=$2
 PREV_JOB_ID=$3
+
+
+
+# check on arguments
+failed=false
 
 if [ ! -f "$PARAM_FILE" ]; 
 then

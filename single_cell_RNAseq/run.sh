@@ -14,23 +14,12 @@
 # $2 is the step of the pipeline you are running, must be one of "pre_qc", "post_qc", "pre_fmx_qc", "post_fmx_qc"
 # then pass as many additional arguments to nextflow as you'd like (e.g. -with-timeline, -profile test)
 
-function cleanup()
-{
-    if [ $? -eq 0 ]
-    then
-    echo "step complete done, deleting working directory"
-    nf_work=/c4/scratch/${USER}/nextflow/${SLURM_JOB_ID}/
-    rm -rf ${nf_work}
-    fi
-}
-trap cleanup EXIT
 
-
-# check on arguments
-failed=false
 PARAM_FILE=$1
 STEP=$2
 
+# check on arguments
+failed=false
 if [ ! -f "$PARAM_FILE" ];
 then
  echo "Parameter file does not exist"

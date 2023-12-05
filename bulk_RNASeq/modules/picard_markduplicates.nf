@@ -1,6 +1,11 @@
 process PICARD_MARKDUPLICATES {
     tag "$meta.id"
     label 'picard_markduplicates'
+    memory {
+        // File size in GB
+        fileSize = bam.size() / (1024 * 1024 * 1024)
+        return 120.GB + (5.GB * fileSize)
+    }
 
     input:
     tuple val(meta), path(bam), path(bai)
@@ -20,7 +25,7 @@ process PICARD_MARKDUPLICATES {
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
     gatk \\
-        --java-options "-Xmx${task.memory.toGiga()-1}g" MarkDuplicates \\
+        --java-options "-Xmx${task.memory.toGiga()}g" MarkDuplicates \\
         $args \\
         --INPUT $bam \\
         --OUTPUT ${prefix}.picard.bam \\

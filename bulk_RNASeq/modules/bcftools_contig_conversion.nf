@@ -2,6 +2,11 @@ process BCFTOOLS_CONTIG_CONVERSION {
     tag "$meta.id"
     label 'bcftools_contig_conversion'
     publishDir "${params.results_directory}/snps", mode: 'copy'
+    memory {
+        // File size in GB
+        fileSize = vcf.size() / (1024 * 1024 * 1024)
+        return 1.GB + (1.GB * fileSize * 0.01)
+    }
 
     input:
     tuple val(meta), path(vcf)

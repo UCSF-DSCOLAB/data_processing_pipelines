@@ -10,8 +10,9 @@ This `example-inputs` directory contains the following files:
 ### Toy Data
 The toy data is available on c4 at:
 `/krummellab/data1/pipeline_test_data/assays/scRNA_seq/modality/gex/downsampled_jurkat_tcell/inputs/fastqs/`
+`/krummellab/data1/pipeline_test_data/assays/scRNA_seq/modality/gex/downsampled_jurkat_tcell/inputs/variants/`
 
-This full workflow test case was created from the a dataset of 50:50 jurkat-293t cells, originally from [Zheng et al 2017](https://www.nature.com/articles/ncomms14049), with full data available on the [10x website]( https://www.10xgenomics.com/resources/datasets/50-percent-50-percent-jurkat-293-t-cell-mixture-1-standard-1-1-0). A version of the bam that downsampled to 500 cells was downloaded from the [poscle tutorial](https://drive.google.com/drive/folders/1drNBY0SltMKpgLe_z9w1Swx1QK14uO5T), converted to fastqs. This was then artificially split into a dataset of multiple "pools" for testing purposes, with 200, 200, and 100 cells per library, and the first two libraries belonging to the same "pool". 
+This full workflow test case was created from the a dataset of 50:50 jurkat-293t cells, originally from [Zheng et al 2017](https://www.nature.com/articles/ncomms14049), with full data available on the [10x website]( https://www.10xgenomics.com/resources/datasets/50-percent-50-percent-jurkat-293-t-cell-mixture-1-standard-1-1-0). A version of the bam that downsampled to 500 cells was downloaded from the [poscle tutorial](https://drive.google.com/drive/folders/1drNBY0SltMKpgLe_z9w1Swx1QK14uO5T), converted to fastqs. This was then artificially split into a dataset of multiple "pools" for testing purposes, with 200, 200, and 100 cells per library, and the first two libraries belonging to the same "pool". The corresponding VCF was downloaded from Box [https://ucsf.app.box.com/s/vg1bycvsjgyg63gkqsputprq5rxzjl6k], a chromosome prefix was then added, the results lifted over from hg19 to hg38 using Picard tools.
 
 ### Parameter file fields explained
 
@@ -39,7 +40,7 @@ Note that comments cannot be included in json used for a run.
   "pools" : {
     "DM1" : { # name of the pool
       "nsamples" : "2", # number of samples in the pool, needed for freemuxlet
-      "vcf": "", # vcf containing just the individuals in the pool, needed for demuxlet
+      "vcf": "jurkat_293t_exons_only_w_chr_hg38.vcf ", # vcf containing just the individuals in the pool, needed for demuxlet or fmx_assign_to_gt, can be left blank
       "libraries": { 
         "TEST-POOL-DM1-SCG1": { # name of the library
           "ncells_loaded": 200, # number of cells loaded, helpful for checking counts and relative doublets

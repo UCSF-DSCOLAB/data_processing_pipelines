@@ -1,6 +1,11 @@
 process GATK4_SPLITNCIGARREADS {
     tag "$meta.id"
     label 'gatk4_splitncigarreads'
+    memory {
+        // File size in GB
+        fileSize = bam.size() / (1024 * 1024 * 1024)
+        return 200.GB + (1.GB * fileSize * 5)
+    }
 
     input:
     tuple val(meta), path(bam), path(bai)
@@ -20,7 +25,7 @@ process GATK4_SPLITNCIGARREADS {
     def prefix = task.ext.prefix ?: "${meta.id}"
     // def interval_command = intervals ? "--intervals $intervals" : ""
     """
-    gatk --java-options "-Xmx${task.memory.toGiga()-1}g" SplitNCigarReads \\
+    gatk --java-options "-Xmx${task.memory.toGiga()}g" SplitNCigarReads \\
         --input $bam \\
         --output ${prefix}.bam \\
         --reference $genome \\

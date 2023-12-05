@@ -2,6 +2,11 @@ process SAMTOOLS_BAM_TO_CRAM {
     tag "$meta.id"
     label 'samtools_bam_to_cram'
     publishDir "${params.results_directory}/star", mode: 'copy'
+    memory {
+        // File size in GB
+        fileSize = bam.size() / (1024 * 1024 * 1024)
+        return 1.GB + (1.GB * fileSize * 0.001)
+    }
 
     input:
     tuple val(meta), path(bam)

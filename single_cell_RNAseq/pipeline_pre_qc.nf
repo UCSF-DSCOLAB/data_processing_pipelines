@@ -49,24 +49,15 @@ log.info """\
 
 workflow {
 
-//        /*
-//         --------------------------------------------------------
-//         Initial Input:
-//                 - Libraries: Directory of fastqs
-//         Output:
-//                 - BAM / H5 files for each library
-//         --------------------------------------------------------
-//        */
+
 
       // TODO: perhaps just shove everything in a bam and h5 channel, and do not differentiate between data types
       ch_gex_cite_bam_h5 = Channel.empty()
-      ch_bcr_tcr_bam_h5 = Channel.empty()
-
-      ch = Channel.from(get_libraries_data_type_tuples())
+      ch_vdj_libs = Channel.empty()
 
       if (params.settings.skip_cellranger){
             ch_gex_cite_bam_h5 =  Channel.from(get_c4_h5_bam()) // [[library, cell_ranger_bam, raw_h5]
-            // TODO expand to work for VDJ as well
+
              ch_library_bcr_tcr = Channel.from(get_libraries_data_type_tuples()).transpose().filter { it[1] in ["BCR", "TCR"] }
                 
               ch_vdj_libs = ch_library_bcr_tcr
@@ -81,17 +72,21 @@ workflow {
       } else {
             ch_library_info = Channel.from(get_libraries_data_type_tuples()).transpose()
             TEST_GZIP_INTEGRITY(ch_library_info) // -> [[library_dir, data_type]]
+            
+            ch_gzip_out = TEST_GZIP_INTEGRITY.out
+            .branch{
+              gex_cite: it[1] in ["GEX", "CITE"]
+              bcr_tcr: it[1] in ["BCR", "TCR"]
+            }
 
             // Run cellranger for GEX and CITE data types
-            ch_library_cite_gex = ch_library_info.filter { it[1] in ["GEX", "CITE"] }
-            CELLRANGER(ch_library_cite_gex)
+            CELLRANGER(ch_gzip_out.gex_cite)
             ch_gex_cite_bam_h5 = CELLRANGER.out.bam_h5 // --> [[library, cell_ranger_bam, raw_h5]]
 
             // Run cellranger for BCR and TCR data types
             if (params.settings.add_tcr || params.settings.add_bcr ){
-                ch_library_bcr_tcr = ch_library_info.filter { it[1] in ["BCR", "TCR"] }
                 
-                ch_vdj_in = ch_library_bcr_tcr.map{
+                ch_vdj_in = ch_gzip_out.bcr_tcr.map{
                   it -> get_vdj_tuple(it[0], it[1])
                 }
                 CELLRANGER_VDJ(ch_vdj_in) 
@@ -106,8 +101,8 @@ workflow {
         }
 
     // Extract all bam and h5 files
-    ch_all_bam = ch_gex_cite_bam_h5.mix(ch_bcr_tcr_bam_h5).map { it -> [it[0], it[1]] } // [[library, cell_ranger_bam]]
-    ch_all_h5 = ch_gex_cite_bam_h5.mix(ch_bcr_tcr_bam_h5).map { it -> [it[0], it[2]] } // [[library, raw_h5 ]]
+    ch_all_bam = ch_gex_cite_bam_h5.map { it -> [it[0], it[1]] } // [[library, cell_ranger_bam]]
+    ch_all_h5 = ch_gex_cite_bam_h5.map { it -> [it[0], it[2]] } // [[library, raw_h5 ]]
 
     /*
     --------------------------------------------------------

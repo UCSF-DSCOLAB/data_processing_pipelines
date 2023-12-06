@@ -65,13 +65,7 @@ def get_pool_library_meta(){
     }
 }
 
-def get_libraries_data_type(){
-    return params.pools.collectMany {
-                pool -> pool.libraries.collect {
-                    library -> [library.name, library.data_types.join(",")]
-                }
-           }
-}
+
 
 def get_libraries_data_type_tuples(){
     return params.pools.collectMany {

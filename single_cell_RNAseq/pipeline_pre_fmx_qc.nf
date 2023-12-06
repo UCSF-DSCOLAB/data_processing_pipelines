@@ -19,22 +19,6 @@ nextflow.enable.dsl=2
  * define getters for required tasks
  */
 
-def get_libraries (pool) {
-  return params.pools[pool].libraries.keySet()
-}
-def get_data_types (pool, library){
-  return params.pools[pool].libraries[library].data_types
-} 
-def get_nsamples (pool){
-  return params.pools[pool].nsamples
-}
-def get_cr_h5(library){
-  return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/cellranger/raw_feature_bc_matrix.h5", checkIfExists: true)
-}
-def get_cr_bam(library){
-  return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/cellranger/possorted_genome_bam.bam", checkIfExists: true)
-}
-
 
  
 include { 
@@ -44,120 +28,62 @@ CELLRANGER_VDJ;
 SEURAT_PRE_FMX_QC
 } from './modules/pipeline_tasks.nf'
 
+include {
+get_c4_h5_bam; get_pool_library_meta; get_libraries_data_type_tuples;
+} from  './helpers/params_parse.nf'
+
+
+include {
+extractFileName
+} from "./helpers/utils.nf"
  
 workflow  {
      
-     // set up variables and channels
-     library_dt = [] // channel with library and main data type (GEX or CITE)
-     vdj_in = [] // channel of libraries with VDJ data
-     no_vdj_in = [] // channel of libraries without VDJ data
+      ch_gex_cite_bam_h5 = Channel.empty()
 
-     // read in the parameters
-     list_pools = params.pools.keySet()
-     for (pool in list_pools){
-        libraries = get_libraries(pool)
-        
-        for (library in libraries){
-          dts = get_data_types(pool, library)
-
-          // check for CITE-seq data, if not the main data_type is "GEX"
-          main_dt = ("CITE" in dts) ? "CITE" : "GEX"
-          library_dt << [library, main_dt]
+      if (params.settings.skip_cellranger){
+            ch_gex_cite_bam_h5 =  Channel.from(get_c4_h5_bam()) // [[library, cell_ranger_bam, raw_h5]
             
-          // check for "TCR/BCR"
-          if ("BCR" in dts){
-            vdj_in << [library, "BCR"]
-          } else {
-            no_vdj_in << [library, "No BCR", "empty", "empty"]
-          }
-          if ("TCR" in dts){
-            vdj_in << [library, "TCR"]
-          } else {
-            no_vdj_in << [library, "No TCR", "empty", "empty"]
-          }
+      } else {
+            ch_library_info = Channel.from(get_libraries_data_type_tuples()).transpose()
+            TEST_GZIP_INTEGRITY(ch_library_info) // -> [[library_dir, data_type]]
+            
+            ch_gzip_out = TEST_GZIP_INTEGRITY.out
+            .branch{
+              gex_cite: it[1] in ["GEX", "CITE"]
+              bcr_tcr: it[1] in ["BCR", "TCR"]
+            }
 
-        }
-     }
-     
-     
-     // set up channels from input
-     ch_all_lib_dt = Channel.fromList(library_dt)
-      .mix(Channel.fromList(vdj_in)) // ['library', 'dt']
-     ch_no_vdj = Channel.fromList(no_vdj_in)
+            // Run cellranger for GEX and CITE data types
+            CELLRANGER(ch_gzip_out.gex_cite)
+            ch_gex_cite_bam_h5 = CELLRANGER.out.bam_h5 // --> [[library, cell_ranger_bam, raw_h5]]
+
+            // Run cellranger for BCR and TCR data types
+            if (params.settings.add_tcr || params.settings.add_bcr ){
+                
+                ch_vdj_in = ch_gzip_out.bcr_tcr.map{
+                  it -> get_vdj_tuple(it[0], it[1])
+                }
+                CELLRANGER_VDJ(ch_vdj_in) 
  
-    
-     /* 
-     --------------------------------------------------------
-     Run cellranger
-     --------------------------------------------------------
-     */
-     ch_vdj_libs = Channel.empty()
-     ch_lib_h5 = Channel.empty()
-     ch_library_dt = Channel.empty()
-     if (!params.settings.skip_cellranger){ 
-
-      TEST_GZIP_INTEGRITY(ch_all_lib_dt)
-      ch_gzip_out = TEST_GZIP_INTEGRITY.out.branch{
-        gex: it[1].contains("GEX")
-        cite: it[1].contains("CITE")
-        bcr: it[1].contains("BCR")
-        tcr: it[1].contains("TCR")
-      } // separate the output by data type
-      
-      // if it passes Gzip --> split the CITE/GEX to downstream channels
-      ch_library_dt = ch_gzip_out.cite.mix(ch_gzip_out.gex) 
-        .multiMap { it -> 
-          cellranger_in: it
-          prefilt_in: it
-        } // [library, data_type]
-
-
-
-      CELLRANGER(ch_library_dt.cellranger_in) // --> [[library, cr_bam, raw_h5], [cr_files]]
-      ch_lib_h5 = CELLRANGER.out.bam_h5.map {it -> it[0,2]}
-    
-      // run cellranger for vdj if specified
-      if (params.settings.add_tcr || params.settings.add_bcr ){
-          ch_vdj_in = ch_gzip_out.bcr.mix(ch_gzip_out.tcr).map{
-            it -> get_vdj_tuple(it[0], it[1])
-          }
-          CELLRANGER_VDJ(ch_vdj_in) 
-        }
+            }
       }
-     } 
-     // skip running cellranger and grab output from canonical location
-     // TODO expand to work for VDJ as well
-     else {
-        lib_h5 = []
-        list_pools = params.pools.keySet()
-        for (pool in list_pools){
-          for (library in get_libraries(pool)){
-            h5 = get_cr_h5(library)
-            lib_h5 << [library, h5]
-          }
-        }
-        ch_lib_h5 = Channel.fromList(lib_h5)
-        ch_library_dt = Channel.fromList(library_dt).multiMap { it -> prefilt_in: it}
-     }
 
     
-    /* 
-    --------------------------------------------------------
-    Filter barcode list for freemuxlet
-    --------------------------------------------------------
-    */
 
-    ch_barcodes_list = Channel.empty()
+    ch_all_h5 = ch_gex_cite_bam_h5.mix(ch_bcr_tcr_bam_h5).map { it -> [it[0], it[2]] } // [[library, raw_h5 ]]
+
+
     // filter before freemuxlet if specified
-      ch_prefilt_in = ch_library_dt.prefilt_in
-        .combine(ch_lib_h5, by:0)  // [library, data_type, raw_h5]
-      SEURAT_PRE_FMX_QC(ch_prefilt_in) 
+    ch_main_dt = Channel.from(get_libraries_data_type_tuples()).transpose().filter(it[1] in ["GEX", "CITE"])
+    ch_main_dt.join{
+      ch_all_h5, by:0 // [library, data_type, h5]
+    }  
+
+    SEURAT_PRE_FMX_QC(ch_prefilt_in) 
 
 }
 
-workflow.onComplete {
-    log.info ( workflow.success ? "Done!" : "Oops .. something went wrong" )
-}
 
 
 

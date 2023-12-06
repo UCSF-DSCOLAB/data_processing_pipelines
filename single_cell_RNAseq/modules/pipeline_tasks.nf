@@ -47,7 +47,7 @@ process CELLRANGER {
   gex_library=${library}
 
   echo "fastqs,sample,library_type
-${params.project_dir}/data/single_cell_GEX/raw/${library},${library},Gene Expression" > ${library}_libraries.csv
+    ${params.project_dir}/data/single_cell_GEX/raw/${library},${library},Gene Expression" > ${library}_libraries.csv
   
   # add a line to the config if there is cite-seq data
   if [[ "${data_type}" == "CITE" ]]
@@ -59,7 +59,9 @@ ${params.project_dir}/data/single_cell_GEX/raw/${library},${library},Gene Expres
   cellranger count --id=${library}  \
     --libraries=${library}_libraries.csv \
     --feature-ref=${params.ref.cite_feature_ref} \
-    --transcriptome=${params.ref.transcriptome} 
+    --transcriptome=${params.ref.transcriptome} \
+    --localcores=${task.cpus - 1} \
+    --localmem=${task.memory.toGiga() - 2}
 
   mv ${library}/outs cellranger
   """
@@ -104,7 +106,9 @@ process CELLRANGER_VDJ {
   cellranger vdj --id=${vdj_library}  \
     --fastqs=\${vdj_path} \
     --reference=${params.ref.vdj_ref} \
-    --chain=\${chain_type}
+    --chain=\${chain_type} \
+    --localcores=${task.cpus - 1} \
+    --localmem=${task.memory.toGiga() - 2}
   
   mv ${vdj_library}/outs cellranger
 

@@ -29,9 +29,10 @@ SEURAT_QC
 // Helper functions
 
 include {
-get_c4_h5; get_c4_bam; get_c4_h5_bam; get_pool_library_meta; get_libraries_data_type;
+get_c4_h5; get_c4_bam; get_c4_h5_bam; get_pool_library_meta; get_libraries_data_type; get_libraries_data_type_tuples;
 get_pool_by_sample_count; get_library_by_sample_count; get_single_library_by_pool;
-get_multi_pool_by_library ; get_library_by_pool; get_multi_library_by_pool; get_pool_vcf ; get_library_ncells
+get_multi_pool_by_library ; get_library_by_pool; get_multi_library_by_pool; get_pool_vcf ; get_library_ncells;
+get_vdj_tuple; get_vdj_name ; get_clonotypes; get_contigs
 } from  './helpers/params_parse.nf'
 
 include {
@@ -61,10 +62,12 @@ workflow {
       ch_gex_cite_bam_h5 = Channel.empty()
       ch_bcr_tcr_bam_h5 = Channel.empty()
 
+      ch = Channel.from(get_libraries_data_type_tuples())
+
       if (params.settings.skip_cellranger){
             ch_gex_cite_bam_h5 =  Channel.from(get_c4_h5_bam()) // [[library, cell_ranger_bam, raw_h5]
             // TODO expand to work for VDJ as well
-             ch_library_bcr_tcr = Channel.from(get_libraries_data_type()).filter { it[1] in ["BCR", "TCR"] }
+             ch_library_bcr_tcr = Channel.from(get_libraries_data_type_tuples()).transpose().filter { it[1] in ["BCR", "TCR"] }
                 
               ch_vdj_libs = ch_library_bcr_tcr
               .map{
@@ -76,8 +79,7 @@ workflow {
                     }  
             
       } else {
-            library_info = get_libraries_data_type() // -> [[library_dir, data_type]]
-            ch_library_info = Channel.from(library_info)
+            ch_library_info = Channel.from(get_libraries_data_type_tuples()).transpose()
             TEST_GZIP_INTEGRITY(ch_library_info) // -> [[library_dir, data_type]]
 
             // Run cellranger for GEX and CITE data types
@@ -310,7 +312,7 @@ workflow {
      Set up seurat object
      --------------------------------------------------------
      */
-     ch_library_info = Channel.from(get_libraries_data_type()) // -> [[library_dir, data_type]]
+     ch_library_info = Channel.from(get_libraries_data_type_tuples()).transpose() // -> [[library_dir, data_type]]
      ch_seurat_input = ch_library_info.join(ch_bcr_out).join(ch_all_h5)
      SEURAT_QC(ch_seurat_input)
 

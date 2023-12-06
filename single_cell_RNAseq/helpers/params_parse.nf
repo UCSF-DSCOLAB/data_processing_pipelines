@@ -73,6 +73,16 @@ def get_libraries_data_type(){
            }
 }
 
+def get_libraries_data_type_tuples(){
+    return params.pools.collectMany {
+                pool -> pool.libraries.collect {
+                    library -> [library.name, library.data_types]
+                }
+        }
+           
+}
+
+
 def get_library_ncells(){
     return params.pools.collectMany {
                 pool -> pool.libraries.collect {

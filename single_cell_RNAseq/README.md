@@ -135,8 +135,14 @@ To run regression tests:
 
 `nf-test test tests/pipeline_pre_qc.nf.test --without-trace`
 
-The tests run in a directory pre-configured with all the necessary inputs to run the `pre_qc` pipeline. That directory
-is: `/krummellab/data1/integration_test_user/tutorial_lib_sep`
+#### How do the tests work
+
+- For each test we copy all the necessary file inputs from `/krummellab/data1/integration_test_user/tutorial_lib_sep` 
+into an isolated testing environment.
+- That testing environment is `.nf-test/hash/meta`
+- We inject these input paths into our pipeline.
+- The tests then operate on these files.
+- We assert that the necessary files are created in this testing environment.
 
 #### Test data
 

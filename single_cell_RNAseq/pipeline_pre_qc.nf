@@ -179,11 +179,7 @@ workflow {
             // appended any merged libraries
             ch_sample_map = SEPARATE_FMX.out.sample_map.mix(FREEMUXLET_LIBRARY.out.sample_map)
 
-            ch_lib_vcf = SEPARATE_FMX.out.fmx_files.map{
-              it -> [it[0], it[2]] // [library, vcf]
-            }.mix(
-              FREEMUXLET_LIBRARY.out.vcf
-            )
+
 
         } else {
                 // Run freemuxlet on all libraries, regardless if there are many libraries per pool
@@ -194,7 +190,6 @@ workflow {
                 FREEMUXLET_LIBRARY(ch_single_lib_transformed)
 
                 ch_sample_map = FREEMUXLET_LIBRARY.out.sample_map
-                ch_lib_vcf =  FREEMUXLET_LIBRARY.out.vcf
           }
 
         } else if ( params.settings.demux_method == "demuxlet"){
@@ -240,6 +235,17 @@ workflow {
         }
 
         if (params.settings.fmx_assign_to_gt){
+
+            if (params.settings.merge_for_demux){
+              ch_lib_vcf = SEPARATE_FMX.out.fmx_files.map{
+                it -> [it[0], it[2]] // [library, vcf]
+              }.mix(
+                FREEMUXLET_LIBRARY.out.vcf
+              )
+            } else {
+              ch_lib_vcf =  FREEMUXLET_LIBRARY.out.vcf
+            }
+
             ch_gt_input =  Channel.from(get_pool_vcf()) // [pool, vcf]
               .combine(Channel.from(get_library_by_pool()).map{ it -> [it[1], it[0]] }, by: 0) // [pool, vcf, lib]
               .map{it -> [it[2], it[1]]} // [lib, vcf]

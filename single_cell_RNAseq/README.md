@@ -133,7 +133,7 @@ To run regression tests:
 
 `cd single_cell_RNAseq`
 
-`nf-test test tests/pipeline_pre_qc.nf.test --without-trace`
+`/krummellab/data1/software/bin/nf-testtest tests/pipeline_pre_qc.nf.test --without-trace`
 
 #### How do the tests work
 

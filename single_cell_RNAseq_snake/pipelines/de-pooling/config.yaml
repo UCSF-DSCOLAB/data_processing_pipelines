@@ -1,9 +1,15 @@
 ## Specific to users of the pipeline - users must modify ##
 depooling:
   input_files:
-    - "/krummellab/data1/amazzara/tutorial_lib_sep/data/single_cell_GEX/processed/TEST-POOL-DM2-SCG1/automated_processing/TEST-POOL-DM2-SCG1_raw.rds"
-  output_files:
-    - "/krummellab/data1/amazzara/tutorial_lib_sep/data/single_cell_GEX/processed/TEST-POOL-DM2-SCG1/automated_processing/TEST-POOL-DM2-SCG1_out.rds"
+    - "/krummellab/data1/amazzara/tutorial_lib_sep/data/single_cell_GEX/processed/TEST-POOL-DM1-SCG1/automated_processing/TEST-POOL-DM1-SCG1_raw.rds"
+    - "/krummellab/data1/amazzara/tutorial_lib_sep/data/single_cell_GEX/processed/TEST-POOL-DM1-SCG2/automated_processing/TEST-POOL-DM1-SCG2_raw.rds"
+  output_file:
+    - "/krummellab/data1/amazzara/tutorial_lib_sep/data/single_cell_GEX/processed/depooled/DM1.rds"
+  container_input_files:
+    - "/data/TEST-POOL-DM1-SCG1/automated_processing/TEST-POOL-DM1-SCG1_raw.rds"
+    - "/data/TEST-POOL-DM1-SCG2/automated_processing/TEST-POOL-DM1-SCG2_raw.rds"
+  container_output_file:
+    - "/data/depooled/DM1.rds"
 
 ## Users do not need to modify ##
 container:

@@ -2,11 +2,11 @@
 
 This directory is meant to contain single cell pre-processing code using the snakemake workflow management system. 
 
-Snakemake it being evaluated as as alternative to nextflow.
+Snakemake is being evaluated as as alternative to nextflow.
 
-## Install and usage
+## Snakemake set-up
 
-### Miniforge
+### How was snakemake installed? 
 
 `mamba` is the recommended way to install snakemake. It is a conda distribution that some optimized features suitable for snakemake. 
 
@@ -30,7 +30,6 @@ Run `snakemake -h` to verify that you can reference snakemake globally.
 
 - You can "activate" or rather point to an installation / or conda environment by running `conda activate snakemake`. Once you do so, you can reference `snakemake` as if it were a binary in your path.
 
-
 ## Pipeline execution 
 
 - `conda activate snakemake` to enter the conda snakemake virtual environment
@@ -45,8 +44,10 @@ Run `snakemake -h` to verify that you can reference snakemake globally.
 - However, since these files are mounted into the container under a different path `/data/{POOL}/automated_processing/file.rds`, we cannot use the input/output host file system paths in our R script
 - Therefore, we have two variables in our `config.yaml`, `container_input_files` and `container_output_file` where you specify the container path
 
-## Tests
+## Depooling
 
-#TODO
+Note:
 
+### Tests (WIP)
 
+This is an active area of research. But for now we have a simple script to test depooling located at `bin/test_de_pool.R`.

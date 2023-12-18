@@ -1,3 +1,5 @@
+# This script depools demultiplexed single cell RNA seq data
+
 load_seurat_objects <- function(file_paths) {
     seurat_objects <- list()
 

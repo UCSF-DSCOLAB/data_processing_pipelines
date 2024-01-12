@@ -37,31 +37,31 @@ Note that comments cannot be included in json used for a run.
     "remove_demux_DBL": true, # whether to remove free/demux doublets
     "remove_all_DBL": true	# whether to remove all doublets (free/demux + doubletfinder)
   },
-  "pools" : {
-    "DM1" : { # name of the pool
+  "pools" : [
+    { "name" : "DM1", # name of the pool
       "nsamples" : "2", # number of samples in the pool, needed for freemuxlet
-      "vcf": "jurkat_293t_exons_only_w_chr_hg38.vcf ", # vcf containing just the individuals in the pool, needed for demuxlet or fmx_assign_to_gt, can be left blank
-      "libraries": { 
-        "TEST-POOL-DM1-SCG1": { # name of the library
+      "vcf": "jurkat_293t_exons_only_w_chr_hg38.vcf ", # vcf containing just the individuals in the pool, needed for demuxlet or fmx_assign_to_gt, can be left blank otherwise
+      "libraries": [
+        { "name": "TEST-POOL-DM1-SCG1",  # name of the library
           "ncells_loaded": 200, # number of cells loaded, helpful for checking counts and relative doublets
-          "data_types": ""  # should be a list [], can contain TCR, BCR, GEX
+          "data_types": ["GEX"]  # should be a list [], must contain one of GEX or CITE (cannot contain both), and then additional modalities such as TCR or BCR
         },
-        "TEST-POOL-DM1-SCG2": {
+        {"name" : "TEST-POOL-DM1-SCG2",
           "ncells_loaded": 200,
-          "data_types": ""
+          "data_types": ["GEX", "TCR"]
         }
-      }
+      ]
     },
-      "DM2" : {
+    { "name": "DM2" ,
         "nsamples" : "2",
         "vcf": "",
-        "libraries": {
-          "TEST-POOL-DM2-SCG1": {
+        "libraries": [
+          {"name": "TEST-POOL-DM2-SCG1",
             "ncells_loaded": 100,
-            "data_types": ""
+            "data_types": ["CITE", "BCR", "TCR"]
           }
-        }
+        ]
     }
-  }
+  ]
 }
 ```

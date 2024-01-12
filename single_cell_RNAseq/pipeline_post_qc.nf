@@ -1,6 +1,16 @@
 
 nextflow.enable.dsl=2
 
+workflow.onComplete {
+    println "Pipeline completed at: $workflow.complete"
+    println "Execution status: ${ workflow.success ? 'OK' : 'failed' }"
+    if (workflow.success){
+       println "Deleting working directory $workDir"
+       "rm -rf $workDir".execute()
+    }
+}
+
+
 include { 
     SEURAT_POST_FILTER
 } from './modules/pipeline_tasks.nf'

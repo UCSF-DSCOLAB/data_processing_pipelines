@@ -37,7 +37,7 @@ process CELLRANGER {
 
 
   container "${params.container.cellranger}"
-  containerOptions "-B ${params.ref.dir} -B ${params.project_dir}"
+  containerOptions "-B ${params.ref.dir} -B ${params.project_dir} -B /scratch/"
   
   input:
   tuple val(library), val(data_type)
@@ -47,6 +47,8 @@ process CELLRANGER {
   path("cellranger/*"), emit: cr_out_files
   path(".command.log"), emit: log
   """
+  my_dir=\${PWD}
+  cd \${TMPDIR}
   # create the config
   gex_library=${library}
 
@@ -65,7 +67,7 @@ ${params.project_dir}/data/single_cell_GEX/raw/${library},${library},Gene Expres
     --feature-ref=${params.ref.cite_feature_ref} \
     --transcriptome=${params.ref.transcriptome} 
 
-  mv ${library}/outs cellranger
+  mv ${library}/outs \${my_dir}/cellranger
   """
 } 
 
@@ -78,7 +80,7 @@ process CELLRANGER_VDJ {
   publishDir "${params.project_dir}/data/single_cell_${data_type}/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "cellranger.log" }
 
   container "${params.container.cellranger}"
-  containerOptions "-B ${params.ref.dir} -B ${params.project_dir}"
+  containerOptions "-B ${params.ref.dir} -B ${params.project_dir} -B /scratch/"
   
   input:
   tuple val(library), val(data_type) 
@@ -89,6 +91,10 @@ process CELLRANGER_VDJ {
   path(".command.log"), emit: log
   
   """
+  my_dir=\${PWD}
+  cd \${TMPDIR}
+  echo \${TMPDIR}
+
   gex_library=${library}
   data_type_name = "${data_type}"
   vdj_library=\${gex_library/"SCG"/"SC\${data_type_name:0:1}"}
@@ -100,7 +106,8 @@ process CELLRANGER_VDJ {
     --reference="\${vdj_library}" \
     --reference=${params.ref.vdj_ref} 
   
-  mv ${library}/outs cellranger
+
+  mv ${vdj_library}/outs \${my_dir}/cellranger
 
   """
 }

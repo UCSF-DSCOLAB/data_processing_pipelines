@@ -33,7 +33,7 @@ process CELLRANGER {
 
 
   container "${params.container.cellranger}"
-  containerOptions "-B ${params.ref.dir} -B ${params.project_dir}"
+  containerOptions "-B ${params.ref.dir} -B ${params.project_dir} -B /scratch/"
   
   input:
   tuple val(library), val(data_type)
@@ -43,6 +43,9 @@ process CELLRANGER {
   path("cellranger/*"), emit: cr_out_files
   path(".command.log"), emit: log
   """
+  my_dir=\${PWD}
+  cd \${TMPDIR}
+  echo \${TMPDIR}
   # create the config
   gex_library=${library}
 
@@ -63,7 +66,7 @@ process CELLRANGER {
     --localcores=${task.cpus - 1} \
     --localmem=${task.memory.toGiga() - 2}
 
-  mv ${library}/outs cellranger
+  mv ${library}/outs \${my_dir}/cellranger
   """
 } 
 
@@ -77,7 +80,7 @@ process CELLRANGER_VDJ {
     filename -> "cellranger.log" }
 
   container "${params.container.cellranger}"
-  containerOptions "-B ${params.ref.dir} -B ${params.project_dir}"
+  containerOptions "-B ${params.ref.dir} -B ${params.project_dir} -B /scratch/"
   
   input:
   tuple val(library), val(data_type), val(vdj_library) 
@@ -88,6 +91,9 @@ process CELLRANGER_VDJ {
   path(".command.log"), emit: log
   
   """
+  my_dir=\${PWD}
+  cd \${TMPDIR}
+  echo \${TMPDIR}
 
   vdj_path=${params.project_dir}/data/single_cell_${data_type}/raw/${vdj_library}
   dt=${data_type}
@@ -110,8 +116,7 @@ process CELLRANGER_VDJ {
     --localcores=${task.cpus - 1} \
     --localmem=${task.memory.toGiga() - 2}
   
-  mv ${vdj_library}/outs cellranger
-
+  mv ${vdj_library}/outs \${my_dir}/cellranger
   """
 }
 

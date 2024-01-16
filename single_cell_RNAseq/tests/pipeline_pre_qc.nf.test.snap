@@ -1,0 +1,156 @@
+{
+    "Should successfully demultiplex individual libraries using freemuxlet ": {
+        "content": [
+            {
+                "stderr": [
+                    
+                ],
+                "errorReport": "",
+                "exitStatus": 0,
+                "failed": false,
+                "stdout": [
+                    
+                ],
+                "errorMessage": "",
+                "name": "workflow",
+                "success": true
+            },
+            "TEST-POOL-DM1-SCG1_quantiles_pre.tsv:md5,94816302c1bce6019a4cfea34e07178b",
+            "TEST-POOL-DM1-SCG2_quantiles_pre.tsv:md5,03c104a82af781e44ded3e03ccd4524c",
+            "TEST-POOL-DM2-SCG1_quantiles_pre.tsv:md5,fd9ad3a0d63fdbf72bbe94084ba45531"
+        ],
+        "timestamp": "2023-11-13T12:12:43.532657677"
+    },
+    "Should successfully demultiplex merged libraries using demuxlet and run doublet finder": {
+        "content": [
+            {
+                "stderr": [
+                    
+                ],
+                "errorReport": "",
+                "exitStatus": 0,
+                "failed": false,
+                "stdout": [
+                    
+                ],
+                "errorMessage": "",
+                "name": "workflow",
+                "success": true
+            },
+            "TEST-POOL-DM1-SCG1_quantiles_pre.tsv:md5,94816302c1bce6019a4cfea34e07178b",
+            "TEST-POOL-DM1-SCG2_quantiles_pre.tsv:md5,03c104a82af781e44ded3e03ccd4524c",
+            "TEST-POOL-DM2-SCG1_quantiles_pre.tsv:md5,fd9ad3a0d63fdbf72bbe94084ba45531"
+        ],
+        "timestamp": "2023-11-13T12:15:39.337232828"
+    },
+    "Should successfully demultiplex individual libraries using demuxlet": {
+        "content": [
+            {
+                "stderr": [
+                    
+                ],
+                "errorReport": "",
+                "exitStatus": 0,
+                "failed": false,
+                "stdout": [
+                    
+                ],
+                "errorMessage": "",
+                "name": "workflow",
+                "success": true
+            },
+            "TEST-POOL-DM1-SCG1_quantiles_pre.tsv:md5,94816302c1bce6019a4cfea34e07178b",
+            "TEST-POOL-DM1-SCG2_quantiles_pre.tsv:md5,03c104a82af781e44ded3e03ccd4524c",
+            "TEST-POOL-DM2-SCG1_quantiles_pre.tsv:md5,fd9ad3a0d63fdbf72bbe94084ba45531"
+        ],
+        "timestamp": "2023-11-13T12:22:55.972254105"
+    },
+    "Should successfully demultiplex individual libraries using freemuxlet and run doublet finder": {
+        "content": [
+            {
+                "stderr": [
+                    
+                ],
+                "errorReport": "",
+                "exitStatus": 0,
+                "failed": false,
+                "stdout": [
+                    
+                ],
+                "errorMessage": "",
+                "name": "workflow",
+                "success": true
+            },
+            "TEST-POOL-DM1-SCG1_quantiles_pre.tsv:md5,94816302c1bce6019a4cfea34e07178b",
+            "TEST-POOL-DM1-SCG2_quantiles_pre.tsv:md5,03c104a82af781e44ded3e03ccd4524c",
+            "TEST-POOL-DM2-SCG1_quantiles_pre.tsv:md5,fd9ad3a0d63fdbf72bbe94084ba45531"
+        ],
+        "timestamp": "2023-11-13T12:10:38.169249755"
+    },
+    "Should successfully demultiplex merged libraries using freemuxlet and run doublet finder": {
+        "content": [
+            {
+                "stderr": [
+                    
+                ],
+                "errorReport": "",
+                "exitStatus": 0,
+                "failed": false,
+                "stdout": [
+                    
+                ],
+                "errorMessage": "",
+                "name": "workflow",
+                "success": true
+            },
+            "TEST-POOL-DM1-SCG1_quantiles_pre.tsv:md5,94816302c1bce6019a4cfea34e07178b",
+            "TEST-POOL-DM1-SCG2_quantiles_pre.tsv:md5,03c104a82af781e44ded3e03ccd4524c",
+            "TEST-POOL-DM2-SCG1_quantiles_pre.tsv:md5,fd9ad3a0d63fdbf72bbe94084ba45531"
+        ],
+        "timestamp": "2023-11-13T12:05:23.130707469"
+    },
+    "Should successfully demultiplex merged libraries using freemuxlet": {
+        "content": [
+            {
+                "stderr": [
+                    
+                ],
+                "errorReport": "",
+                "exitStatus": 0,
+                "failed": false,
+                "stdout": [
+                    
+                ],
+                "errorMessage": "",
+                "name": "workflow",
+                "success": true
+            },
+            "TEST-POOL-DM1-SCG1_quantiles_pre.tsv:md5,94816302c1bce6019a4cfea34e07178b",
+            "TEST-POOL-DM1-SCG2_quantiles_pre.tsv:md5,03c104a82af781e44ded3e03ccd4524c",
+            "TEST-POOL-DM2-SCG1_quantiles_pre.tsv:md5,fd9ad3a0d63fdbf72bbe94084ba45531"
+        ],
+        "timestamp": "2023-11-13T12:07:43.787672192"
+    },
+    "Should successfully demultiplex individual libraries using demuxlet and run doublet finder": {
+        "content": [
+            {
+                "stderr": [
+                    
+                ],
+                "errorReport": "",
+                "exitStatus": 0,
+                "failed": false,
+                "stdout": [
+                    
+                ],
+                "errorMessage": "",
+                "name": "workflow",
+                "success": true
+            },
+            "TEST-POOL-DM1-SCG1_quantiles_pre.tsv:md5,94816302c1bce6019a4cfea34e07178b",
+            "TEST-POOL-DM1-SCG2_quantiles_pre.tsv:md5,03c104a82af781e44ded3e03ccd4524c",
+            "TEST-POOL-DM2-SCG1_quantiles_pre.tsv:md5,fd9ad3a0d63fdbf72bbe94084ba45531"
+        ],
+        "timestamp": "2023-11-13T12:20:52.490664306"
+    }
+}

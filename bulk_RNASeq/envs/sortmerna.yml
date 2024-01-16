@@ -1,0 +1,8 @@
+name: sortmerna
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - sortmerna=4.3.6=h9ee0642_0
+prefix: /c4/home/alaa/miniconda3/envs/sortmerna

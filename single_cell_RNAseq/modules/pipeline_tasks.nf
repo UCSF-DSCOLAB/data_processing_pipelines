@@ -37,7 +37,7 @@ process CELLRANGER {
 
 
   container "${params.container.cellranger}"
-  containerOptions "-B ${params.ref.dir} -B ${params.project_dir}"
+  containerOptions "-B ${params.ref.dir} -B ${params.project_dir} -B /scratch/"
   
   input:
   tuple val(library), val(data_type)
@@ -47,6 +47,8 @@ process CELLRANGER {
   path("cellranger/*"), emit: cr_out_files
   path(".command.log"), emit: log
   """
+  my_dir=\${PWD}
+  cd \${TMPDIR}
   # create the config
   gex_library=${library}
 
@@ -65,7 +67,7 @@ ${params.project_dir}/data/single_cell_GEX/raw/${library},${library},Gene Expres
     --feature-ref=${params.ref.cite_feature_ref} \
     --transcriptome=${params.ref.transcriptome} 
 
-  mv ${library}/outs cellranger
+  mv ${library}/outs \${my_dir}/cellranger
   """
 } 
 
@@ -78,7 +80,7 @@ process CELLRANGER_VDJ {
   publishDir "${params.project_dir}/data/single_cell_${data_type}/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "cellranger.log" }
 
   container "${params.container.cellranger}"
-  containerOptions "-B ${params.ref.dir} -B ${params.project_dir}"
+  containerOptions "-B ${params.ref.dir} -B ${params.project_dir} -B /scratch/"
   
   input:
   tuple val(library), val(data_type) 
@@ -89,6 +91,10 @@ process CELLRANGER_VDJ {
   path(".command.log"), emit: log
   
   """
+  my_dir=\${PWD}
+  cd \${TMPDIR}
+  echo \${TMPDIR}
+
   gex_library=${library}
   data_type_name = "${data_type}"
   vdj_library=\${gex_library/"SCG"/"SC\${data_type_name:0:1}"}
@@ -100,7 +106,8 @@ process CELLRANGER_VDJ {
     --reference="\${vdj_library}" \
     --reference=${params.ref.vdj_ref} 
   
-  mv ${library}/outs cellranger
+
+  mv ${vdj_library}/outs \${my_dir}/cellranger
 
   """
 }
@@ -218,7 +225,7 @@ process DSC_PILEUP{
   container "${params.container.popscle}"
   containerOptions "-B ${params.ref.fmx_dir}"
   publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "dsc_pileup.log" }
-  publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/freemuxlet/", mode: 'copy', pattern: "${library}*.gz"
+  publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/${params.settings.demux_method}/", mode: 'copy', pattern: "${library}*.gz"
 
   input:
   tuple val(library), path(barcodes), path(filtered_bam)
@@ -249,6 +256,7 @@ process MERGE_DSC {
   container "${params.container.python}"
 
   input:
+  // TODO: expand out what these path files are...
   tuple val(pool), path(pool_files)
   
   output:
@@ -315,7 +323,6 @@ process FREEMUXLET_LIBRARY {
 
   container "${params.container.popscle}"
   containerOptions "-B ${params.ref.fmx_dir}"
-  
   
   input:
   tuple val(library), val(nsamples), path(plp_files)
@@ -441,10 +448,9 @@ process UNMERGE_FMX {
 process SEPARATE_FMX {
    publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/freemuxlet", mode: 'copy', pattern: "${library}*"
    publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "separate_fmx.log" }
-
-
-  input: 
+  input:
    tuple val(library), path(library_files)
+
   output:
    tuple path("${library}.clust1.samples.gz"), path("${library}.clust1.vcf.gz"), path("${library}.lmix"), emit: fmx_files
    tuple val(library), path("${library}.clust1.samples.reduced.tsv"), emit: sample_map
@@ -456,6 +462,28 @@ process SEPARATE_FMX {
   gzip -f ${library}.clust1.samples
   """
 }
+
+// TODO: unify the two processes
+process SEPARATE_FMX_PRE {
+   publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/freemuxlet", mode: 'copy', pattern: "${library}*"
+   publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "separate_fmx.log" }
+
+  input:
+   tuple val(library), path(vcf_file), path(sample_file), path(lmix_file)
+
+  output:
+   tuple path("${library}.clust1.samples.gz"), path("${library}.clust1.vcf.gz"), path("${library}.lmix"), emit: fmx_files
+   tuple val(library), path("${library}.clust1.samples.reduced.tsv"), emit: sample_map
+   path(".command.log"), emit: log
+
+  """
+  gunzip -f ${library}.clust1.samples.gz
+  awk {'printf (\"%s\t%s\t%s\t%s\t%s\\n\", \$2, \$3, \$4, \$5, \$6)'} ${library}.clust1.samples > ${library}.clust1.samples.reduced.tsv
+  gzip -f ${library}.clust1.samples
+  """
+}
+
+
 
 
 /*
@@ -572,7 +600,8 @@ process SEURAT_ADD_TCR {
 process SEURAT_QC {
   publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "seurat_qc.log" }
   publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing", mode: 'copy', pattern: "${library}*"
-
+  // For testing
+  publishDir "${workDir}/data/single_cell_GEX/processed/${library}/automated_processing", mode: 'copy', pattern: "${library}*"
 
   container "${params.container.rsinglecell}"
   containerOptions "-B ${params.settings.default_qc_cuts_dir}"

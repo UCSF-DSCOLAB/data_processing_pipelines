@@ -79,18 +79,14 @@ workflow  {
             }
       }
 
-    
+        ch_all_h5 = ch_gex_cite_bam_h5.map { it -> [it[0], it[2]] } // [[library, raw_h5 ]]
 
-    ch_all_h5 = ch_gex_cite_bam_h5.mix(ch_bcr_tcr_bam_h5).map { it -> [it[0], it[2]] } // [[library, raw_h5 ]]
+        ch_main_dt = Channel.from(get_libraries_data_type_tuples()).transpose()
+            .filter(it -> it[1] in ["GEX", "CITE"])
 
+        ch_prefilt_in = ch_main_dt.join(ch_all_h5, by:0) // [library, data_type, h5]
 
-    // filter before freemuxlet if specified
-    ch_main_dt = Channel.from(get_libraries_data_type_tuples()).transpose().filter(it[1] in ["GEX", "CITE"])
-    ch_main_dt.join{
-      ch_all_h5, by:0 // [library, data_type, h5]
-    }  
-
-    SEURAT_PRE_FMX_QC(ch_prefilt_in) 
+        SEURAT_PRE_FMX_QC(ch_prefilt_in) 
 
 }
 

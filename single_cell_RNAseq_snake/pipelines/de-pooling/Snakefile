@@ -4,14 +4,14 @@ rule depooling:
     input:
         input_files = config["depooling"]["input_files"]
     output:
-        output_file = config["depooling"]["output_file"]
+        directory(config["depooling"]["output_dir"])
     singularity:
         config["container"]["r"]
     params:
         script="bin/de_pool.R",
         container_input_files = config["depooling"]["container_input_files"],
-        container_out_file = config["depooling"]["container_output_file"]
+        container_out_dir = config["depooling"]["container_output_dir"]
     shell:
         """
-        Rscript {params.script} {params.container_input_files} {params.container_out_file}
+        Rscript {params.script} {params.container_input_files} {params.container_out_dir}
         """

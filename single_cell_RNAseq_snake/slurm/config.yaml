@@ -1,0 +1,16 @@
+# config.yaml
+
+# Slurm-specific configurations
+cluster: "sbatch --job-name {rule} --mem={resources.mem_mb} --cpus-per-task={threads} --time={resources.time_min} -p {cluster.partition} --output={cluster.output}"
+
+# Default resources to be used if not specified in the rule
+default-resources:
+  - mem_mb=1000
+  - time_min=60
+
+# Number of jobs to submit to Slurm concurrently
+jobs: 10
+
+# Use this script to check the job status on Slurm
+# TODO
+# cluster-status: "slurm-status.py"

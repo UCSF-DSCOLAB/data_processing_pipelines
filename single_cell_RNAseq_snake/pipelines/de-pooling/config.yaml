@@ -2,13 +2,8 @@ depooling:
   input_files:
     - "/krummellab/data1/amazzara/tutorial_lib_sep/data/single_cell_GEX/processed/TEST-POOL-DM1-SCG1/automated_processing/TEST-POOL-DM1-SCG1_raw.rds"
     - "/krummellab/data1/amazzara/tutorial_lib_sep/data/single_cell_GEX/processed/TEST-POOL-DM1-SCG2/automated_processing/TEST-POOL-DM1-SCG2_raw.rds"
-  container_input_files:
-    - "/data/TEST-POOL-DM1-SCG1/automated_processing/TEST-POOL-DM1-SCG1_raw.rds"
-    - "/data/TEST-POOL-DM1-SCG2/automated_processing/TEST-POOL-DM1-SCG2_raw.rds"
   output_dir:
     - "/krummellab/data1/amazzara/tutorial_lib_sep/data/single_cell_GEX/processed/depooled/DM1/"
-  container_output_dir:
-    - "/data/depooled/DM1/"
 container:
   r:  "/krummellab/data1/singularity_images/RSingleCell/v4/RSingleCell.sif"
   python: "/krummellab/data1/singularity_images/cytof/v3/cytof.sif"

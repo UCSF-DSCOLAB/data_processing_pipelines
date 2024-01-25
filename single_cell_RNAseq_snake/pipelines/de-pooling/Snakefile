@@ -9,9 +9,7 @@ rule depooling:
         config["container"]["r"]
     params:
         script="bin/de_pool.R",
-        container_input_files = config["depooling"]["container_input_files"],
-        container_out_dir = config["depooling"]["container_output_dir"]
     shell:
         """
-        Rscript {params.script} {params.container_input_files} {params.container_out_dir}
+        Rscript {params.script} {input.input_files} {output}
         """

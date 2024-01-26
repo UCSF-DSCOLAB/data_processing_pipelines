@@ -36,10 +36,11 @@ SEURAT_POST_FILTER
 
 
 include {
-get_c4_h5; get_c4_bam; get_c4_h5_bam; get_pool_library_meta; get_libraries_data_type; get_libraries_data_type_tuples;
+get_c4_h5; get_c4_bam; get_c4_h5_bam; get_pool_library_meta; get_libraries_data_type_tuples;
 get_pool_by_sample_count; get_library_by_sample_count; get_single_library_by_pool;
 get_multi_pool_by_library ; get_library_by_pool; get_multi_library_by_pool; get_pool_vcf ; get_library_ncells;
-get_vdj_tuple; get_vdj_name ; get_clonotypes; get_contigs; get_pre_qc_outputs
+get_vdj_tuple; get_vdj_name ; get_clonotypes; get_contigs; get_pre_qc_outputs;
+get_pre_fmx_cutoffs
 } from  './helpers/params_parse.nf'
 
 
@@ -51,10 +52,11 @@ extractFileName
 
 workflow {
     ch_pre_qc = Channel.fromList(get_pre_qc_outputs()) // [library, cutoffs, sobj, h5]
-    SEURAT_PRE_FMX_FILTER(ch_pre_qc) 
+      .map{it -> [it[0], get_pre_fmx_cutoffs(it[0]), it[2], it[3]]}
+    SEURAT_PRE_FMX_FILTER(ch_pre_qc.map{ it -> it[0,1,2] }) 
     library_barcode = SEURAT_PRE_FMX_FILTER.out.bc_list // [library, barcodes]
 
-    ch_gex_cite_bam_h5 = Channel(fromList(get_c4_h5_bam))
+    ch_gex_cite_bam_h5 = Channel.fromList(get_c4_h5_bam())
     ch_all_bam = ch_gex_cite_bam_h5.map { it -> [it[0], it[1]] } // [[library, cell_ranger_bam]]
     ch_all_h5 = ch_gex_cite_bam_h5.map { it -> [it[0], it[2]] } // [[library, raw_h5 ]]
 
@@ -270,22 +272,15 @@ workflow {
      --------------------------------------------------------
      */
      ch_library_info = Channel.from(get_libraries_data_type_tuples()).transpose() // -> [[library_dir, data_type]]
-     ch_seurat_input = ch_library_info.join(ch_bcr_out).join(ch_all_h5)
+     ch_seurat_input = ch_library_info.join(ch_bcr_out) // -> [library, data_type, ]
+      .map{it -> [it[0], it[1], it[2], get_c4_h5(it[0])] }
      SEURAT_QC(ch_seurat_input)
 
-        // use cutoffs listed prior
-      lib_cutoffs = []
-      for (pool in list_pools){
-          for (library in get_libraries(pool)){
-            cutoffs_file = get_cutoffs(library)
-            lib_cutoffs << [library, cutoffs_file]
-          }
-        }
-
-        ch_seurat_post_qc_in = Channel.fromList(lib_cutoffs)
-          .combine(SEURAT_QC.out.qc_output, by:0)
-          .combine(ch_lib_h5.post_seurat_in, by:0)
-        SEURAT_POST_FILTER(ch_seurat_post_qc_in)
+      // use cutoffs listed prior
+      ch_seurat_post_qc_in = SEURAT_PRE_FMX_FILTER.out.cutoffs_file // -> [library, cutoffs]
+          .combine(SEURAT_QC.out.qc_output, by:0) // -> [library, cutoffs, sobj
+          .map{it -> [it[0], it[1], it[2], get_c4_h5(it[0])] } // -> [library, cutoffs, sobj, cr_h5]
+      SEURAT_POST_FILTER(ch_seurat_post_qc_in)
 
 }
 

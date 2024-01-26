@@ -10,12 +10,12 @@ def get_cutoffs(library){
   return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing/${library}_cutoffs.csv", checkIfExists: true)
 }
 
-def get_sobj(library){
-  return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing/${library}_raw.rds", checkIfExists: true)
+def get_pre_fmx_cutoffs(library){
+  return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/cell_filter/${library}_cutoffs.csv", checkIfExists: true)
 }
 
-def get_cr_h5(library){
-  return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/cellranger/raw_feature_bc_matrix.h5", checkIfExists: true)
+def get_sobj(library){
+  return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing/${library}_raw.rds", checkIfExists: true)
 }
 
 def get_c4_h5_bam(){
@@ -45,7 +45,7 @@ def get_contigs(library, data_type){
 def get_pre_qc_outputs(){
 	return params.pools.collectMany {
            pool -> pool.libraries.collect {
-               library -> [library.name, get_cutoffs(library.name), get_sobj(library.name), get_cr_h5(library.name)]
+               library -> [library.name, get_cutoffs(library.name), get_sobj(library.name), get_c4_h5(library.name)]
            }
     }
 }

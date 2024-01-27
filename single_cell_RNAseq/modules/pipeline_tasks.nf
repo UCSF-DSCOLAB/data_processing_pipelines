@@ -632,6 +632,31 @@ process SEURAT_QC {
   """
 }
 
+/* 
+ * Step 6b. Run Seurat
+ */
+process SEURAT_LOAD_POST_QC {
+  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "seurat_qc.log" }
+  publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing", mode: 'copy', pattern: "${library}*"
+  // For testing
+  publishDir "${workDir}/data/single_cell_GEX/processed/${library}/automated_processing", mode: 'copy', pattern: "${library}*"
+
+  container "${params.container.rsinglecell}"
+
+  input:
+  tuple val(library), val(main_dt), path(doublet_finder_sobj), path(raw_h5), path(cutoffs)
+  
+  output:
+  tuple val(library), path("${library}_raw.rds"), emit: qc_output
+  tuple val(library),path("${library}_cutoffs.csv"), emit: cutoffs_file
+  path(".command.log"), emit: log
+
+  """
+  Rscript ${projectDir}/bin/process_with_seurat.R ${library} ${main_dt} ${doublet_finder_sobj} ${projectDir} ${cutoffs} ${raw_h5}
+
+  """
+}
+
 
 /* 
  * Step 5b. Run Post filter
@@ -647,6 +672,7 @@ process SEURAT_POST_FILTER {
   
   output:
   tuple val(library), path("${library}_filtered.rds"), emit: post_process
+  tuple val(library),path("${library}_cutoffs.csv"), emit: cutoffs_file
   path("${library}*"), emit: outfiles
   path(".command.log"), emit: log
 

@@ -30,7 +30,7 @@ FIND_DOUBLETS;
 LOAD_SOBJ;
 SEURAT_ADD_BCR;
 SEURAT_ADD_TCR;
-SEURAT_QC;
+SEURAT_LOAD_POST_QC;
 SEURAT_POST_FILTER
 } from './modules/pipeline_tasks.nf'
 
@@ -273,12 +273,12 @@ workflow {
      */
      ch_library_info = Channel.from(get_libraries_data_type_tuples()).transpose() // -> [[library_dir, data_type]]
      ch_seurat_input = ch_library_info.join(ch_bcr_out) // -> [library, data_type, ]
-      .map{it -> [it[0], it[1], it[2], get_c4_h5(it[0])] }
-     SEURAT_QC(ch_seurat_input)
+      .map{it -> [it[0], it[1], it[2], get_c4_h5(it[0]), get_pre_fmx_cutoffs(it[0])] }
+     SEURAT_LOAD_POST_QC(ch_seurat_input)
 
       // use cutoffs listed prior
-      ch_seurat_post_qc_in = SEURAT_PRE_FMX_FILTER.out.cutoffs_file // -> [library, cutoffs]
-          .combine(SEURAT_QC.out.qc_output, by:0) // -> [library, cutoffs, sobj
+      ch_seurat_post_qc_in = SEURAT_LOAD_POST_QC.out.cutoffs_file // -> [library, cutoffs]
+          .combine(SEURAT_LOAD_POST_QC.out.qc_output, by:0) // -> [library, cutoffs, sobj
           .map{it -> [it[0], it[1], it[2], get_c4_h5(it[0])] } // -> [library, cutoffs, sobj, cr_h5]
       SEURAT_POST_FILTER(ch_seurat_post_qc_in)
 

@@ -86,7 +86,7 @@ process CELLRANGER_VDJ {
   tuple val(library), val(data_type), val(vdj_library) 
   
   output:
-  tuple val(library), val(data_type), path("cellranger/clonotypes.csv"), path("cellranger/filtered_contig_annotations.csv"), emit: vdj_csvs
+  tuple val(library), val(data_type), path("cellranger/clonotypes.csv"), path("cellranger/all_contig_annotations.csv"), emit: vdj_csvs
   path("cellranger/*"), emit: cr_out_files
   path(".command.log"), emit: log
   

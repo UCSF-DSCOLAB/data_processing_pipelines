@@ -87,7 +87,10 @@ load_clonotypes <- function(library, data_type, clonotype_path, contig_path) {
   annot = annot %>% select(barcode, raw_clonotype_id) %>% unique()
   
   # Get the clonotype info.
-  clono = read.csv(clonotype_path)
+  clono = read.csv(clonotype_path) %>%
+    filter(high_confidence=="true",
+           full_length=="true",
+           productive=="true")
   
   # Get clonotype AA sequences and map them to barcodes.
   clonotype_data = inner_join(annot, clono[, c("clonotype_id", "cdr3s_aa")], by=c("raw_clonotype_id" = "clonotype_id"))

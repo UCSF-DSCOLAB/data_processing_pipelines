@@ -39,7 +39,7 @@ include {
 get_c4_h5; get_c4_bam; get_c4_h5_bam; get_pool_library_meta; get_libraries_data_type_tuples;
 get_pool_by_sample_count; get_library_by_sample_count; get_single_library_by_pool;
 get_multi_pool_by_library ; get_library_by_pool; get_multi_library_by_pool; get_pool_vcf ; get_library_ncells;
-get_vdj_tuple; get_vdj_name ; get_clonotypes; get_contigs; get_pre_qc_outputs;
+get_vdj_tuple; get_vdj_name ; get_clonotypes; get_contigs; get_pre_fmx_qc_outputs;
 get_pre_fmx_cutoffs
 } from  './helpers/params_parse.nf'
 
@@ -51,8 +51,7 @@ extractFileName
 
 
 workflow {
-    ch_pre_qc = Channel.fromList(get_pre_qc_outputs()) // [library, cutoffs, sobj, h5]
-      .map{it -> [it[0], get_pre_fmx_cutoffs(it[0]), it[2], it[3]]}
+    ch_pre_qc = Channel.fromList(get_pre_fmx_qc_outputs()) // [library, cutoffs, sobj, h5]
     SEURAT_PRE_FMX_FILTER(ch_pre_qc.map{ it -> it[0,1,2] }) 
     library_barcode = SEURAT_PRE_FMX_FILTER.out.bc_list // [library, barcodes]
 

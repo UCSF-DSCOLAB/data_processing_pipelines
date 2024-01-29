@@ -18,6 +18,11 @@ def get_sobj(library){
   return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing/${library}_raw.rds", checkIfExists: true)
 }
 
+def get_pre_fmx_sobj(library){
+  return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/cell_filter/${library}_raw.rds", checkIfExists: true)
+}
+
+
 def get_c4_h5_bam(){
     return params.pools.collectMany {
            pool -> pool.libraries.collect {
@@ -49,6 +54,15 @@ def get_pre_qc_outputs(){
            }
     }
 }
+
+def get_pre_fmx_qc_outputs(){
+	return params.pools.collectMany {
+           pool -> pool.libraries.collect {
+               library -> [library.name, get_pre_fmx_cutoffs(library.name), get_pre_fmx_sobj(library.name), get_c4_h5(library.name)]
+           }
+    }
+}
+
 
 def get_pool_library_meta(){
     return params.pools.collectMany {

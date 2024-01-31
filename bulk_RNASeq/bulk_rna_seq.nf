@@ -55,6 +55,7 @@ include { BCFTOOLS_CONTIG_CONVERSION} from './modules/bcftools_contig_conversion
 include { BCFTOOLS_SORT_VCF   }       from './modules/bcftools_sort_vcf'
 include { BCFTOOLS_INDEX_VCF   }      from './modules/bcftools_index_vcf'
 include { BCFTOOLS_MERGE_VCF        } from './modules/bcftools_merge_vcf'
+include { MULTIQC_PER_SAMPLE        } from './modules/multiqc_per_sample'
 include { MULTIQC                   } from './modules/multiqc'
 
 
@@ -62,6 +63,9 @@ include { MULTIQC                   } from './modules/multiqc'
 workflow {
     // To gather all QC reports for MultiQC
     ch_reports  = Channel.empty()
+    // To gather all QC reports for MultiQC_PER_SAMPLE
+    ch_reports_per_sample  = Channel.empty()
+    logs  = Channel.empty()
     //
     // SUBWORKFLOW: Read in samplesheet, validate and stage input files
     //
@@ -103,7 +107,9 @@ workflow {
     )
     ch_trimmed_reads = FASTP_TRIM_ADAPTERS.out.trimmed_reads
     ch_trim_multiqc = FASTP_TRIM_ADAPTERS.out.json_report
-    ch_reports = ch_reports.mix(ch_trim_multiqc)
+    // FASTP_TRIM_ADAPTERS.out.json_report.collect().set { logs }
+    ch_reports = ch_reports.mix(FASTP_TRIM_ADAPTERS.out.json_report.collect{it[1]}.ifEmpty([]))
+    // ch_reports_per_sample = ch_reports_per_sample.mix(FASTP_TRIM_ADAPTERS.out.json_report.collect{it[1]}.ifEmpty([]))
     //
     // MODULE: Remove ribosomal RNA reads
     //
@@ -118,6 +124,7 @@ workflow {
         ch_trimmed_reads = SORTMERNA_RIBOSOMAL_RNA_REMOVAL.out.reads
         ch_sortmerna_multiqc = SORTMERNA_RIBOSOMAL_RNA_REMOVAL.out.log
         ch_reports = ch_reports.mix(SORTMERNA_RIBOSOMAL_RNA_REMOVAL.out.log.collect{it[1]}.ifEmpty([]))
+        // ch_reports_per_sample = ch_reports_per_sample.mix(SORTMERNA_RIBOSOMAL_RNA_REMOVAL.out.log)
     }
     //
     // MODULE: Quantify transcriptome abundance using Kallisto
@@ -130,7 +137,9 @@ workflow {
     )
     ch_kallisto_counts = KALLISTO_QUANT.out.abundance_tsv
     ch_kallisto_multiqc = KALLISTO_QUANT.out.log
+    // KALLISTO_QUANT.out.log.collect().set{ logs }
     ch_reports = ch_reports.mix(KALLISTO_QUANT.out.log.collect{it[1]}.ifEmpty([]))
+    ch_reports_per_sample = ch_trim_multiqc.mix(ch_kallisto_multiqc).groupTuple(by: 0)
     //
     // MODULE: Merge all transcriptome quantification into a single file
     //
@@ -304,6 +313,18 @@ workflow {
         meta, 
         vcfs, 
         tbis
+    )
+    //
+    // MODULE: Generate QC reports using MULTIQC
+    //
+    // MULTIQC_PER_SAMPLE (ch_trim_multiqc,
+    //                     ch_sortmerna_multiqc,
+    //                     ch_kallisto_multiqc,
+    //                     ch_star_multiqc,
+    //                     ch_markduplicates_multiqc)
+    // logs_by_sample = logs.mix().groupTuple()
+    MULTIQC_PER_SAMPLE(
+        ch_reports_per_sample
     )
     //
     // MODULE: Generate QC reports using MULTIQC

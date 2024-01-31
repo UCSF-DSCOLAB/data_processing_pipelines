@@ -374,7 +374,7 @@ process FMX_ASSIGN_TO_GT {
 
 
   """
-  bash ${projectDir}/bin/run_gtcheck.sh ${pool} ${params.settings.ref_vcf_dir}/${ref_vcf} ${fmx_vcf}
+  bash ${projectDir}/bin/run_gtcheck.sh ${pool} ${params.settings.ref_vcf_dir}/${ref_vcf} ${fmx_vcf} ${params.settings.ref_vcf_type}
   Rscript ${projectDir}/bin/examine_gtcheck.R ${pool} ${pool}_gtcheck.out
   """
 

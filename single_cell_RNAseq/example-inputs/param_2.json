@@ -7,6 +7,7 @@
     "merge_demux_dir" : "/krummellab/data1/${USER}/tutorial_lib_sep/freemuxlet_data/",
     "demux_method" : "freemuxlet",
     "fmx_assign_to_gt": true,
+    "ref_vcf_type": "bulk",
     "ref_vcf_dir": "/krummellab/data1/pipeline_test_data/assays/scRNA_seq/modality/gex/downsampled_jurkat_tcell/inputs/variants/",
     "run_doubletfinder" : true,
     "mincell" : 3,

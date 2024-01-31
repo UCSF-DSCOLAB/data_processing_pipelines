@@ -18,8 +18,8 @@ if (ncol(tab_in) == 6 & "CN" %in% tab_in$X1){ ### for 1.3.1
 } else if (ncol(tab_in)==6 & "DC" %in% tab_in$X1){ # 1.18
   my_tab = tab_in %>% 
     select(-X1) %>%
-    filter(X6!=0, str_detect(X3, "CLUST"), !str_detect(X2, "CLUST")) %>%
-    rename(individual=X2, cluster=X3, err=X4) %>%
+    filter(X6!=0, str_detect(X2, "CLUST"), !str_detect(X3, "CLUST")) %>%
+    rename(individual=X3, cluster=X2, err=X4) %>%
     select(-X5, -X6)
 } else { # 1.10
   my_tab = tab_in %>%
@@ -32,11 +32,13 @@ if (ncol(tab_in) == 6 & "CN" %in% tab_in$X1){ ### for 1.3.1
 }
 
 
+
+
 my_mat = my_tab %>% pivot_wider(names_from="cluster", values_from="err", values_fill=NA) %>%
   column_to_rownames("individual") %>%
   as.matrix() %>%
   t() 
-if(ncol(my_mat)==1 | nrow(my_mat) == 1 | any(is.na(my_mat))){
+if(ncol(my_mat)<=1 | nrow(my_mat) <= 1 | any(is.na(my_mat))){
   print("Warning - unable to plot because too few values in heatmap.")
   
 } else {

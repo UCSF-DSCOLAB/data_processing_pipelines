@@ -129,7 +129,20 @@ do not need to be tweaked. `nextflow.config` imports these settings for you.
 
 You will need nf-test installed. Please follow the instructions here: https://github.com/askimed/nf-test#installation
 
-To run regression tests: `nf-test test tests/pipeline_pee_qc.nf.test`
+To run regression tests: 
+
+`cd single_cell_RNAseq`
+
+`/krummellab/data1/software/bin/nf-testtest tests/pipeline_pre_qc.nf.test --without-trace`
+
+#### How do the tests work
+
+- For each test we copy all the necessary file inputs from `/krummellab/data1/integration_test_user/tutorial_lib_sep` 
+into an isolated testing environment.
+- That testing environment is `.nf-test/hash/meta`
+- We inject these input paths into our pipeline.
+- The tests then operate on these files.
+- We assert that the necessary files are created in this testing environment.
 
 #### Test data
 

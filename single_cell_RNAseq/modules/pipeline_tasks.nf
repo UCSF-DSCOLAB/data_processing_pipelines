@@ -595,8 +595,6 @@ process SEURAT_ADD_TCR {
 process SEURAT_QC {
   publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "seurat_qc.log" }
   publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing", mode: 'copy', pattern: "${library}*"
-  // For testing
-  publishDir "${workDir}/data/single_cell_GEX/processed/${library}/automated_processing", mode: 'copy', pattern: "${library}*"
 
   container "${params.container.rsinglecell}"
   containerOptions "-B ${params.settings.default_qc_cuts_dir}"

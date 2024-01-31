@@ -2,6 +2,11 @@ process GATK4_HAPLOTYPECALLER {
     tag "$meta.id"
     label 'gatk4_haplotypecaller'
     publishDir "${params.results_directory}/snps", mode: 'copy'
+    memory {
+        // File size in GB
+        fileSize = input.size() / (1024 * 1024 * 1024)
+        return 50.GB + (1.GB * fileSize * 5)
+    }
 
     input:
     tuple val(meta), path(input), path(input_index)
@@ -24,7 +29,7 @@ process GATK4_HAPLOTYPECALLER {
     def dbsnp_command = known_sites ? "--dbsnp $known_sites" : ""
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
-    gatk --java-options "-Xmx${task.memory.toGiga()-1}g" HaplotypeCaller \\
+    gatk --java-options "-Xmx${task.memory.toGiga()}g" HaplotypeCaller \\
         --input $input \\
         --output ${prefix}.vcf.gz \\
         $reference_command \\

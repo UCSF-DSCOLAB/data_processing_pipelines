@@ -1,6 +1,11 @@
 process MULTIQC {
     publishDir "${params.results_directory}/multiqc", mode: 'copy'
-    label 'multiqc'    
+    label 'multiqc'
+    memory {
+        // File size in GB
+        fileSize = multiqc_files.size() / (1024 * 1024 * 1024)
+        return 1.GB + (1.GB * fileSize)
+    }
 
     input:
     path multiqc_files

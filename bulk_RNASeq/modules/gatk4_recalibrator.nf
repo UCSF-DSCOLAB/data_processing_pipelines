@@ -1,6 +1,11 @@
 process GATK4_BASE_RECALIBRATOR {
     tag "$meta.id"
     label 'gatk4_recalibrator'
+    memory {
+        // File size in GB
+        fileSize = input.size() / (1024 * 1024 * 1024)
+        return 5.GB + (1.GB * fileSize * 0.1)
+    }
 
     input:
     tuple val(meta), path(input)
@@ -23,7 +28,7 @@ process GATK4_BASE_RECALIBRATOR {
     // def interval_command = intervals ? "--intervals $intervals" : ""
     def sites_command = known_sites.collect{"--known-sites $it"}.join(' ')
     """
-    gatk --java-options "-Xmx${task.memory.toGiga()-1}g" BaseRecalibrator  \\
+    gatk --java-options "-Xmx${task.memory.toGiga()}g" BaseRecalibrator  \\
         --input $input \\
         --output ${prefix}.table \\
         --reference $fasta \\

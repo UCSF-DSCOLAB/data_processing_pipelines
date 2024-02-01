@@ -46,8 +46,10 @@ depool_by_id <- function(seurat_objects) {
     
     # Split BEST.GUESS values and extract first for SNG, then store in 'sample_id'
     metadata$sample_id <- sapply(strsplit(as.character(metadata$BEST.GUESS), ","), function(x) x[1])
-    seurat_obj@meta.data <- metadata  # Update the metadata in the Seurat object
-    
+
+    # Update the metadata in the Seurat object
+    seurat_obj <- Seurat::AddMetaData(object = seurat_obj, metadata = metadata)
+
     # Create or update subsets for each unique value in 'sample_id'
     unique_ids <- unique(metadata$sample_id)
     

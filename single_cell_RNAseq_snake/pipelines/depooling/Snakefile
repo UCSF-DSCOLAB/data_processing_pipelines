@@ -1,4 +1,4 @@
-configfile: "pipelines/de-pooling/config.yaml"
+configfile: "pipelines/depooling/config.yaml"
 
 rule depooling:
     input:

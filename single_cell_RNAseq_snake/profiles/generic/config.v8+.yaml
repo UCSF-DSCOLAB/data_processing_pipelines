@@ -1,0 +1,16 @@
+executor: slurm
+
+default-resources:
+  partition: "krummellab,common"
+  runtime: 1:00:00
+  mem_mb: 1000
+  user: "krummellab"
+  exclude: "c4-n20"
+  nodes: 1
+
+
+cores: 2
+local-cores: 3
+jobs: 10
+printshellcmds: True
+restart-times: 1

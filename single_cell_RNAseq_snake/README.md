@@ -22,6 +22,8 @@ Run `conda activate snakemake` to enter the conda snakemake virtual environment.
 
 Run `snakemake -h` to verify that you can reference snakemake globally.
 
+Note: this conda environment uses snakemake `8.4.0`
+
 ### What is going on?
 
 - `conda` is a package manager that allows you to manage your dependencies within an isolated environment, very similar to `virtualenv`
@@ -32,32 +34,43 @@ Run `snakemake -h` to verify that you can reference snakemake globally.
 
 ### Pipeline execution and mount points
 
-In general, to run a pipeline:
+To run a pipeline, use the helper python script: `run_pipeline.py`. For usage: `python run_pipeline.py --help`.
 
-- `conda activate snakemake` to enter the conda snakemake virtual environment
-- from `single_cellRNAseq_snake/` , run: `snakemake -s pipelines/de-pooling/Snakefile --cores 1 --use-singularity --singularity-args "--bind /krummellab/data1/amazzara/tutorial_lib_sep/data/single_cell_GEX/processed/:/data/"`
+In general:
+- `conda activate snakemake` to enter the conda snakemake virtual environment 
+- `python run_pipeline.py depooling`
 
-In the command above you will notice: `"--bind /krummellab/data1/amazzara/tutorial_lib_sep/data/single_cell_GEX/processed/:/data/"`. This mounts the host filesystem into the container filesystem.
 
-An important part of snakemake is the `input` and `output` directives.
-  - Snakemake requires files in `input` to be exists when a rule is run, and when the rule finishes, the file(s) in `output` must also exist
-  - So you must specify these values in the `config.yaml`
+### Snakemake 8.4.0
 
-However, since these files are mounted into the container under a different path `/data/{POOL}/automated_processing/file.rds`, 
-we cannot use the input/output host file system paths in our R script . Therefore, we have two variables in our `config.yaml`, 
-`container_input_files` and `container_output_file` where you specify the container path.
+There are a few breaking change from snakemake v7 to v8, most notably (and relevant to us) how we configure snakemake
+to interact with slurm. Newer versions of snakemake require the use of plugins to interact with external batch systems:
+https://snakemake.github.io/snakemake-plugin-catalog/plugins/executor/slurm.html.
 
 ## Depooling
 
 This pipeline de-pools de-multiplexed `.rds` files that have been de-multiplexed via `freemuxlet` or `demuxlet`.
-The input to the pipeline is a set of multiplexed `.rds` files, ie: `TEST-POOL-DM1-SCG1_raw.rds` and the output is a 
-de-pooled `.rds` file (within contains a list of de-pooled objects).
+The input to the pipeline is a set of multiplexed `.rds` files, ie: `TEST-POOL-DM1-SCG1_raw.rds` and the output is a  
+number of de-poooled `.rds` files. Each `.rds` file contains a de-pooled object. Files are named by the cluster id or
+the bio-specimen id by which they were de-multiplexed.
 
 ### Execution
 
-- Add your de-multiplexed files as input to: `pipelines/de-pooling/config.yaml`. (Note see: `example-config/config.yaml` as a reference)
+- Add your de-multiplexed files as input to: `pipelines/depooling/config.yaml`. 
 - `conda activate snakemake` to enter the conda snakemake virtual environment.
-- from `single_cellRNAseq_snake/` , run: `snakemake -s pipelines/de-pooling/Snakefile --cores 1 --use-singularity --singularity-args "--bind /krummellab/data1/amazzara/tutorial_lib_sep/data/single_cell_GEX/processed/:/data/"`
+- from `single_cellRNAseq_snake/`, `python run_pipeline depooling`
+
+Some other notable parameters:
+
+- `python run_pipeline.py depooling --singularity-args "--bind /krummellab/data1/amazzara/tutorial_lib_sep/data/single_cell_GEX/processed/"`
+- `python run_pipeline.py depooling --workflow-profile "profiles/depooling/"`
+
+In one of the commands above you will notice: `"--bind /krummellab/data1/amazzara/tutorial_lib_sep/data/single_cell_GEX/processed/"`.
+This mounts the host filesystem into the container filesystem, and note that there is no explicit filesystem target
+ie: `"--bind /krummellab/data1/amazzara/tutorial_lib_sep/data/single_cell_GEX/processed/:/container-filesystem/target/"`.
+As such the host path gets copied directly into the container path. This also simplifies many input/output specifications
+in our snakefile.
+
 
 ### Tests (WIP)
 

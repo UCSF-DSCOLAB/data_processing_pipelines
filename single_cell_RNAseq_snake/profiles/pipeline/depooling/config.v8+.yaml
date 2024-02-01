@@ -1,0 +1,7 @@
+# Custom settings for specific rules
+depooling:
+  time: 1:00:00
+  mem_mb: 4000
+
+# Number of jobs to submit to Slurm concurrently
+jobs: 10

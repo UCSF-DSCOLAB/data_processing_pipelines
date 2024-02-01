@@ -9,10 +9,10 @@ scg2_obj <- readRDS(scg2_path)
 
 # Read in depooled RDS object
 
-path_to_depooled_obj = "/krummellab/data1/amazzara/tutorial_lib_sep/data/single_cell_GEX/processed/depooled/DM1.rds"
-depooled_list <- readRDS(path_to_depooled_obj)
-depooled_obj_0 <- depooled_list[["0"]]
-depooled_obj_1 <- depooled_list[["1"]]
+path_to_depooled_obj_1 = "/krummellab/data1/amazzara/tutorial_lib_sep/data/single_cell_GEX/processed/depooled/DM1/293T_RTG.rds"
+path_to_depooled_obj_2 = "/krummellab/data1/amazzara/tutorial_lib_sep/data/single_cell_GEX/processed/depooled/DM1/jurkat.rds"
+depooled_obj_0 <- readRDS(path_to_depooled_obj_1)
+depooled_obj_1 <- readRDS(path_to_depooled_obj_2)
 
 # Meta-data checks
 

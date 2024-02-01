@@ -22,7 +22,7 @@ Run `conda activate snakemake` to enter the conda snakemake virtual environment.
 
 Run `snakemake -h` to verify that you can reference snakemake globally.
 
-Note: this conda environment uses snakemake `8.4.0`
+Note: this conda environment uses snakemake `8.4.2`
 
 ### What is going on?
 
@@ -41,7 +41,7 @@ In general:
 - `python run_pipeline.py depooling`
 
 
-### Snakemake 8.4.0
+### Snakemake 8.4.2
 
 There are a few breaking change from snakemake v7 to v8, most notably (and relevant to us) how we configure snakemake
 to interact with slurm. Newer versions of snakemake require the use of plugins to interact with external batch systems:
@@ -63,7 +63,7 @@ the bio-specimen id by which they were de-multiplexed.
 Some other notable parameters:
 
 - `python run_pipeline.py depooling --singularity-args "--bind /krummellab/data1/amazzara/tutorial_lib_sep/data/single_cell_GEX/processed/"`
-- `python run_pipeline.py depooling --workflow-profile "profiles/depooling/"`
+- `python run_pipeline.py depooling --workflow-profile "profiles/pipelines/depooling/"`
 
 In one of the commands above you will notice: `"--bind /krummellab/data1/amazzara/tutorial_lib_sep/data/single_cell_GEX/processed/"`.
 This mounts the host filesystem into the container filesystem, and note that there is no explicit filesystem target
@@ -71,12 +71,20 @@ ie: `"--bind /krummellab/data1/amazzara/tutorial_lib_sep/data/single_cell_GEX/pr
 As such the host path gets copied directly into the container path. This also simplifies many input/output specifications
 in our snakefile.
 
+### Custom resource definitions for depooling
 
-### Tests (WIP)
+If you want to submit custom resource definitions to slurm, you must use:
 
-This is an active area of research. 
+`python run_pipeline.py depooling --workflow-profile "profiles/pipelines/depooling/"`
 
-For now we have a simple script to test de-pooling located at `bin/test_de_pool.R`. 
+You will need to change the config file in the `profiles/pipelines/depooling/`
+This will overwrite the stardard profile in `profiles/generic`. 
+
+### Tests 
+
+TODO: use snakemake to generate unit tests.
+
+For now we have a very simple (hard coded) script to test de-pooling located at `bin/test_de_pool.R`. 
 
 To test:
 

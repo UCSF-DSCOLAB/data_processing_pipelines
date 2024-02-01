@@ -1,16 +1,16 @@
 executor: slurm
 
+# Slurm specific
 default-resources:
-  partition: "krummellab,common"
-  runtime: 1:00:00
-  mem_mb: 1000
-  user: "krummellab"
-  exclude: "c4-n20"
+  slurm_account: "krummellab"
+  slurm_partition: "krummellab,common"
+  runtime: 60 # in min
+  mem_mb: 4000 # 4gbs
   nodes: 1
+  # Non-standard resource specifications
+  # Waiting on fix from upstream repo
+  # slurm_extra: "exclude c4-n20"
 
-
-cores: 2
-local-cores: 3
-jobs: 10
+jobs: 5 # How many jobs can we execute in parallel
 printshellcmds: True
-restart-times: 1
+restart-times: 0 # How many times do retry jobs that fail

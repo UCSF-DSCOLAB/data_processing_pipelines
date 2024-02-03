@@ -1,0 +1,21 @@
+configfile: "pipelines/snatac/config.yaml"
+
+
+def get_libraries():
+    return [x["libraries"] for x in config["pools"].values()]
+
+rule load:
+    input:
+        "{library}",
+        "{params.project_dir}/${library}/cellranger/fragments.tsv.gz"
+    output:
+        "{params.project_dir}/${library}/archR/"
+        "{params.project_dir}/${library}/cell_filter/"
+    singularity:
+        config["container"]["r"]
+    params:
+        script="bin/01_load.R"
+    shell:
+        """
+        RScript {params.script} {input} {output}
+        """

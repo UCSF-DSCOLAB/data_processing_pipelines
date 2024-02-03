@@ -1,0 +1,13 @@
+process_snatac:
+  project: "TEST"
+  pools:
+    - name : "DB12"
+      nsamples : 2
+      libraries:
+      - name : "TEST-POOL-DB12-SNA1"
+    - name : "DB13"
+      nsamples : 2
+      libraries:
+      - name : "TEST-POOL-DB13-SNA1"
+container:
+  r: "/krummellab/data1/singularity_images/RSingleCell/v4/RSingleCell.sif"

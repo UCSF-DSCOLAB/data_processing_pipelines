@@ -67,7 +67,7 @@ if (!as.logical(cuts$reviewed)){
       dplyr::select(list_cols)
   }
   
-  filt_barcodes = unfilt_input %>% dplyr::filter(barcode %in% pre_filt$cell_id)
+  filt_barcodes = unfilt_input %>% dplyr::filter(barcode %in% post_filt$cell_id)
   filt_barcodes %>% write_csv(sprintf("%s/pre_amulet_barcodes_filt.csv", OUT_DIR))    
 
 }

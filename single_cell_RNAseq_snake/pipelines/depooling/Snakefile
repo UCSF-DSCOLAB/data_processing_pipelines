@@ -1,15 +1,19 @@
 configfile: "pipelines/depooling/config.yaml"
 
-rule depooling:
+rule all:
     input:
-        input_files = config["depooling"]["input_files"]
+        expand(config["output_dir"] + "{sample_tag}/", sample_tag=list(config["input"].keys()))
+
+rule de_pool:
+    input:
+        lambda wildcards: config["input"][wildcards.sample_tag]
     output:
-        directory(config["depooling"]["output_dir"])
+        directory(config["output_dir"] + "{sample_tag}/")
     singularity:
         config["container"]["r"]
     params:
-        script="bin/de_pool.R",
+        script="bin/de_pool.R"
     shell:
         """
-        Rscript {params.script} {input.input_files} {output}
+        Rscript {params.script} {input} {output}
         """

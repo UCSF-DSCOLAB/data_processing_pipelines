@@ -78,7 +78,7 @@ If you want to submit custom resource definitions to slurm, you must use:
 `python run_pipeline.py depooling --workflow-profile "profiles/pipelines/depooling/"`
 
 You will need to change the config file in the `profiles/pipelines/depooling/`
-This will overwrite the stardard profile in `profiles/generic`. 
+This will overwrite the standard profile in `profiles/generic`. 
 
 ### Tests 
 

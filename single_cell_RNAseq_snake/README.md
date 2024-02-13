@@ -62,12 +62,12 @@ the bio-specimen id by which they were de-multiplexed.
 
 Some other notable parameters:
 
-- `python run_pipeline.py depooling --singularity-args "--bind /krummellab/data1/amazzara/tutorial_lib_sep/data/single_cell_GEX/processed/"`
+- `python run_pipeline.py depooling --singularity-args "--bind /krummellab/data1/{USER}/tutorial_lib_sep/data/single_cell_GEX/processed/"`
 - `python run_pipeline.py depooling --workflow-profile "profiles/pipelines/depooling/"`
 
-In one of the commands above you will notice: `"--bind /krummellab/data1/amazzara/tutorial_lib_sep/data/single_cell_GEX/processed/"`.
+In one of the commands above you will notice: `"--bind /krummellab/data1/{USER}/tutorial_lib_sep/data/single_cell_GEX/processed/"`.
 This mounts the host filesystem into the container filesystem, and note that there is no explicit filesystem target
-ie: `"--bind /krummellab/data1/amazzara/tutorial_lib_sep/data/single_cell_GEX/processed/:/container-filesystem/target/"`.
+ie: `"--bind /krummellab/data1/{USER}/tutorial_lib_sep/data/single_cell_GEX/processed/:/container-filesystem/target/"`.
 As such the host path gets copied directly into the container path. This also simplifies many input/output specifications
 in our snakefile.
 

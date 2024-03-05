@@ -109,7 +109,7 @@ workflow {
     ch_trim_multiqc = FASTP_TRIM_ADAPTERS.out.json_report
     // FASTP_TRIM_ADAPTERS.out.json_report.collect().set { logs }
     ch_reports = ch_reports.mix(FASTP_TRIM_ADAPTERS.out.json_report.collect{it[1]}.ifEmpty([]))
-    // ch_reports_per_sample = ch_reports_per_sample.mix(FASTP_TRIM_ADAPTERS.out.json_report.collect{it[1]}.ifEmpty([]))
+    ch_reports_per_sample = ch_reports_per_sample.mix(ch_trim_multiqc)
     //
     // MODULE: Remove ribosomal RNA reads
     //
@@ -124,7 +124,7 @@ workflow {
         ch_trimmed_reads = SORTMERNA_RIBOSOMAL_RNA_REMOVAL.out.reads
         ch_sortmerna_multiqc = SORTMERNA_RIBOSOMAL_RNA_REMOVAL.out.log
         ch_reports = ch_reports.mix(SORTMERNA_RIBOSOMAL_RNA_REMOVAL.out.log.collect{it[1]}.ifEmpty([]))
-        // ch_reports_per_sample = ch_reports_per_sample.mix(SORTMERNA_RIBOSOMAL_RNA_REMOVAL.out.log)
+        ch_reports_per_sample = ch_reports_per_sample.mix(ch_sortmerna_multiqc)
     }
     //
     // MODULE: Quantify transcriptome abundance using Kallisto
@@ -138,8 +138,9 @@ workflow {
     ch_kallisto_counts = KALLISTO_QUANT.out.abundance_tsv
     ch_kallisto_multiqc = KALLISTO_QUANT.out.log
     // KALLISTO_QUANT.out.log.collect().set{ logs }
+    // QC reports collection
     ch_reports = ch_reports.mix(KALLISTO_QUANT.out.log.collect{it[1]}.ifEmpty([]))
-    ch_reports_per_sample = ch_trim_multiqc.mix(ch_kallisto_multiqc).groupTuple(by: 0)
+    ch_reports_per_sample = ch_reports_per_sample.mix(ch_kallisto_multiqc)//.groupTuple(by: 0)
     //
     // MODULE: Merge all transcriptome quantification into a single file
     //
@@ -169,6 +170,8 @@ workflow {
     ch_star_flagstat = ALIGN_READS.out.flagstat
     ch_star_idxstats = ALIGN_READS.out.idxstats
     ch_star_multiqc  = ALIGN_READS.out.log_final
+    // QC reports collection
+    ch_reports_per_sample = ch_reports_per_sample.mix(ch_star_multiqc)
     ch_reports = ch_reports.mix(ALIGN_READS.out.log_final.collect{it[1]}.ifEmpty([]))
     ch_star_bam_bai = ch_star_bam.join(ch_star_bai, by: [0])
     //
@@ -191,6 +194,8 @@ workflow {
     ch_samtools_flagstat      = BAM_MARKDUPLICATES_PICARD.out.flagstat
     ch_samtools_idxstats      = BAM_MARKDUPLICATES_PICARD.out.idxstats
     ch_markduplicates_multiqc = BAM_MARKDUPLICATES_PICARD.out.metrics
+    // QC reports collection
+    ch_reports_per_sample = ch_reports_per_sample.mix(ch_markduplicates_multiqc)
     ch_reports = ch_reports.mix(BAM_MARKDUPLICATES_PICARD.out.stats.collect{it[1]}.ifEmpty([]))
     ch_reports = ch_reports.mix(BAM_MARKDUPLICATES_PICARD.out.metrics.collect{it[1]}.ifEmpty([]))
     ch_genome_bam_bai = ch_genome_bam.join(ch_genome_bai, by: [0])
@@ -221,6 +226,8 @@ workflow {
         params.dbsnp_tbi
     )
     ch_recal_table = GATK4_BASE_RECALIBRATOR.out.table
+    // QC reports collection
+    ch_reports_per_sample = ch_reports_per_sample.mix(ch_recal_table.map{ meta, table -> table})
     ch_reports = ch_reports.mix(ch_recal_table.map{ meta, table -> table})
     //
     // MODULE: Apply BQSR using recalibration table, then index
@@ -323,6 +330,8 @@ workflow {
     //                     ch_star_multiqc,
     //                     ch_markduplicates_multiqc)
     // logs_by_sample = logs.mix().groupTuple()
+    // group QC reports by their sample ID
+    ch_reports_per_sample = ch_reports_per_sample.groupTuple(by: 0)
     MULTIQC_PER_SAMPLE(
         ch_reports_per_sample
     )

@@ -24,6 +24,7 @@ params.dbsnp                    = ""
 params.dbsnp_tbi                = ""
 params.gene_mapper              = ""
 params.contig_format_map        = ""
+params.call_snps                = ""
 params.format_contigs           = ""
 params.tmp_dir                  = ""
 params.results_directory        = ""
@@ -202,141 +203,137 @@ workflow {
     //
     // MODULE: SplitNCigarReads and reassign mapping qualities
     //
-    ch_split_bam = Channel.empty()
-    ch_split_bai = Channel.empty()
-    GATK4_SPLITNCIGARREADS (
-        ch_genome_bam_bai,
-        params.genome,
-        params.genome_idx,
-        params.genome_dict
-    )
-    ch_split_bam = GATK4_SPLITNCIGARREADS.out.bam
-    ch_split_bai = GATK4_SPLITNCIGARREADS.out.bai
-    //
-    // MODULE: Base Recalibration table generation
-    //
-    ch_recal_table = Channel.empty()
-    GATK4_BASE_RECALIBRATOR (
-        ch_split_bam,
-        ch_split_bai,
-        params.genome,
-        params.genome_idx,
-        params.genome_dict,
-        params.dbsnp,
-        params.dbsnp_tbi
-    )
-    ch_recal_table = GATK4_BASE_RECALIBRATOR.out.table
-    // QC reports collection
-    ch_reports_per_sample = ch_reports_per_sample.mix(ch_recal_table.map{ meta, table -> table})
-    ch_reports = ch_reports.mix(ch_recal_table.map{ meta, table -> table})
-    //
-    // MODULE: Apply BQSR using recalibration table, then index
-    //
-    ch_split_bam_bai = ch_split_bam.join(ch_split_bai, by: [0])
-    ch_bam_bai_bqsr = ch_split_bam_bai.join(ch_recal_table, by: [0])
-    ch_bam_variant_calling = Channel.empty()
-    ch_bai_variant_calling = Channel.empty()
-    GATK4_APPLY_BQSR (
-        ch_bam_bai_bqsr,
-        params.genome,
-        params.genome_idx,
-        params.genome_dict
-    )
-    SAMTOOLS_INDEX_BQSR (
-        GATK4_APPLY_BQSR.out.bam
-    )
-    ch_bam_variant_calling = GATK4_APPLY_BQSR.out.bam
-    ch_bai_variant_calling = SAMTOOLS_INDEX_BQSR.out.bai
-    //
-    // MODULE: Call SNPs and Indels using HaplotypeCaller
-    //
-    ch_bam_bai_variant_calling = ch_bam_variant_calling.join(ch_bai_variant_calling, by: [0])
-    ch_haplotype_vcf = Channel.empty()
-    ch_haplotype_tbi = Channel.empty()
-    GATK4_HAPLOTYPECALLER (
-        ch_bam_bai_variant_calling,
-        params.genome,
-        params.genome_idx,
-        params.genome_dict,
-        params.dbsnp,
-        params.dbsnp_tbi
-    )
-    ch_haplotype_vcf = GATK4_HAPLOTYPECALLER.out.vcf
-    ch_haplotype_tbi = GATK4_HAPLOTYPECALLER.out.tbi
-    ch_haplotype_vcf_tbi = ch_haplotype_vcf.join(ch_haplotype_tbi, by: [0])
-    //
-    // MODULE: Filter variants using VariantFiltration
-    //
-    ch_filtered_vcf = Channel.empty()
-    GATK4_VARIANTFILTRATION (
-        ch_haplotype_vcf_tbi,
-        params.genome,
-        params.genome_idx,
-        params.genome_dict
-    )
-    ch_filtered_vcf = GATK4_VARIANTFILTRATION.out.vcf 
-    if (params.format_contigs && params.contig_format_map) {
-        //
-        // MODULE: Convert VCF contigs to desired naming format (e.g. ucsc)
-        //
-        BCFTOOLS_CONTIG_CONVERSION (
-           ch_filtered_vcf,
-           params.contig_format_map
+    if (params.call_snps) {
+        ch_split_bam = Channel.empty()
+        ch_split_bai = Channel.empty()
+        GATK4_SPLITNCIGARREADS (
+            ch_genome_bam_bai,
+            params.genome,
+            params.genome_idx,
+            params.genome_dict
         )
-        ch_filtered_vcf = BCFTOOLS_CONTIG_CONVERSION.out.formatted_vcf
+        ch_split_bam = GATK4_SPLITNCIGARREADS.out.bam
+        ch_split_bai = GATK4_SPLITNCIGARREADS.out.bai
+        //
+        // MODULE: Base Recalibration table generation
+        //
+        ch_recal_table = Channel.empty()
+        GATK4_BASE_RECALIBRATOR (
+            ch_split_bam,
+            ch_split_bai,
+            params.genome,
+            params.genome_idx,
+            params.genome_dict,
+            params.dbsnp,
+            params.dbsnp_tbi
+        )
+        ch_recal_table = GATK4_BASE_RECALIBRATOR.out.table
+        // QC reports collection
+        ch_reports_per_sample = ch_reports_per_sample.mix(ch_recal_table)
+        ch_reports = ch_reports.mix(ch_recal_table.map{ meta, table -> table})
+        //
+        // MODULE: Apply BQSR using recalibration table, then index
+        //
+        ch_split_bam_bai = ch_split_bam.join(ch_split_bai, by: [0])
+        ch_bam_bai_bqsr = ch_split_bam_bai.join(ch_recal_table, by: [0])
+        ch_bam_variant_calling = Channel.empty()
+        ch_bai_variant_calling = Channel.empty()
+        GATK4_APPLY_BQSR (
+            ch_bam_bai_bqsr,
+            params.genome,
+            params.genome_idx,
+            params.genome_dict
+        )
+        SAMTOOLS_INDEX_BQSR (
+            GATK4_APPLY_BQSR.out.bam
+        )
+        ch_bam_variant_calling = GATK4_APPLY_BQSR.out.bam
+        ch_bai_variant_calling = SAMTOOLS_INDEX_BQSR.out.bai
+        //
+        // MODULE: Call SNPs and Indels using HaplotypeCaller
+        //
+        ch_bam_bai_variant_calling = ch_bam_variant_calling.join(ch_bai_variant_calling, by: [0])
+        ch_haplotype_vcf = Channel.empty()
+        ch_haplotype_tbi = Channel.empty()
+        GATK4_HAPLOTYPECALLER (
+            ch_bam_bai_variant_calling,
+            params.genome,
+            params.genome_idx,
+            params.genome_dict,
+            params.dbsnp,
+            params.dbsnp_tbi
+        )
+        ch_haplotype_vcf = GATK4_HAPLOTYPECALLER.out.vcf
+        ch_haplotype_tbi = GATK4_HAPLOTYPECALLER.out.tbi
+        ch_haplotype_vcf_tbi = ch_haplotype_vcf.join(ch_haplotype_tbi, by: [0])
+        //
+        // MODULE: Filter variants using VariantFiltration
+        //
+        ch_filtered_vcf = Channel.empty()
+        GATK4_VARIANTFILTRATION (
+            ch_haplotype_vcf_tbi,
+            params.genome,
+            params.genome_idx,
+            params.genome_dict
+        )
+        ch_filtered_vcf = GATK4_VARIANTFILTRATION.out.vcf 
+        if (params.format_contigs && params.contig_format_map) {
+            //
+            // MODULE: Convert VCF contigs to desired naming format (e.g. ucsc)
+            //
+            BCFTOOLS_CONTIG_CONVERSION (
+            ch_filtered_vcf,
+            params.contig_format_map
+            )
+            ch_filtered_vcf = BCFTOOLS_CONTIG_CONVERSION.out.formatted_vcf
+        }
+        //
+        // MODULE: Sort and index VCFs
+        //
+        ch_sorted_vcf = Channel.empty()
+        BCFTOOLS_SORT_VCF (
+            ch_filtered_vcf
+        )
+        ch_sorted_vcf = BCFTOOLS_SORT_VCF.out.sorted_vcf
+        //
+        // MODULE: Index VCFs
+        //
+        ch_vcf_index = Channel.empty()
+        BCFTOOLS_INDEX_VCF (
+            ch_sorted_vcf
+        )
+        // ch_sorted_vcf = BCFTOOLS_INDEX_VCF.out.sorted_vcf
+        ch_vcf_index = BCFTOOLS_INDEX_VCF.out.vcf_index
+        ch_vcf = ch_sorted_vcf.join(ch_vcf_index, by: [0])
+        // Collect all VCFs and index files from upstream process
+        meta = ch_vcf
+        .map { tuple -> tuple[0]}
+        .collect()
+        vcfs = ch_vcf
+        .map { tuple -> tuple[1]}
+        .collect()
+        tbis = ch_vcf
+        .map { tuple -> tuple[2]}
+        .collect()
+        //
+        // MODULE: Merge VCFs
+        //
+        BCFTOOLS_MERGE_VCF (
+            meta, 
+            vcfs, 
+            tbis
+        )
     }
     //
-    // MODULE: Sort and index VCFs
+    // MODULE: Generate QC reports per sample ID using MULTIQC
     //
-    ch_sorted_vcf = Channel.empty()
-    BCFTOOLS_SORT_VCF (
-        ch_filtered_vcf
-    )
-    ch_sorted_vcf = BCFTOOLS_SORT_VCF.out.sorted_vcf
-    //
-    // MODULE: Index VCFs
-    //
-    ch_vcf_index = Channel.empty()
-    BCFTOOLS_INDEX_VCF (
-        ch_sorted_vcf
-    )
-    // ch_sorted_vcf = BCFTOOLS_INDEX_VCF.out.sorted_vcf
-    ch_vcf_index = BCFTOOLS_INDEX_VCF.out.vcf_index
-    ch_vcf = ch_sorted_vcf.join(ch_vcf_index, by: [0])
-    // Collect all VCFs and index files from upstream process
-    meta = ch_vcf
-    .map { tuple -> tuple[0]}
-    .collect()
-    vcfs = ch_vcf
-    .map { tuple -> tuple[1]}
-    .collect()
-    tbis = ch_vcf
-    .map { tuple -> tuple[2]}
-    .collect()
-    //
-    // MODULE: Merge VCFs
-    //
-    BCFTOOLS_MERGE_VCF (
-        meta, 
-        vcfs, 
-        tbis
-    )
-    //
-    // MODULE: Generate QC reports using MULTIQC
-    //
-    // MULTIQC_PER_SAMPLE (ch_trim_multiqc,
-    //                     ch_sortmerna_multiqc,
-    //                     ch_kallisto_multiqc,
-    //                     ch_star_multiqc,
-    //                     ch_markduplicates_multiqc)
-    // logs_by_sample = logs.mix().groupTuple()
     // group QC reports by their sample ID
-    ch_reports_per_sample = ch_reports_per_sample.groupTuple(by: 0)
+    ch_reports_per_sample_grpd = ch_reports_per_sample.groupTuple(by: 0)
     MULTIQC_PER_SAMPLE(
-        ch_reports_per_sample
+        ch_reports_per_sample_grpd
     )
     //
-    // MODULE: Generate QC reports using MULTIQC
+    // MODULE: Generate Total QC reports using MULTIQC
     //
     ch_multiqc_files = Channel
                             .empty()

@@ -1,3 +1,4 @@
+library(Seurat)
 depool_and_save <- function(input_file, output_dir) {
   if (!file.exists(input_file)) {
     stop("File not found: ", input_file)

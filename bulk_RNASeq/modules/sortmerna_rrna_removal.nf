@@ -21,7 +21,7 @@ process SORTMERNA_RIBOSOMAL_RNA_REMOVAL {
 
     output:
     tuple val(meta), path("*.sortmerna.fastq.gz"), emit: reads
-    tuple val(meta), path("*.log")     , emit: log
+    tuple val(meta), path("*.sortmerna.log")     , emit: log
 
     when:
     task.ext.when == null || task.ext.when
@@ -40,6 +40,7 @@ process SORTMERNA_RIBOSOMAL_RNA_REMOVAL {
             --aligned rRNA_reads \\
             --fastx \\
             --other non_rRNA_reads \\
+            --log \\
             $args
 
         mv non_rRNA_reads.f*q.gz ${prefix}.sortmerna.fastq.gz
@@ -58,6 +59,7 @@ process SORTMERNA_RIBOSOMAL_RNA_REMOVAL {
             --other non_rRNA_reads \\
             --paired_in \\
             --out2 \\
+            --log \\
             $args
 
         mv non_rRNA_reads_fwd.f*q.gz ${prefix}_R1.sortmerna.fastq.gz

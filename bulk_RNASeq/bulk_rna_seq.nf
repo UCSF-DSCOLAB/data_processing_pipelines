@@ -124,6 +124,7 @@ workflow {
         )
         ch_trimmed_reads = SORTMERNA_RIBOSOMAL_RNA_REMOVAL.out.reads
         ch_sortmerna_multiqc = SORTMERNA_RIBOSOMAL_RNA_REMOVAL.out.log
+        // ch_sortmerna_json_report = SORTMERNA_RIBOSOMAL_RNA_REMOVAL.out.json_report
         ch_reports = ch_reports.mix(SORTMERNA_RIBOSOMAL_RNA_REMOVAL.out.log.collect{it[1]}.ifEmpty([]))
         ch_reports_per_sample = ch_reports_per_sample.mix(ch_sortmerna_multiqc)
     }
@@ -137,8 +138,9 @@ workflow {
         params.transcript_index
     )
     ch_kallisto_counts = KALLISTO_QUANT.out.abundance_tsv
-    ch_kallisto_multiqc = KALLISTO_QUANT.out.log
-    // KALLISTO_QUANT.out.log.collect().set{ logs }
+    ch_kallisto_log = KALLISTO_QUANT.out.log
+    ch_kallisto_run_info = KALLISTO_QUANT.out.run_info
+    ch_kallisto_multiqc = ch_kallisto_counts.mix(ch_kallisto_run_info)
     // QC reports collection
     ch_reports = ch_reports.mix(KALLISTO_QUANT.out.log.collect{it[1]}.ifEmpty([]))
     ch_reports_per_sample = ch_reports_per_sample.mix(ch_kallisto_multiqc)//.groupTuple(by: 0)
@@ -265,6 +267,8 @@ workflow {
         )
         ch_haplotype_vcf = GATK4_HAPLOTYPECALLER.out.vcf
         ch_haplotype_tbi = GATK4_HAPLOTYPECALLER.out.tbi
+        ch_haplotype_multiqc = GATK4_HAPLOTYPECALLER.out.summary_metrics
+        ch_reports_per_sample = ch_reports_per_sample.mix(ch_haplotype_multiqc)
         ch_haplotype_vcf_tbi = ch_haplotype_vcf.join(ch_haplotype_tbi, by: [0])
         //
         // MODULE: Filter variants using VariantFiltration
@@ -277,6 +281,8 @@ workflow {
             params.genome_dict
         )
         ch_filtered_vcf = GATK4_VARIANTFILTRATION.out.vcf 
+        // ch_filtered_multiqc = GATK4_VARIANTFILTRATION.out.stats
+        // ch_reports_per_sample = ch_reports_per_sample.mix(ch_filtered_multiqc)
         if (params.format_contigs && params.contig_format_map) {
             //
             // MODULE: Convert VCF contigs to desired naming format (e.g. ucsc)

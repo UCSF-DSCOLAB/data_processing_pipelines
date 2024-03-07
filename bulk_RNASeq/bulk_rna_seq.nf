@@ -24,6 +24,7 @@ params.dbsnp                    = ""
 params.dbsnp_tbi                = ""
 params.gene_mapper              = ""
 params.contig_format_map        = ""
+params.call_snps                = ""
 params.format_contigs           = ""
 params.tmp_dir                  = ""
 params.results_directory        = ""
@@ -55,6 +56,7 @@ include { BCFTOOLS_CONTIG_CONVERSION} from './modules/bcftools_contig_conversion
 include { BCFTOOLS_SORT_VCF   }       from './modules/bcftools_sort_vcf'
 include { BCFTOOLS_INDEX_VCF   }      from './modules/bcftools_index_vcf'
 include { BCFTOOLS_MERGE_VCF        } from './modules/bcftools_merge_vcf'
+include { MULTIQC_PER_SAMPLE        } from './modules/multiqc_per_sample'
 include { MULTIQC                   } from './modules/multiqc'
 
 
@@ -62,6 +64,9 @@ include { MULTIQC                   } from './modules/multiqc'
 workflow {
     // To gather all QC reports for MultiQC
     ch_reports  = Channel.empty()
+    // To gather all QC reports for MultiQC_PER_SAMPLE
+    ch_reports_per_sample  = Channel.empty()
+    logs  = Channel.empty()
     //
     // SUBWORKFLOW: Read in samplesheet, validate and stage input files
     //
@@ -103,7 +108,9 @@ workflow {
     )
     ch_trimmed_reads = FASTP_TRIM_ADAPTERS.out.trimmed_reads
     ch_trim_multiqc = FASTP_TRIM_ADAPTERS.out.json_report
-    ch_reports = ch_reports.mix(ch_trim_multiqc)
+    // FASTP_TRIM_ADAPTERS.out.json_report.collect().set { logs }
+    ch_reports = ch_reports.mix(FASTP_TRIM_ADAPTERS.out.json_report.collect{it[1]}.ifEmpty([]))
+    ch_reports_per_sample = ch_reports_per_sample.mix(ch_trim_multiqc)
     //
     // MODULE: Remove ribosomal RNA reads
     //
@@ -117,7 +124,9 @@ workflow {
         )
         ch_trimmed_reads = SORTMERNA_RIBOSOMAL_RNA_REMOVAL.out.reads
         ch_sortmerna_multiqc = SORTMERNA_RIBOSOMAL_RNA_REMOVAL.out.log
+        // ch_sortmerna_json_report = SORTMERNA_RIBOSOMAL_RNA_REMOVAL.out.json_report
         ch_reports = ch_reports.mix(SORTMERNA_RIBOSOMAL_RNA_REMOVAL.out.log.collect{it[1]}.ifEmpty([]))
+        ch_reports_per_sample = ch_reports_per_sample.mix(ch_sortmerna_multiqc)
     }
     //
     // MODULE: Quantify transcriptome abundance using Kallisto
@@ -129,8 +138,12 @@ workflow {
         params.transcript_index
     )
     ch_kallisto_counts = KALLISTO_QUANT.out.abundance_tsv
-    ch_kallisto_multiqc = KALLISTO_QUANT.out.log
+    ch_kallisto_log = KALLISTO_QUANT.out.log
+    ch_kallisto_run_info = KALLISTO_QUANT.out.run_info
+    ch_kallisto_multiqc = ch_kallisto_counts.mix(ch_kallisto_run_info)
+    // QC reports collection
     ch_reports = ch_reports.mix(KALLISTO_QUANT.out.log.collect{it[1]}.ifEmpty([]))
+    ch_reports_per_sample = ch_reports_per_sample.mix(ch_kallisto_multiqc)//.groupTuple(by: 0)
     //
     // MODULE: Merge all transcriptome quantification into a single file
     //
@@ -160,6 +173,8 @@ workflow {
     ch_star_flagstat = ALIGN_READS.out.flagstat
     ch_star_idxstats = ALIGN_READS.out.idxstats
     ch_star_multiqc  = ALIGN_READS.out.log_final
+    // QC reports collection
+    ch_reports_per_sample = ch_reports_per_sample.mix(ch_star_multiqc)
     ch_reports = ch_reports.mix(ALIGN_READS.out.log_final.collect{it[1]}.ifEmpty([]))
     ch_star_bam_bai = ch_star_bam.join(ch_star_bai, by: [0])
     //
@@ -182,131 +197,149 @@ workflow {
     ch_samtools_flagstat      = BAM_MARKDUPLICATES_PICARD.out.flagstat
     ch_samtools_idxstats      = BAM_MARKDUPLICATES_PICARD.out.idxstats
     ch_markduplicates_multiqc = BAM_MARKDUPLICATES_PICARD.out.metrics
+    // QC reports collection
+    ch_reports_per_sample = ch_reports_per_sample.mix(ch_markduplicates_multiqc)
     ch_reports = ch_reports.mix(BAM_MARKDUPLICATES_PICARD.out.stats.collect{it[1]}.ifEmpty([]))
     ch_reports = ch_reports.mix(BAM_MARKDUPLICATES_PICARD.out.metrics.collect{it[1]}.ifEmpty([]))
     ch_genome_bam_bai = ch_genome_bam.join(ch_genome_bai, by: [0])
     //
     // MODULE: SplitNCigarReads and reassign mapping qualities
     //
-    ch_split_bam = Channel.empty()
-    ch_split_bai = Channel.empty()
-    GATK4_SPLITNCIGARREADS (
-        ch_genome_bam_bai,
-        params.genome,
-        params.genome_idx,
-        params.genome_dict
-    )
-    ch_split_bam = GATK4_SPLITNCIGARREADS.out.bam
-    ch_split_bai = GATK4_SPLITNCIGARREADS.out.bai
-    //
-    // MODULE: Base Recalibration table generation
-    //
-    ch_recal_table = Channel.empty()
-    GATK4_BASE_RECALIBRATOR (
-        ch_split_bam,
-        ch_split_bai,
-        params.genome,
-        params.genome_idx,
-        params.genome_dict,
-        params.dbsnp,
-        params.dbsnp_tbi
-    )
-    ch_recal_table = GATK4_BASE_RECALIBRATOR.out.table
-    ch_reports = ch_reports.mix(ch_recal_table.map{ meta, table -> table})
-    //
-    // MODULE: Apply BQSR using recalibration table, then index
-    //
-    ch_split_bam_bai = ch_split_bam.join(ch_split_bai, by: [0])
-    ch_bam_bai_bqsr = ch_split_bam_bai.join(ch_recal_table, by: [0])
-    ch_bam_variant_calling = Channel.empty()
-    ch_bai_variant_calling = Channel.empty()
-    GATK4_APPLY_BQSR (
-        ch_bam_bai_bqsr,
-        params.genome,
-        params.genome_idx,
-        params.genome_dict
-    )
-    SAMTOOLS_INDEX_BQSR (
-        GATK4_APPLY_BQSR.out.bam
-    )
-    ch_bam_variant_calling = GATK4_APPLY_BQSR.out.bam
-    ch_bai_variant_calling = SAMTOOLS_INDEX_BQSR.out.bai
-    //
-    // MODULE: Call SNPs and Indels using HaplotypeCaller
-    //
-    ch_bam_bai_variant_calling = ch_bam_variant_calling.join(ch_bai_variant_calling, by: [0])
-    ch_haplotype_vcf = Channel.empty()
-    ch_haplotype_tbi = Channel.empty()
-    GATK4_HAPLOTYPECALLER (
-        ch_bam_bai_variant_calling,
-        params.genome,
-        params.genome_idx,
-        params.genome_dict,
-        params.dbsnp,
-        params.dbsnp_tbi
-    )
-    ch_haplotype_vcf = GATK4_HAPLOTYPECALLER.out.vcf
-    ch_haplotype_tbi = GATK4_HAPLOTYPECALLER.out.tbi
-    ch_haplotype_vcf_tbi = ch_haplotype_vcf.join(ch_haplotype_tbi, by: [0])
-    //
-    // MODULE: Filter variants using VariantFiltration
-    //
-    ch_filtered_vcf = Channel.empty()
-    GATK4_VARIANTFILTRATION (
-        ch_haplotype_vcf_tbi,
-        params.genome,
-        params.genome_idx,
-        params.genome_dict
-    )
-    ch_filtered_vcf = GATK4_VARIANTFILTRATION.out.vcf 
-    if (params.format_contigs && params.contig_format_map) {
-        //
-        // MODULE: Convert VCF contigs to desired naming format (e.g. ucsc)
-        //
-        BCFTOOLS_CONTIG_CONVERSION (
-           ch_filtered_vcf,
-           params.contig_format_map
+    if (params.call_snps) {
+        ch_split_bam = Channel.empty()
+        ch_split_bai = Channel.empty()
+        GATK4_SPLITNCIGARREADS (
+            ch_genome_bam_bai,
+            params.genome,
+            params.genome_idx,
+            params.genome_dict
         )
-        ch_filtered_vcf = BCFTOOLS_CONTIG_CONVERSION.out.formatted_vcf
+        ch_split_bam = GATK4_SPLITNCIGARREADS.out.bam
+        ch_split_bai = GATK4_SPLITNCIGARREADS.out.bai
+        //
+        // MODULE: Base Recalibration table generation
+        //
+        ch_recal_table = Channel.empty()
+        GATK4_BASE_RECALIBRATOR (
+            ch_split_bam,
+            ch_split_bai,
+            params.genome,
+            params.genome_idx,
+            params.genome_dict,
+            params.dbsnp,
+            params.dbsnp_tbi
+        )
+        ch_recal_table = GATK4_BASE_RECALIBRATOR.out.table
+        // QC reports collection
+        ch_reports_per_sample = ch_reports_per_sample.mix(ch_recal_table)
+        ch_reports = ch_reports.mix(ch_recal_table.map{ meta, table -> table})
+        //
+        // MODULE: Apply BQSR using recalibration table, then index
+        //
+        ch_split_bam_bai = ch_split_bam.join(ch_split_bai, by: [0])
+        ch_bam_bai_bqsr = ch_split_bam_bai.join(ch_recal_table, by: [0])
+        ch_bam_variant_calling = Channel.empty()
+        ch_bai_variant_calling = Channel.empty()
+        GATK4_APPLY_BQSR (
+            ch_bam_bai_bqsr,
+            params.genome,
+            params.genome_idx,
+            params.genome_dict
+        )
+        SAMTOOLS_INDEX_BQSR (
+            GATK4_APPLY_BQSR.out.bam
+        )
+        ch_bam_variant_calling = GATK4_APPLY_BQSR.out.bam
+        ch_bai_variant_calling = SAMTOOLS_INDEX_BQSR.out.bai
+        //
+        // MODULE: Call SNPs and Indels using HaplotypeCaller
+        //
+        ch_bam_bai_variant_calling = ch_bam_variant_calling.join(ch_bai_variant_calling, by: [0])
+        ch_haplotype_vcf = Channel.empty()
+        ch_haplotype_tbi = Channel.empty()
+        GATK4_HAPLOTYPECALLER (
+            ch_bam_bai_variant_calling,
+            params.genome,
+            params.genome_idx,
+            params.genome_dict,
+            params.dbsnp,
+            params.dbsnp_tbi
+        )
+        ch_haplotype_vcf = GATK4_HAPLOTYPECALLER.out.vcf
+        ch_haplotype_tbi = GATK4_HAPLOTYPECALLER.out.tbi
+        ch_haplotype_multiqc = GATK4_HAPLOTYPECALLER.out.summary_metrics
+        ch_reports_per_sample = ch_reports_per_sample.mix(ch_haplotype_multiqc)
+        ch_haplotype_vcf_tbi = ch_haplotype_vcf.join(ch_haplotype_tbi, by: [0])
+        //
+        // MODULE: Filter variants using VariantFiltration
+        //
+        ch_filtered_vcf = Channel.empty()
+        GATK4_VARIANTFILTRATION (
+            ch_haplotype_vcf_tbi,
+            params.genome,
+            params.genome_idx,
+            params.genome_dict
+        )
+        ch_filtered_vcf = GATK4_VARIANTFILTRATION.out.vcf 
+        // ch_filtered_multiqc = GATK4_VARIANTFILTRATION.out.stats
+        // ch_reports_per_sample = ch_reports_per_sample.mix(ch_filtered_multiqc)
+        if (params.format_contigs && params.contig_format_map) {
+            //
+            // MODULE: Convert VCF contigs to desired naming format (e.g. ucsc)
+            //
+            BCFTOOLS_CONTIG_CONVERSION (
+            ch_filtered_vcf,
+            params.contig_format_map
+            )
+            ch_filtered_vcf = BCFTOOLS_CONTIG_CONVERSION.out.formatted_vcf
+        }
+        //
+        // MODULE: Sort and index VCFs
+        //
+        ch_sorted_vcf = Channel.empty()
+        BCFTOOLS_SORT_VCF (
+            ch_filtered_vcf
+        )
+        ch_sorted_vcf = BCFTOOLS_SORT_VCF.out.sorted_vcf
+        //
+        // MODULE: Index VCFs
+        //
+        ch_vcf_index = Channel.empty()
+        BCFTOOLS_INDEX_VCF (
+            ch_sorted_vcf
+        )
+        // ch_sorted_vcf = BCFTOOLS_INDEX_VCF.out.sorted_vcf
+        ch_vcf_index = BCFTOOLS_INDEX_VCF.out.vcf_index
+        ch_vcf = ch_sorted_vcf.join(ch_vcf_index, by: [0])
+        // Collect all VCFs and index files from upstream process
+        meta = ch_vcf
+        .map { tuple -> tuple[0]}
+        .collect()
+        vcfs = ch_vcf
+        .map { tuple -> tuple[1]}
+        .collect()
+        tbis = ch_vcf
+        .map { tuple -> tuple[2]}
+        .collect()
+        //
+        // MODULE: Merge VCFs
+        //
+        BCFTOOLS_MERGE_VCF (
+            meta, 
+            vcfs, 
+            tbis
+        )
     }
     //
-    // MODULE: Sort and index VCFs
+    // MODULE: Generate QC reports per sample ID using MULTIQC
     //
-    ch_sorted_vcf = Channel.empty()
-    BCFTOOLS_SORT_VCF (
-        ch_filtered_vcf
-    )
-    ch_sorted_vcf = BCFTOOLS_SORT_VCF.out.sorted_vcf
-    //
-    // MODULE: Index VCFs
-    //
-    ch_vcf_index = Channel.empty()
-    BCFTOOLS_INDEX_VCF (
-        ch_sorted_vcf
-    )
-    // ch_sorted_vcf = BCFTOOLS_INDEX_VCF.out.sorted_vcf
-    ch_vcf_index = BCFTOOLS_INDEX_VCF.out.vcf_index
-    ch_vcf = ch_sorted_vcf.join(ch_vcf_index, by: [0])
-    // Collect all VCFs and index files from upstream process
-    meta = ch_vcf
-    .map { tuple -> tuple[0]}
-    .collect()
-    vcfs = ch_vcf
-    .map { tuple -> tuple[1]}
-    .collect()
-    tbis = ch_vcf
-    .map { tuple -> tuple[2]}
-    .collect()
-    //
-    // MODULE: Merge VCFs
-    //
-    BCFTOOLS_MERGE_VCF (
-        meta, 
-        vcfs, 
-        tbis
+    // group QC reports by their sample ID
+    ch_reports_per_sample_grpd = ch_reports_per_sample.groupTuple(by: 0)
+    MULTIQC_PER_SAMPLE(
+        ch_reports_per_sample_grpd
     )
     //
-    // MODULE: Generate QC reports using MULTIQC
+    // MODULE: Generate Total QC reports using MULTIQC
     //
     ch_multiqc_files = Channel
                             .empty()

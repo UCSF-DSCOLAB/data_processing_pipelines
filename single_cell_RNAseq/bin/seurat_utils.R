@@ -84,22 +84,34 @@ load_clonotypes <- function(library, data_type, clonotype_path, contig_path) {
   clono = read.csv(clonotype_path)
 
   annot = read.csv(contig_path) %>%
-    filter(high_confidence=="true",
-               full_length=="true",
-	        productive=="true")
-			    
+      filter(
+          high_confidence=="true",
+          full_length=="true",
+          productive=="true",
+          raw_clonotype_id!="" & !is.na(raw_clonotype_id) # target=NA, but may be turned into ""
+      )
   
   # The TCR/BCR sequencies for each barcode are split into different chains across multiple lines, but all those rows have same raw_clonotype_id values. Extracting the barcode and raw_clonotype_id and removing the redundancies.
   annot = annot %>% select(barcode, raw_clonotype_id) %>% unique()
   
-    
-  # Get clonotype AA sequences and map them to barcodes.
-  clonotype_data = inner_join(annot, clono[, c("clonotype_id", "cdr3s_aa")], by=c("raw_clonotype_id" = "clonotype_id"))
+  # Get AA sequences and other info per contig and join them together per clonotype_id
+  columns_grab <- c("v_gene","d_gene","j_gene","c_gene","fwr1","cdr1","fwr2","cdr2","fwr3","cdr3","fwr4","reads","umis")
+  clonotype_data <- do.call(rbind, lapply(
+      1:nrow(annot_set),
+      function(i) {
+          this_annot <- annot[annot$barcode==annot_set$barcode[i] & annot$raw_clonotype_id==annot_set$raw_clonotype_id[i],]
+          this_clonotype <- data.frame(barcode = annot_set$barcode[i], clonotype_id = annot_set$raw_clonotype_id[i])
+          for (col in columns_grab) {
+              this_clonotype[[col]] <- paste0(this_annot[,col], collapse = ";")
+          }
+          this_clonotype
+      }
+  ))
   
   # Make barcode the rownames and adjust the column names.
   clonotype_data = clonotype_data %>% 
-    column_to_rownames("barcode") %>% 
-    setNames(c(sprintf("%s.clonotype_id", data_type),sprintf("%s.cdr3s_aa", data_type)))
+      column_to_rownames("barcode") %>% 
+      setNames(c("clonotype_id", paste0(data_type, ".", columns_grab)))
   
   return(clonotype_data)
 }

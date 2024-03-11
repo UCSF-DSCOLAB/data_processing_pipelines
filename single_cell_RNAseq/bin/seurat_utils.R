@@ -100,7 +100,7 @@ load_clonotypes <- function(library, data_type, clonotype_path, contig_path) {
       1:nrow(annot_set),
       function(i) {
           this_annot <- annot[annot$barcode==annot_set$barcode[i] & annot$raw_clonotype_id==annot_set$raw_clonotype_id[i],]
-          this_clonotype <- data.frame(barcode = annot_set$barcode[i], clonotype_id = annot_set$raw_clonotype_id[i])
+          this_clonotype <- data.frame(barcode = annot_set$barcode[i])
           for (col in columns_grab) {
               this_clonotype[[col]] <- paste0(this_annot[,col], collapse = ";")
           }
@@ -111,7 +111,7 @@ load_clonotypes <- function(library, data_type, clonotype_path, contig_path) {
   # Make barcode the rownames and adjust the column names.
   clonotype_data = clonotype_data %>% 
       column_to_rownames("barcode") %>% 
-      setNames(c("clonotype_id", paste0(data_type, ".", columns_grab)))
+      setNames(paste0(data_type, ".", columns_grab))
   
   return(clonotype_data)
 }

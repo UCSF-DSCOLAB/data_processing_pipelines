@@ -80,8 +80,6 @@ filter_cells = function(sobj, params, adt.present){
 
 load_clonotypes <- function(library, data_type, clonotype_path, contig_path) {
   vdj_library=str_replace(library, "SCG", sprintf("SC%s", substr(data_type, 1,1) ))
-  
-  clono = read.csv(clonotype_path)
 
   annot = read.csv(contig_path) %>%
       filter(
@@ -92,7 +90,7 @@ load_clonotypes <- function(library, data_type, clonotype_path, contig_path) {
       )
   
   # The TCR/BCR sequencies for each barcode are split into different chains across multiple lines, but all those rows have same raw_clonotype_id values. Extracting the barcode and raw_clonotype_id and removing the redundancies.
-  annot = annot %>% select(barcode, raw_clonotype_id) %>% unique()
+  annot_set = annot %>% select(barcode, raw_clonotype_id) %>% unique()
   
   # Get AA sequences and other info per contig and join them together per clonotype_id
   columns_grab <- c("v_gene","d_gene","j_gene","c_gene","fwr1","cdr1","fwr2","cdr2","fwr3","cdr3","fwr4","reads","umis")

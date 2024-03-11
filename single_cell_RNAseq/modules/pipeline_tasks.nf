@@ -86,7 +86,7 @@ process CELLRANGER_VDJ {
   tuple val(library), val(data_type), val(vdj_library) 
   
   output:
-  tuple val(library), val(data_type), path("cellranger/clonotypes.csv"), path("cellranger/all_contig_annotations.csv"), emit: vdj_csvs
+  tuple val(library), val(data_type), path("cellranger/all_contig_annotations.csv"), emit: vdj_csvs
   path("cellranger/*"), emit: cr_out_files
   path(".command.log"), emit: log
   
@@ -557,7 +557,7 @@ process SEURAT_ADD_BCR {
 
   
   input:
-  tuple val(library), path(sobj), val(data_type), path(clonotypes_csv), path(contig_csv)
+  tuple val(library), path(sobj), val(data_type), path(contig_csv)
   
   output:
   tuple val(library), path("${library}_w_BCR.RDS"), emit: sobj
@@ -568,7 +568,7 @@ process SEURAT_ADD_BCR {
   then
     cp ${sobj} "${library}_w_BCR.RDS" # todo - switch to soft link
   else
-    Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${clonotypes_csv} ${contig_csv} ${projectDir}
+    Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${contig_csv} ${projectDir}
   fi
   
   """
@@ -586,7 +586,7 @@ process SEURAT_ADD_TCR {
 
   
   input:
-  tuple val(library), path(sobj), val(data_type), path(clonotypes_csv), path(contig_csv)
+  tuple val(library), path(sobj), val(data_type), path(contig_csv)
   
   output:
   tuple val(library), path("${library}_w_TCR.RDS"), emit: sobj
@@ -597,7 +597,7 @@ process SEURAT_ADD_TCR {
   then
     cp ${sobj} "${library}_w_TCR.RDS" # todo - switch to soft link
   else
-    Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${clonotypes_csv} ${contig_csv} ${projectDir}
+    Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${contig_csv} ${projectDir}
   fi
   
   """

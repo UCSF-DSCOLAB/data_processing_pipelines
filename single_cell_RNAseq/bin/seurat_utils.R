@@ -78,7 +78,7 @@ filter_cells = function(sobj, params, adt.present){
   return(sobj)
 }
 
-load_clonotypes <- function(library, data_type, clonotype_path, contig_path) {
+load_clonotypes <- function(library, data_type, contig_path) {
   vdj_library=str_replace(library, "SCG", sprintf("SC%s", substr(data_type, 1,1) ))
 
   annot = read.csv(contig_path) %>%

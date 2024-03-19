@@ -29,7 +29,7 @@ process STAR_ALIGN {
     script:
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
-    """
+    """    
     STAR \\
         --readFilesIn $reads  \\
         --genomeDir $genomeDir \\
@@ -40,7 +40,7 @@ process STAR_ALIGN {
         --outSAMtype BAM SortedByCoordinate \
         --quantMode TranscriptomeSAM GeneCounts \
         --outReadsUnmapped None \
-	    --outSAMunmapped Within KeepPairs \
+	--outSAMunmapped Within KeepPairs \
         --outSAMattrRGline ID:$prefix SM:$prefix LB:library PL:illumina \
         --outFileNamePrefix $prefix 
         $args

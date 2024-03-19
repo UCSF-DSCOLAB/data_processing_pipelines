@@ -1,6 +1,8 @@
 process SORTMERNA_RIBOSOMAL_RNA_REMOVAL {
     tag "$meta.id"
+
     label 'sortmerna_ribosomal_rna_removal'
+    scratch = false
     memory {
         if (meta.single_end) {
           // File size in GB
@@ -30,6 +32,7 @@ process SORTMERNA_RIBOSOMAL_RNA_REMOVAL {
     def refs = "${rrna_ref_fastas.join(' --ref ')}"
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
+
     if (meta.single_end) {
         """
         sortmerna \\

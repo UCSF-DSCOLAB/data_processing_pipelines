@@ -23,7 +23,7 @@ process BCFTOOLS_SORT_VCF {
     """
     bcftools sort \\
             --output ${prefix}.sorted.vcf.gz -Oz \\
-            --temp-dir \$PWD \\
+            --temp-dir \$TMPDIR \\
             $vcf
     """
 }

@@ -33,7 +33,7 @@ process GATK4_BASE_RECALIBRATOR {
         --output ${prefix}.table \\
         --reference $fasta \\
         $sites_command \\
-        --tmp-dir \$PWD \\
+        --tmp-dir \$TMPDIR \\
         $args
     """
 }

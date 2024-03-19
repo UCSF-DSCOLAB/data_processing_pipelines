@@ -22,6 +22,7 @@ process BCFTOOLS_CONTIG_CONVERSION {
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
+
     bcftools annotate \\
             --rename-chrs $format_map \\
             --threads $task.cpus -Oz \\

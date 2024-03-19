@@ -43,9 +43,10 @@ process CELLRANGER {
   path("cellranger/*"), emit: cr_out_files
   path(".command.log"), emit: log
   """
-  my_dir=\${PWD}
-  cd \${TMPDIR}
-  echo \${TMPDIR}
+#  my_dir=\${PWD}
+#  cd \${TMPDIR}
+#  echo \${TMPDIR}
+   echo \${PWD}
   # create the config
   gex_library=${library}
 
@@ -66,7 +67,7 @@ process CELLRANGER {
     --localcores=${task.cpus - 1} \
     --localmem=${task.memory.toGiga() - 2}
 
-  mv ${library}/outs \${my_dir}/cellranger
+  mv ${library}/outs cellranger
   """
 } 
 
@@ -91,10 +92,10 @@ process CELLRANGER_VDJ {
   path(".command.log"), emit: log
   
   """
-  my_dir=\${PWD}
-  cd \${TMPDIR}
-  echo \${TMPDIR}
-
+ # my_dir=\${PWD}
+ # cd \${TMPDIR}
+ # echo \${TMPDIR}
+  
   vdj_path=${params.project_dir}/data/single_cell_${data_type}/raw/${vdj_library}
   dt=${data_type}
     # TODO: update so that this only occurs on retries if there is a chain error
@@ -116,7 +117,7 @@ process CELLRANGER_VDJ {
     --localcores=${task.cpus - 1} \
     --localmem=${task.memory.toGiga() - 2}
   
-  mv ${vdj_library}/outs \${my_dir}/cellranger
+  mv ${vdj_library}/outs cellranger
   """
 }
 

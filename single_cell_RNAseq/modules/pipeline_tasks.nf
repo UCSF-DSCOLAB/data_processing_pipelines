@@ -285,8 +285,7 @@ process FREEMUXLET_POOL {
   publishDir "${params.project_dir}/data/single_cell_GEX/logs/${pool}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "freemuxlet.log" }
 
   container "${params.container.popscle}"
-  containerOptions "-B ${params.ref.fmx_dir}"
-  
+
   input:
   tuple val(pool), val(nsamples), path(merged_plp), path(merged_var), path(merged_cel), path(merged_barcodes)
   
@@ -315,8 +314,7 @@ process FREEMUXLET_LIBRARY {
   publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "freemuxlet.log" }
 
   container "${params.container.popscle}"
-  containerOptions "-B ${params.ref.fmx_dir}"
-  
+
   input:
   tuple val(library), val(nsamples), path(plp_files)
   
@@ -340,6 +338,32 @@ process FREEMUXLET_LIBRARY {
 
   """
 } 
+
+
+/*
+ * Run assign to gt for a pool or library 
+ */
+process FMX_ASSIGN_TO_GT {
+  publishDir "${params.project_dir}/fmx_assign_to_gt/${pool}/", mode: 'copy', pattern: "${pool}_gtcheck*"
+  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${pool}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "fmx_assign_to_gt.log" }
+
+  container "${params.container.rplus_bcftools}"
+  containerOptions "-B ${params.project_dir} -B ${params.settings.ref_vcf_dir}"
+
+  input:
+  tuple val(pool), val(ref_vcf), path(fmx_vcf) 
+
+  output:
+  tuple val(pool), path("${pool}*"), emit: outfiles
+  path(".command.log"), emit: log
+
+
+  """
+  bash ${projectDir}/bin/run_gtcheck.sh ${pool} ${params.settings.ref_vcf_dir}/${ref_vcf} ${fmx_vcf}
+  Rscript ${projectDir}/bin/examine_gtcheck.R ${pool} ${pool}_gtcheck.out
+  """
+
+}
 
 
 /*
@@ -442,30 +466,10 @@ process SEPARATE_FMX {
    publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/freemuxlet", mode: 'copy', pattern: "${library}*"
    publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "separate_fmx.log" }
   input:
-   tuple val(library), path(library_files)
-
-  output:
-   tuple path("${library}.clust1.samples.gz"), path("${library}.clust1.vcf.gz"), path("${library}.lmix"), emit: fmx_files
-   tuple val(library), path("${library}.clust1.samples.reduced.tsv"), emit: sample_map
-   path(".command.log"), emit: log
-
-  """
-  gunzip -f ${library}.clust1.samples.gz
-  awk {'printf (\"%s\t%s\t%s\t%s\t%s\\n\", \$2, \$3, \$4, \$5, \$6)'} ${library}.clust1.samples > ${library}.clust1.samples.reduced.tsv
-  gzip -f ${library}.clust1.samples
-  """
-}
-
-// TODO: unify the two processes
-process SEPARATE_FMX_PRE {
-   publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/freemuxlet", mode: 'copy', pattern: "${library}*"
-   publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "separate_fmx.log" }
-
-  input:
    tuple val(library), path(vcf_file), path(sample_file), path(lmix_file)
 
   output:
-   tuple path("${library}.clust1.samples.gz"), path("${library}.clust1.vcf.gz"), path("${library}.lmix"), emit: fmx_files
+   tuple val(library), path("${library}.clust1.samples.gz"), path("${library}.clust1.vcf.gz"), path("${library}.lmix"), emit: fmx_files
    tuple val(library), path("${library}.clust1.samples.reduced.tsv"), emit: sample_map
    path(".command.log"), emit: log
 
@@ -475,8 +479,6 @@ process SEPARATE_FMX_PRE {
   gzip -f ${library}.clust1.samples
   """
 }
-
-
 
 
 /*

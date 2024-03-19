@@ -36,7 +36,7 @@ process GATK4_HAPLOTYPECALLER {
         --output ${prefix}.vcf.gz \\
         $reference_command \\
         $dbsnp_command \\
-        --tmp-dir \$TMPDIR \\
+        --tmp-dir . \\
         $args
 
     gatk --java-options "-Xmx${task.memory.toGiga()}G" \\

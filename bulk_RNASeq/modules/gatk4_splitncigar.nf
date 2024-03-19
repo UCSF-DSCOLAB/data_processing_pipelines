@@ -29,7 +29,7 @@ process GATK4_SPLITNCIGARREADS {
         --input $bam \\
         --output ${prefix}.bam \\
         --reference $genome \\
-        --tmp-dir \$TMPDIR \\
+        --tmp-dir . \\
         $args
     """
 }

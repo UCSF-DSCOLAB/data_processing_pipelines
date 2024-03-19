@@ -29,7 +29,7 @@ process GATK4_APPLY_BQSR {
         --output ${prefix}_bqsr.bam \\
         --reference $genome \\
         --bqsr-recal-file $bqsr_table \\
-        --tmp-dir \$TMPDIR \\
+        --tmp-dir . \\
         $args
     """
 }

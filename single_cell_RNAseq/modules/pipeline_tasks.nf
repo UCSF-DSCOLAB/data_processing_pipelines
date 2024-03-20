@@ -15,10 +15,6 @@ process TEST_GZIP_INTEGRITY {
 
     gzip --test ${params.project_dir}/data/single_cell_${data_type}/raw/\${lib_to_use}/\${lib_to_use}*.fastq.gz
     
-    if [[ "${data_type}" == "CITE" ]]
-    then
-      gzip --test ${params.project_dir}/data/single_cell_GEX/raw/${library}/${library}*.fastq.gz
-    fi
 
     """
 }
@@ -37,7 +33,7 @@ process CELLRANGER {
 
 
   container "${params.container.cellranger}"
-  containerOptions "-B ${params.ref.dir} -B ${params.project_dir}"
+  containerOptions "-B ${params.ref.dir} -B ${params.project_dir} -B /scratch/"
   
   input:
   tuple val(library), val(data_type)
@@ -47,11 +43,15 @@ process CELLRANGER {
   path("cellranger/*"), emit: cr_out_files
   path(".command.log"), emit: log
   """
+#  my_dir=\${PWD}
+#  cd \${TMPDIR}
+#  echo \${TMPDIR}
+   echo \${PWD}
   # create the config
   gex_library=${library}
 
   echo "fastqs,sample,library_type
-${params.project_dir}/data/single_cell_GEX/raw/${library},${library},Gene Expression" > ${library}_libraries.csv
+    ${params.project_dir}/data/single_cell_GEX/raw/${library},${library},Gene Expression" > ${library}_libraries.csv
   
   # add a line to the config if there is cite-seq data
   if [[ "${data_type}" == "CITE" ]]
@@ -63,7 +63,9 @@ ${params.project_dir}/data/single_cell_GEX/raw/${library},${library},Gene Expres
   cellranger count --id=${library}  \
     --libraries=${library}_libraries.csv \
     --feature-ref=${params.ref.cite_feature_ref} \
-    --transcriptome=${params.ref.transcriptome} 
+    --transcriptome=${params.ref.transcriptome} \
+    --localcores=${task.cpus - 1} \
+    --localmem=${task.memory.toGiga() - 2}
 
   mv ${library}/outs cellranger
   """
@@ -74,34 +76,48 @@ ${params.project_dir}/data/single_cell_GEX/raw/${library},${library},Gene Expres
  * Step 1b. Run Cellranger vdj
  */
 process CELLRANGER_VDJ {
-  publishDir "${params.project_dir}/data/single_cell_${data_type}/processed/${library}/cellranger", mode: 'copy'
-  publishDir "${params.project_dir}/data/single_cell_${data_type}/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "cellranger.log" }
+  publishDir "${params.project_dir}/data/single_cell_${data_type}/processed/${vdj_library}/", pattern: "cellranger/*", mode: 'copy'
+  publishDir "${params.project_dir}/data/single_cell_${data_type}/logs/${vdj_library}/", mode: 'copy', pattern: ".command.log", saveAs: { 
+    filename -> "cellranger.log" }
 
   container "${params.container.cellranger}"
-  containerOptions "-B ${params.ref.dir} -B ${params.project_dir}"
+  containerOptions "-B ${params.ref.dir} -B ${params.project_dir} -B /scratch/"
   
   input:
-  tuple val(library), val(data_type) 
+  tuple val(library), val(data_type), val(vdj_library) 
   
   output:
-  tuple val(library), val(data_type), path("clonotypes.csv"), path("filtered_contig_annotations.csv"), emit: bam_h5
+  tuple val(library), val(data_type), path("cellranger/clonotypes.csv"), path("cellranger/all_contig_annotations.csv"), emit: vdj_csvs
   path("cellranger/*"), emit: cr_out_files
   path(".command.log"), emit: log
   
   """
-  gex_library=${library}
-  data_type_name = "${data_type}"
-  vdj_library=\${gex_library/"SCG"/"SC\${data_type_name:0:1}"}
-
-  vdj_path=\${params.project_dir}/data/single_cell_${data_type}/raw/\${vdj_library}
+ # my_dir=\${PWD}
+ # cd \${TMPDIR}
+ # echo \${TMPDIR}
   
-  cellranger vdj --id="\${vdj_library}"  \
+  vdj_path=${params.project_dir}/data/single_cell_${data_type}/raw/${vdj_library}
+  dt=${data_type}
+    # TODO: update so that this only occurs on retries if there is a chain error
+  if [ \${dt} == "TCR" ]
+  then
+    chain_type="TR"
+  elif [ \${dt} == "BCR" ] 
+  then
+    chain_type="IG"
+  else 
+    echo "Warning - chain type should be one of TCR or BCR"
+    chain_type="auto"
+  fi
+  
+  cellranger vdj --id=${vdj_library}  \
     --fastqs=\${vdj_path} \
-    --reference="\${vdj_library}" \
-    --reference=${params.ref.vdj_ref} 
+    --reference=${params.ref.vdj_ref} \
+    --chain=\${chain_type} \
+    --localcores=${task.cpus - 1} \
+    --localmem=${task.memory.toGiga() - 2}
   
-  mv ${library}/outs cellranger
-
+  mv ${vdj_library}/outs cellranger
   """
 }
 
@@ -285,8 +301,7 @@ process FREEMUXLET_POOL {
   publishDir "${params.project_dir}/data/single_cell_GEX/logs/${pool}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "freemuxlet.log" }
 
   container "${params.container.popscle}"
-  containerOptions "-B ${params.ref.fmx_dir}"
-  
+
   input:
   tuple val(pool), val(nsamples), path(merged_plp), path(merged_var), path(merged_cel), path(merged_barcodes)
   
@@ -315,8 +330,7 @@ process FREEMUXLET_LIBRARY {
   publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "freemuxlet.log" }
 
   container "${params.container.popscle}"
-  containerOptions "-B ${params.ref.fmx_dir}"
-  
+
   input:
   tuple val(library), val(nsamples), path(plp_files)
   
@@ -340,6 +354,32 @@ process FREEMUXLET_LIBRARY {
 
   """
 } 
+
+
+/*
+ * Run assign to gt for a pool or library 
+ */
+process FMX_ASSIGN_TO_GT {
+  publishDir "${params.project_dir}/fmx_assign_to_gt/${pool}/", mode: 'copy', pattern: "${pool}_gtcheck*"
+  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${pool}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "fmx_assign_to_gt.log" }
+
+  container "${params.container.rplus_bcftools}"
+  containerOptions "-B ${params.project_dir} -B ${params.settings.ref_vcf_dir}"
+
+  input:
+  tuple val(pool), val(ref_vcf), path(fmx_vcf) 
+
+  output:
+  tuple val(pool), path("${pool}*"), emit: outfiles
+  path(".command.log"), emit: log
+
+
+  """
+  bash ${projectDir}/bin/run_gtcheck.sh ${pool} ${params.settings.ref_vcf_dir}/${ref_vcf} ${fmx_vcf} ${params.settings.ref_vcf_type}
+  Rscript ${projectDir}/bin/examine_gtcheck.R ${pool} ${pool}_gtcheck.out
+  """
+
+}
 
 
 /*
@@ -442,30 +482,10 @@ process SEPARATE_FMX {
    publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/freemuxlet", mode: 'copy', pattern: "${library}*"
    publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "separate_fmx.log" }
   input:
-   tuple val(library), path(library_files)
-
-  output:
-   tuple path("${library}.clust1.samples.gz"), path("${library}.clust1.vcf.gz"), path("${library}.lmix"), emit: fmx_files
-   tuple val(library), path("${library}.clust1.samples.reduced.tsv"), emit: sample_map
-   path(".command.log"), emit: log
-
-  """
-  gunzip -f ${library}.clust1.samples.gz
-  awk {'printf (\"%s\t%s\t%s\t%s\t%s\\n\", \$2, \$3, \$4, \$5, \$6)'} ${library}.clust1.samples > ${library}.clust1.samples.reduced.tsv
-  gzip -f ${library}.clust1.samples
-  """
-}
-
-// TODO: unify the two processes
-process SEPARATE_FMX_PRE {
-   publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/freemuxlet", mode: 'copy', pattern: "${library}*"
-   publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "separate_fmx.log" }
-
-  input:
    tuple val(library), path(vcf_file), path(sample_file), path(lmix_file)
 
   output:
-   tuple path("${library}.clust1.samples.gz"), path("${library}.clust1.vcf.gz"), path("${library}.lmix"), emit: fmx_files
+   tuple val(library), path("${library}.clust1.samples.gz"), path("${library}.clust1.vcf.gz"), path("${library}.lmix"), emit: fmx_files
    tuple val(library), path("${library}.clust1.samples.reduced.tsv"), emit: sample_map
    path(".command.log"), emit: log
 
@@ -475,8 +495,6 @@ process SEPARATE_FMX_PRE {
   gzip -f ${library}.clust1.samples
   """
 }
-
-
 
 
 /*
@@ -487,7 +505,7 @@ process FIND_DOUBLETS {
   publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "run_df.log" }
 
 
-  container "${params.container.rsinglecell}" // todo update to one with DF
+  container "${params.container.rsinglecell}" 
 
   input:
   tuple val(library), val(ncells_loaded), path(raw_h5), path(fmx_clusters)
@@ -543,15 +561,15 @@ process SEURAT_ADD_BCR {
   tuple val(library), path(sobj), val(data_type), path(clonotypes_csv), path(contig_csv)
   
   output:
-  tuple val(library), path("${library}_w_BCR.Rds"), emit: sobj
+  tuple val(library), path("${library}_w_BCR.RDS"), emit: sobj
   path(".command.log"), emit: log
 
   """
   if [[ "${data_type}" == "no BCR" ]]
   then
-    cp ${sobj} "${library}_w_BCR.Rds" # todo - switch to soft link
+    cp ${sobj} "${library}_w_BCR.RDS" # todo - switch to soft link
   else
-    Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${projectDir}
+    Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${clonotypes_csv} ${contig_csv} ${projectDir}
   fi
   
   """
@@ -572,15 +590,15 @@ process SEURAT_ADD_TCR {
   tuple val(library), path(sobj), val(data_type), path(clonotypes_csv), path(contig_csv)
   
   output:
-  tuple val(library), path("${library}_w_TCR.Rds"), emit: sobj
+  tuple val(library), path("${library}_w_TCR.RDS"), emit: sobj
   path(".command.log"), emit: log
 
   """
   if [[ "${data_type}" == "no TCR" ]]
   then
-    cp ${sobj} "${library}_w_TCR.Rds" # todo - switch to soft link
+    cp ${sobj} "${library}_w_TCR.RDS" # todo - switch to soft link
   else
-    Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${projectDir}
+    Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${clonotypes_csv} ${contig_csv} ${projectDir}
   fi
   
   """
@@ -613,6 +631,31 @@ process SEURAT_QC {
   """
 }
 
+/* 
+ * Step 6b. Run Seurat
+ */
+process SEURAT_LOAD_POST_QC {
+  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "seurat_qc.log" }
+  publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing", mode: 'copy', pattern: "${library}*"
+  // For testing
+  publishDir "${workDir}/data/single_cell_GEX/processed/${library}/automated_processing", mode: 'copy', pattern: "${library}*"
+
+  container "${params.container.rsinglecell}"
+
+  input:
+  tuple val(library), val(main_dt), path(doublet_finder_sobj), path(raw_h5), path(cutoffs)
+  
+  output:
+  tuple val(library), path("${library}_raw.rds"), emit: qc_output
+  tuple val(library),path("${library}_cutoffs.csv"), emit: cutoffs_file
+  path(".command.log"), emit: log
+
+  """
+  Rscript ${projectDir}/bin/process_with_seurat.R ${library} ${main_dt} ${doublet_finder_sobj} ${projectDir} ${cutoffs} ${raw_h5}
+
+  """
+}
+
 
 /* 
  * Step 5b. Run Post filter
@@ -628,6 +671,7 @@ process SEURAT_POST_FILTER {
   
   output:
   tuple val(library), path("${library}_filtered.rds"), emit: post_process
+  tuple val(library),path("${library}_cutoffs.csv"), emit: cutoffs_file
   path("${library}*"), emit: outfiles
   path(".command.log"), emit: log
 

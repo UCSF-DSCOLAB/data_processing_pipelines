@@ -78,17 +78,21 @@ filter_cells = function(sobj, params, adt.present){
   return(sobj)
 }
 
-load_clonotypes <- function(library, data_type) {
+load_clonotypes <- function(library, data_type, clonotype_path, contig_path) {
   vdj_library=str_replace(library, "SCG", sprintf("SC%s", substr(data_type, 1,1) ))
-  clonotype_dir = sprintf("single_cell_%s/processed/%s/cellranger/", data_type, vdj_library)
-  annot = read.csv(file.path(clonotype_dir, "filtered_contig_annotations.csv"))
+  
+  clono = read.csv(clonotype_path)
+
+  annot = read.csv(contig_path) %>%
+    filter(high_confidence=="true",
+               full_length=="true",
+	        productive=="true")
+			    
   
   # The TCR/BCR sequencies for each barcode are split into different chains across multiple lines, but all those rows have same raw_clonotype_id values. Extracting the barcode and raw_clonotype_id and removing the redundancies.
   annot = annot %>% select(barcode, raw_clonotype_id) %>% unique()
   
-  # Get the clonotype info.
-  clono = read.csv(file.path(clonotype_dir, "clonotypes.csv"))
-  
+    
   # Get clonotype AA sequences and map them to barcodes.
   clonotype_data = inner_join(annot, clono[, c("clonotype_id", "cdr3s_aa")], by=c("raw_clonotype_id" = "clonotype_id"))
   

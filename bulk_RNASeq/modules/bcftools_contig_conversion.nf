@@ -1,6 +1,8 @@
 process BCFTOOLS_CONTIG_CONVERSION {
     tag "$meta.id"
     label 'bcftools_contig_conversion'
+    scratch = false
+
     publishDir "${params.results_directory}/snps", mode: 'copy'
     memory {
         // File size in GB

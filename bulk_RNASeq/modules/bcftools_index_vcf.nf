@@ -1,6 +1,7 @@
 process BCFTOOLS_INDEX_VCF {
     tag "$meta.id"
     label 'bcftools_index_vcf'
+    scratch = false
     publishDir "${params.results_directory}/snps", mode: 'copy'
     memory {
         // File size in GB

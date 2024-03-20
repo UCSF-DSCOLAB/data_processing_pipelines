@@ -1,6 +1,8 @@
 process BCFTOOLS_SORT_VCF {
     tag "$meta.id"
     label 'bcftools_sort_vcf'
+    scratch = false
+
     publishDir "${params.results_directory}/snps", mode: 'copy'
     memory {
         // File size in GB
@@ -21,8 +23,9 @@ process BCFTOOLS_SORT_VCF {
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
+    echo \$PWD 
     bcftools sort \\
             --output ${prefix}.sorted.vcf.gz -Oz \\
-            $vcf
+            $vcf --temp-dir .
     """
 }

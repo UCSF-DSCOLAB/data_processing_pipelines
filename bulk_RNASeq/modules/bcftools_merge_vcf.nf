@@ -1,6 +1,8 @@
 process BCFTOOLS_MERGE_VCF {
     tag "$meta.id"
     label 'bcftools_merge_vcf'
+    scratch = false
+
     publishDir "${params.results_directory}/merged_results", mode: 'copy'
     memory {
         // File size in GB

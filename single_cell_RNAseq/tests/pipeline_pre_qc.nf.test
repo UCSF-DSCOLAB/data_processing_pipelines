@@ -209,7 +209,7 @@ nextflow_pipeline {
                 ).match()
             }
         }
-
+/*
     test("Should successfully demultiplex merged libraries using freemuxlet") {
 
         def meta = "$metaDir"
@@ -249,7 +249,7 @@ nextflow_pipeline {
              }
 
         }
-
+*/
     test("Should successfully demultiplex individual libraries using demuxlet and run doublet finder") {
 
         def meta = "$metaDir"

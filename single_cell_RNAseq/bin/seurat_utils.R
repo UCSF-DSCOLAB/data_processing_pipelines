@@ -19,7 +19,12 @@ scatterhist <- function(x, y, sobj, params) {
     geom_hline(yintercept = y_upper) +
     geom_hline(yintercept = y_lower) + 
     geom_rect(aes(xmin=x_lower, xmax=x_upper, ymin=y_lower, ymax=y_upper), color="red", alpha=0) +
-    geom_text(data = data.frame(x=x_lower, y=y_upper,text=paste0(filter_cell_percent, "%")), aes(x=x,y=y,label=text), hjust=0, vjust=1, color="darkred", size=8)
+    geom_text(data = data.frame(x=x_lower, y=y_upper,text=paste0(filter_cell_percent, "%")), aes(x=x,y=y,label=text), hjust=0, vjust=1, color="darkred", size=8) +
+    if (x == "nCount_ADT") {
+      xlim(NA, 25000)
+    } else if (y == "nCount_ADT") {
+      ylim(NA, 25000)
+    }
   
   return( ggExtra::ggMarginal(p, type = "histogram", bins=50) )
 }

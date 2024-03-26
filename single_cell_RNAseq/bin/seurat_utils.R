@@ -10,7 +10,7 @@ scatterhist <- function(x, y, sobj, params) {
     xy_data[,2] >= y_lower
   filter_cell_percent = round( sum(filter_cells) / ncol(sobj) ,3) * 100
   p = ggplot(sobj@meta.data, aes(x=!!sym(x), y=!!sym(y))) +
-    geom_point(size=0.1,alpha=0.1) +
+    # geom_point(size=0.1,alpha=0.1) +
     geom_hex(bins=100) +
     scale_fill_distiller(palette = "RdYlBu") +
     theme_classic() +

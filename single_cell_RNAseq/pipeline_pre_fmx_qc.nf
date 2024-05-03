@@ -1,5 +1,15 @@
 nextflow.enable.dsl=2
 
+workflow.onComplete {
+    println "Pipeline completed at: $workflow.complete"
+    println "Execution status: ${ workflow.success ? 'OK' : 'failed' }"
+    if (workflow.success){
+       println "Deleting working directory $workDir"
+       "rm -rf $workDir".execute()
+    }
+}
+
+
 // This pipeline expects the following to be provided in json form on the command line
 /* params.project_dir  
  * params.pools is a list of pools

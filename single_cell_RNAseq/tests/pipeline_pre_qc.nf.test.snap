@@ -9,7 +9,9 @@
                 "exitStatus": 0,
                 "failed": false,
                 "stdout": [
-                    
+                    "Pipeline completed at: 2024-05-22T15:43:27.723159089-07:00",
+                    "Execution status: OK",
+                    "Deleting working directory /krummellab/data1/erflynn/data_processing_pipelines/single_cell_RNAseq/.nf-test/tests/1173bb2aa6ad309b89c6202d0bad815c/work"
                 ],
                 "errorMessage": "",
                 "name": "workflow",
@@ -19,7 +21,7 @@
             "TEST-POOL-DM1-SCG2_quantiles_pre.tsv:md5,03c104a82af781e44ded3e03ccd4524c",
             "TEST-POOL-DM2-SCG1_quantiles_pre.tsv:md5,fd9ad3a0d63fdbf72bbe94084ba45531"
         ],
-        "timestamp": "2023-11-13T12:12:43.532657677"
+        "timestamp": "2024-05-22T15:43:28.042300167"
     },
     "Should successfully demultiplex merged libraries using demuxlet and run doublet finder": {
         "content": [
@@ -31,7 +33,9 @@
                 "exitStatus": 0,
                 "failed": false,
                 "stdout": [
-                    
+                    "Pipeline completed at: 2024-05-22T15:51:28.366528662-07:00",
+                    "Execution status: OK",
+                    "Deleting working directory /krummellab/data1/erflynn/data_processing_pipelines/single_cell_RNAseq/.nf-test/tests/3c780cbccd259fa99f84fd955f7b35a2/work"
                 ],
                 "errorMessage": "",
                 "name": "workflow",
@@ -41,7 +45,7 @@
             "TEST-POOL-DM1-SCG2_quantiles_pre.tsv:md5,03c104a82af781e44ded3e03ccd4524c",
             "TEST-POOL-DM2-SCG1_quantiles_pre.tsv:md5,fd9ad3a0d63fdbf72bbe94084ba45531"
         ],
-        "timestamp": "2023-11-13T12:15:39.337232828"
+        "timestamp": "2024-05-22T15:51:28.679142721"
     },
     "Should successfully demultiplex individual libraries using demuxlet": {
         "content": [
@@ -53,7 +57,9 @@
                 "exitStatus": 0,
                 "failed": false,
                 "stdout": [
-                    
+                    "Pipeline completed at: 2024-05-22T16:04:39.550182068-07:00",
+                    "Execution status: OK",
+                    "Deleting working directory /krummellab/data1/erflynn/data_processing_pipelines/single_cell_RNAseq/.nf-test/tests/2f962b898ea0208fd0cad351c07c574f/work"
                 ],
                 "errorMessage": "",
                 "name": "workflow",
@@ -63,7 +69,7 @@
             "TEST-POOL-DM1-SCG2_quantiles_pre.tsv:md5,03c104a82af781e44ded3e03ccd4524c",
             "TEST-POOL-DM2-SCG1_quantiles_pre.tsv:md5,fd9ad3a0d63fdbf72bbe94084ba45531"
         ],
-        "timestamp": "2023-11-13T12:22:55.972254105"
+        "timestamp": "2024-05-22T16:04:39.888711232"
     },
     "Should successfully demultiplex individual libraries using freemuxlet and run doublet finder": {
         "content": [
@@ -75,7 +81,9 @@
                 "exitStatus": 0,
                 "failed": false,
                 "stdout": [
-                    
+                    "Pipeline completed at: 2024-05-22T15:37:37.188485721-07:00",
+                    "Execution status: OK",
+                    "Deleting working directory /krummellab/data1/erflynn/data_processing_pipelines/single_cell_RNAseq/.nf-test/tests/b86af92d8c9ab21d8e758443307f027/work"
                 ],
                 "errorMessage": "",
                 "name": "workflow",
@@ -85,9 +93,9 @@
             "TEST-POOL-DM1-SCG2_quantiles_pre.tsv:md5,03c104a82af781e44ded3e03ccd4524c",
             "TEST-POOL-DM2-SCG1_quantiles_pre.tsv:md5,fd9ad3a0d63fdbf72bbe94084ba45531"
         ],
-        "timestamp": "2023-11-13T12:10:38.169249755"
+        "timestamp": "2024-05-22T15:37:37.494854416"
     },
-    "Should successfully demultiplex merged libraries using freemuxlet and run doublet finder": {
+    "Should successfully demultiplex merged libaries using freemuxlet and run doublet finder": {
         "content": [
             {
                 "stderr": [
@@ -97,7 +105,9 @@
                 "exitStatus": 0,
                 "failed": false,
                 "stdout": [
-                    
+                    "Pipeline completed at: 2024-05-22T15:20:49.640346224-07:00",
+                    "Execution status: OK",
+                    "Deleting working directory /krummellab/data1/erflynn/data_processing_pipelines/single_cell_RNAseq/.nf-test/tests/4dd1a2f8314fa91505480a984d63c206/work"
                 ],
                 "errorMessage": "",
                 "name": "workflow",
@@ -107,7 +117,7 @@
             "TEST-POOL-DM1-SCG2_quantiles_pre.tsv:md5,03c104a82af781e44ded3e03ccd4524c",
             "TEST-POOL-DM2-SCG1_quantiles_pre.tsv:md5,fd9ad3a0d63fdbf72bbe94084ba45531"
         ],
-        "timestamp": "2023-11-13T12:05:23.130707469"
+        "timestamp": "2024-05-22T15:20:49.973459209"
     },
     "Should successfully demultiplex merged libraries using freemuxlet": {
         "content": [
@@ -119,7 +129,9 @@
                 "exitStatus": 0,
                 "failed": false,
                 "stdout": [
-                    
+                    "Pipeline completed at: 2024-05-22T15:29:56.546389527-07:00",
+                    "Execution status: OK",
+                    "Deleting working directory /krummellab/data1/erflynn/data_processing_pipelines/single_cell_RNAseq/.nf-test/tests/68ce2133cabbe702101f4fb461535eb8/work"
                 ],
                 "errorMessage": "",
                 "name": "workflow",
@@ -129,7 +141,7 @@
             "TEST-POOL-DM1-SCG2_quantiles_pre.tsv:md5,03c104a82af781e44ded3e03ccd4524c",
             "TEST-POOL-DM2-SCG1_quantiles_pre.tsv:md5,fd9ad3a0d63fdbf72bbe94084ba45531"
         ],
-        "timestamp": "2023-11-13T12:07:43.787672192"
+        "timestamp": "2024-05-22T15:29:56.850989585"
     },
     "Should successfully demultiplex individual libraries using demuxlet and run doublet finder": {
         "content": [
@@ -141,7 +153,9 @@
                 "exitStatus": 0,
                 "failed": false,
                 "stdout": [
-                    
+                    "Pipeline completed at: 2024-05-22T15:58:44.022237190-07:00",
+                    "Execution status: OK",
+                    "Deleting working directory /krummellab/data1/erflynn/data_processing_pipelines/single_cell_RNAseq/.nf-test/tests/440ee76a20b3a2a644826b7756934de8/work"
                 ],
                 "errorMessage": "",
                 "name": "workflow",
@@ -151,6 +165,6 @@
             "TEST-POOL-DM1-SCG2_quantiles_pre.tsv:md5,03c104a82af781e44ded3e03ccd4524c",
             "TEST-POOL-DM2-SCG1_quantiles_pre.tsv:md5,fd9ad3a0d63fdbf72bbe94084ba45531"
         ],
-        "timestamp": "2023-11-13T12:20:52.490664306"
+        "timestamp": "2024-05-22T15:58:44.361129834"
     }
 }

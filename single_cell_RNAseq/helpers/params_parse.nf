@@ -10,13 +10,18 @@ def get_cutoffs(library){
   return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing/${library}_cutoffs.csv", checkIfExists: true)
 }
 
+def get_pre_fmx_cutoffs(library){
+  return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/cell_filter/${library}_cutoffs.csv", checkIfExists: true)
+}
+
 def get_sobj(library){
   return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing/${library}_raw.rds", checkIfExists: true)
 }
 
-def get_cr_h5(library){
-  return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/cellranger/raw_feature_bc_matrix.h5", checkIfExists: true)
+def get_pre_fmx_sobj(library){
+  return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/cell_filter/${library}_raw.rds", checkIfExists: true)
 }
+
 
 def get_c4_h5_bam(){
     return params.pools.collectMany {
@@ -25,14 +30,39 @@ def get_c4_h5_bam(){
            }
     }
 }
+def get_vdj_name(library, data_type){
+  return library.replace("SCG", "SC" + data_type.substring(0, 1))
+}
+def get_vdj_tuple(library, data_type){
+  return [library, data_type, get_vdj_name(library, data_type)]
+}
+
+def get_clonotypes(library, data_type){
+  vdj_library=get_vdj_name(library, data_type)
+  return file("${params.project_dir}/data/single_cell_${data_type}/processed/${vdj_library}/cellranger/clonotypes.csv")
+}
+def get_contigs(library, data_type){
+  vdj_library=get_vdj_name(library, data_type)
+  return file("${params.project_dir}/data/single_cell_${data_type}/processed/${vdj_library}/cellranger/all_contig_annotations.csv")
+}
+
 
 def get_pre_qc_outputs(){
 	return params.pools.collectMany {
            pool -> pool.libraries.collect {
-               library -> [library.name, get_cutoffs(library.name), get_sobj(library.name), get_cr_h5(library.name)]
+               library -> [library.name, get_cutoffs(library.name), get_sobj(library.name), get_c4_h5(library.name)]
            }
     }
 }
+
+def get_pre_fmx_qc_outputs(){
+	return params.pools.collectMany {
+           pool -> pool.libraries.collect {
+               library -> [library.name, get_pre_fmx_cutoffs(library.name), get_pre_fmx_sobj(library.name), get_c4_h5(library.name)]
+           }
+    }
+}
+
 
 def get_pool_library_meta(){
     return params.pools.collectMany {
@@ -49,13 +79,17 @@ def get_pool_library_meta(){
     }
 }
 
-def get_libraries_data_type(){
+
+
+def get_libraries_data_type_tuples(){
     return params.pools.collectMany {
                 pool -> pool.libraries.collect {
-                    library -> [library.name, library.data_types.join(",")]
+                    library -> [library.name, library.data_types]
                 }
-           }
+        }
+           
 }
+
 
 def get_library_ncells(){
     return params.pools.collectMany {

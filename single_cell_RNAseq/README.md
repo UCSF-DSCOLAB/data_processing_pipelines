@@ -75,7 +75,7 @@ However, if the pipeline fails, the directory is left in place. Please deleted t
 `cp example-inputs/param_2.json example-inputs/my_toy_config.json`
 
 5. Open the run's config file and edit the first two directiories to point to `${TOY_PROJECT_DIR}`, and `${TOY_PROJECT_DIR}/freemuxlet_data/` respectively. The third should point to the directory this repository is in, specifically the subdirectory: `${DATA_PROCESSING_PIPELINE_REPO}/single_cell_RNAseq/example-inputs/`
-6. Submit the run. Note we are using `-profile test` for these test data because they are much smaller. Be sure to remove this flag for any real run as it scales down the resources requested for each task to levels that are not viable for real data.
+6. Submit the run. Note we are using `-profile test` for these test data because they are much smaller. Be sure to remove this flag for any real run as it scales down the resources requested for each task to levels that are not viable for real data. Note that a test run will use the freecycle partition (see more on partitions in additional details).
 `sbatch run.sh example-inputs/my_toy_config.json pre_qc -profile test`
 
 ## Additional Details
@@ -93,6 +93,11 @@ However, if the pipeline fails, the directory is left in place. Please deleted t
 In addition to being used as the initial values for your 'qc_cuts.csv', the values in the file pointed to by your config file's "default_qc_cuts_dir" & "default_qc_cuts_file" elements also determine where initial lines are drawn in QC plots output by the `pre_qc` and `pre_fmx_qc` steps.
 
 Of note, it can be useful to adjust these values sensibly before / for all runs by adjusting this file.  This can be especially useful with tissue data where it is often useful to compare across libraries and batches, with consistent cutoff values, as a method of assessing relative quality across the entire project.
+
+### c4 partitions, additional configuration
+We have the following partitions available on the c4 cluster for DSCoLab members: krummellab,common (default partitions, which are set in the environment variable `$SBATCH_PARTITION`) and freecycle. Freecycle allows us to run jobs on any compute that is not in use (24h job max), with the caveat that the job may be cancelled if a partition owner requires these resources. We have set the default for `test` jobs to freecycle, and for standard jobs to `freecycle,krummellab,common`, which means they are first submitted to freecycle, then krummellab, then common. If you do not have access to the krummellab partition on c4, you may to change the process.queue parameter in your nextflow.config file to reflect the partitions you have access to, otherwise it will default to freecycle and common. You may want to remove freecycle and/or other cluster options, such as the errorStrategy (what happens to the whole pipeline when it errors). See comments in `nextflow.config` describing what we have set as defaults, and what you may want to adjust.
+
+
 
 ### Data Generation
 

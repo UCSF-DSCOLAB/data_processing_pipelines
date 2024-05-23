@@ -1,5 +1,15 @@
 nextflow.enable.dsl=2
 
+workflow.onComplete {
+    println "Pipeline completed at: $workflow.complete"
+    println "Execution status: ${ workflow.success ? 'OK' : 'failed' }"
+    if (workflow.success){
+       println "Deleting working directory $workDir"
+       "rm -rf $workDir".execute()
+    }
+}
+
+
 // Processes
 
 include {
@@ -12,11 +22,12 @@ DSC_PILEUP;
 MERGE_DSC;
 FREEMUXLET_POOL;
 FREEMUXLET_LIBRARY;
+FMX_ASSIGN_TO_GT;
 DEMUXLET_POOL;
 DEMUXLET_LIBRARY;
 SEPARATE_DMX;
+SEPARATE_FMX;
 UNMERGE_FMX;
-SEPARATE_FMX_PRE;
 FIND_DOUBLETS;
 LOAD_SOBJ;
 SEURAT_ADD_BCR;
@@ -28,9 +39,10 @@ SEURAT_QC
 // Helper functions
 
 include {
-get_c4_h5; get_c4_bam; get_c4_h5_bam; get_pool_library_meta; get_libraries_data_type;
+get_c4_h5; get_c4_bam; get_c4_h5_bam; get_pool_library_meta; get_libraries_data_type_tuples;
 get_pool_by_sample_count; get_library_by_sample_count; get_single_library_by_pool;
-get_multi_pool_by_library ; get_library_by_pool; get_multi_library_by_pool; get_pool_vcf ; get_library_ncells
+get_multi_pool_by_library ; get_library_by_pool; get_multi_library_by_pool; get_pool_vcf ; get_library_ncells;
+get_vdj_tuple; get_vdj_name ; get_clonotypes; get_contigs
 } from  './helpers/params_parse.nf'
 
 include {
@@ -47,43 +59,60 @@ log.info """\
 
 workflow {
 
-//        /*
-//         --------------------------------------------------------
-//         Initial Input:
-//                 - Libraries: Directory of fastqs
-//         Output:
-//                 - BAM / H5 files for each library
-//         --------------------------------------------------------
-//        */
+
 
       // TODO: perhaps just shove everything in a bam and h5 channel, and do not differentiate between data types
       ch_gex_cite_bam_h5 = Channel.empty()
-      ch_bcr_tcr_bam_h5 = Channel.empty()
+      ch_vdj_libs = Channel.empty()
 
       if (params.settings.skip_cellranger){
             ch_gex_cite_bam_h5 =  Channel.from(get_c4_h5_bam()) // [[library, cell_ranger_bam, raw_h5]
-            // TODO expand to work for VDJ as well
+
+             ch_library_bcr_tcr = Channel.from(get_libraries_data_type_tuples()).transpose().filter { it[1] in ["BCR", "TCR"] }
+                
+              ch_vdj_libs = ch_library_bcr_tcr
+              .map{
+                it -> [it[0], it[1], get_clonotypes(it[0], it[1]), get_contigs(it[0], it[1])]
+              }
+              .branch { 
+                        tcr: it[1].contains("TCR")
+                        bcr: it[1].contains("BCR")
+                    }  
+            
       } else {
-            library_info = get_libraries_data_type() // -> [[library_dir, data_type]]
-            ch_library_info = Channel.from(library_info)
+            ch_library_info = Channel.from(get_libraries_data_type_tuples()).transpose()
             TEST_GZIP_INTEGRITY(ch_library_info) // -> [[library_dir, data_type]]
+            
+            ch_gzip_out = TEST_GZIP_INTEGRITY.out
+            .branch{
+              gex_cite: it[1] in ["GEX", "CITE"]
+              bcr_tcr: it[1] in ["BCR", "TCR"]
+            }
 
             // Run cellranger for GEX and CITE data types
-            ch_library_cite_gex = ch_library_info.filter { it[1] in ["GEX", "CITE"] }
-            CELLRANGER(ch_library_cite_gex)
+            CELLRANGER(ch_gzip_out.gex_cite)
             ch_gex_cite_bam_h5 = CELLRANGER.out.bam_h5 // --> [[library, cell_ranger_bam, raw_h5]]
 
             // Run cellranger for BCR and TCR data types
             if (params.settings.add_tcr || params.settings.add_bcr ){
-                ch_library_bcr_tcr = ch_library_info.filter { it[1] in ["BCR", "TCR"] }
-                CELLRANGER_VDJ(ch_library_bcr_tcr)
-                ch_bcr_tcr_bam_h5 = CELLRANGER_VDJ.out.bam_h5
+                
+                ch_vdj_in = ch_gzip_out.bcr_tcr.map{
+                  it -> get_vdj_tuple(it[0], it[1])
+                }
+                CELLRANGER_VDJ(ch_vdj_in) 
+                
+                ch_vdj_libs = CELLRANGER_VDJ.out.vdj_csvs
+                .branch{
+                  tcr: it[1].contains("TCR")
+                  bcr: it[1].contains("BCR")
+                }
+ 
             }
         }
 
     // Extract all bam and h5 files
-    ch_all_bam = ch_gex_cite_bam_h5.mix(ch_bcr_tcr_bam_h5).map { it -> [it[0], it[1]] } // [[library, cell_ranger_bam]]
-    ch_all_h5 = ch_gex_cite_bam_h5.mix(ch_bcr_tcr_bam_h5).map { it -> [it[0], it[2]] } // [[library, raw_h5 ]]
+    ch_all_bam = ch_gex_cite_bam_h5.map { it -> [it[0], it[1]] } // [[library, cell_ranger_bam]]
+    ch_all_h5 = ch_gex_cite_bam_h5.map { it -> [it[0], it[2]] } // [[library, raw_h5 ]]
 
     /*
     --------------------------------------------------------
@@ -142,7 +171,7 @@ workflow {
 
      // We de-multiplex if we have merged libraries
      ch_sample_map = Channel.empty()
-
+     ch_lib_vcf = Channel.empty()
      if ( params.settings.demux_method == "freemuxlet"){
 
         // This assumes you have at least one pool with > 1 libraries!!!
@@ -164,7 +193,7 @@ workflow {
                                                     // Create a new sublist with the filename part and the rest of the original sublist as its own sublist
                                                     [extractFileName(sublist[0].toString()), sublist[0..-1]].flatten()
                                             }
-            SEPARATE_FMX_PRE(sample_file_transformed)
+            SEPARATE_FMX(sample_file_transformed)
 
             // Run freemuxlet on remaining pools with single libraries
             // Attach the number of samples, and re-arrange input
@@ -176,7 +205,13 @@ workflow {
             FREEMUXLET_LIBRARY(ch_single_lib_transformed)
 
             // appended any merged libraries
-            ch_sample_map = SEPARATE_FMX_PRE.out.sample_map.mix(FREEMUXLET_LIBRARY.out.sample_map)
+            ch_sample_map = SEPARATE_FMX.out.sample_map.mix(FREEMUXLET_LIBRARY.out.sample_map)
+
+            ch_lib_vcf = SEPARATE_FMX.out.fmx_files.map{
+              it -> [it[0], it[2]] // [library, vcf]
+            }.mix(
+              FREEMUXLET_LIBRARY.out.vcf
+            )
 
         } else {
                 // Run freemuxlet on all libraries, regardless if there are many libraries per pool
@@ -187,7 +222,8 @@ workflow {
                 FREEMUXLET_LIBRARY(ch_single_lib_transformed)
 
                 ch_sample_map = FREEMUXLET_LIBRARY.out.sample_map
-            }
+                ch_lib_vcf =  FREEMUXLET_LIBRARY.out.vcf
+          }
 
         } else if ( params.settings.demux_method == "demuxlet"){
              // This assumes you have at least one pool with > 1 libraries!!!
@@ -217,7 +253,7 @@ workflow {
             } else {
                 // Run demuxlet on all libraries, regardless if there are many libraries per pool
                 // Attach the number of samples, and re-arrange input
-   		ch_single_lib_transformed  = Channel.from(get_pool_vcf())
+   		        ch_single_lib_transformed  = Channel.from(get_pool_vcf())
                                                 .cross(ch_plp_files
                                                   .join(Channel.from(get_library_by_pool()))
                                                   .map{it -> [it[2], it[0], it[1]]} // [pool, lib, files]
@@ -230,6 +266,18 @@ workflow {
             }
 
         }
+
+        if (params.settings.fmx_assign_to_gt){
+            ch_gt_input =  Channel.from(get_pool_vcf()) // [pool, vcf]
+              .combine(Channel.from(get_library_by_pool()).map{ it -> [it[1], it[0]] }, by: 0) // [pool, vcf, lib]
+              .map{it -> [it[2], it[1]]} // [lib, vcf]
+              .join(ch_lib_vcf )  // [lib, ref_vcf, fmx_vcf]
+              
+              // TODO add checks that the reference file exists  
+              FMX_ASSIGN_TO_GT(ch_gt_input) 
+                    
+        } 
+
 
       /*
       --------------------------------------------------------
@@ -246,14 +294,31 @@ workflow {
         LOAD_SOBJ(ch_doublet_input)
         ch_initial_sobj = LOAD_SOBJ.out.sobj
      }
+     
+    
+     
+
+     if (params.settings.add_tcr){
+        SEURAT_ADD_TCR(ch_initial_sobj.join(ch_vdj_libs.tcr, by:0, remainder: true))
+        ch_tcr_out = SEURAT_ADD_TCR.out.sobj
+      } else {
+        ch_tcr_out = ch_initial_sobj
+      }
+
+      if (params.settings.add_bcr){
+        SEURAT_ADD_BCR(ch_tcr_out.join(ch_vdj_libs.bcr, by:0, remainder: true))
+        ch_bcr_out = SEURAT_ADD_BCR.out.sobj
+      } else {
+        ch_bcr_out = ch_tcr_out
+      } 
 
      /*
      --------------------------------------------------------
      Set up seurat object
      --------------------------------------------------------
      */
-     ch_library_info = Channel.from(get_libraries_data_type()) // -> [[library_dir, data_type]]
-     ch_seurat_input = ch_library_info.join(ch_initial_sobj).join(ch_all_h5)
+     ch_library_info = Channel.from(get_libraries_data_type_tuples()).transpose() // -> [[library_dir, data_type]]
+     ch_seurat_input = ch_library_info.join(ch_bcr_out).join(ch_all_h5)
      SEURAT_QC(ch_seurat_input)
 
 }

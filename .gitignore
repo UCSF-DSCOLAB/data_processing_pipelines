@@ -4,5 +4,7 @@
 *.nextflow*
 *~
 *trace*.txt
+# Snakemake
+*.snakemake*
 # Jetbrains
 .idea/

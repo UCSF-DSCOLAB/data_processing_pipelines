@@ -1,0 +1,5 @@
+# Custom settings for specific rules
+set-resources:
+  depooling:
+    time: 30 # in min
+    mem_mb: 5000 # 5 gbs

@@ -13,27 +13,11 @@ the bio-specimen id by which they were de-multiplexed.
 
 ## Usage
 
-### Step 1 - Module Files
+### Step 1 - Install snakemake conda environment
 
-You must first add `/krummellab/data1/modulefiles` to the env var: `MODULEPATH`.
+`./snakemake_installation.sh`
 
-Confirm it works: `module avail`
-
-You should see the mamba module
-
-```
- module avail
-
-------------------------------------------------- /software/c4/modulefiles/repos --------------------------------------------------
-   CBI    UserContributed    WitteLab
-
--------------------------------------------------- /krummellab/data1/modulefiles --------------------------------------------------
-   mamba 
-
-```
-
-I've created an environment module called mamba, that points to a mamba installation on c4. Mamba is 
-the recommended way to interact and run snakemake.
+This script creates an insolated conda environment called `depool_snakemake` that snakemake can run in.
 
 ### Step 2 - Config
 
@@ -43,8 +27,8 @@ Add your de-multiplexed files as input to: `pipelines/depooling/config.yaml`.
 
 To run a pipeline, use the helper bash script: `./run_snakemake.sh`.
 
-This script:
-- Sets up  a designated `mamba` environment that snakemake runs in. 
+This script: 
+- Activates the `depool_snakemake` conda environment
 - Invokes `run_pipeline.py`
 
 Modify the arguments to `run_pipeline.py` as you like. (See below)

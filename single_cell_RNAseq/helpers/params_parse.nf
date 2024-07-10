@@ -7,7 +7,11 @@ def get_c4_bam(library){
 }
 
 def get_cutoffs(library){
-  return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing/${library}_cutoffs.csv", checkIfExists: true)
+    if (params.settings.demux_method.equals("demuxlet")){
+        return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing_dmx/${library}_cutoffs.csv", checkIfExists: true)
+    } else {
+        return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing/${library}_cutoffs.csv", checkIfExists: true)
+    }
 }
 
 def get_pre_fmx_cutoffs(library){
@@ -15,7 +19,11 @@ def get_pre_fmx_cutoffs(library){
 }
 
 def get_sobj(library){
-  return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing/${library}_raw.rds", checkIfExists: true)
+     if (params.settings.demux_method.equals("demuxlet")){
+        return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing_dmx/${library}_raw.rds", checkIfExists: true)
+    } else {
+      return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing/${library}_raw.rds", checkIfExists: true)
+    }
 }
 
 def get_pre_fmx_sobj(library){

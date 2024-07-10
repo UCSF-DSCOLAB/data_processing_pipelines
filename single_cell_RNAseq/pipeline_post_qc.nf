@@ -6,7 +6,11 @@ include {
 } from './pipeline_tasks.nf'
 
 def get_cutoffs(library){
-  return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing/${library}_cutoffs.csv", checkIfExists: true)
+ if (params.settings.demux_method.equals("demuxlet")){
+        return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing_dmx/${library}_cutoffs.csv", checkIfExists: true)
+    } else {
+        return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing/${library}_cutoffs.csv", checkIfExists: true)
+    }
 }
 
 def get_sobj(library){

@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --mem=15G
-#SBATCH --time=48:00:00
+#SBATCH --mem=2G
+#SBATCH --time=7-00:00:00
 #SBATCH --output=/krummellab/data1/%u/logs/scseq_nf_resume_%j.log
 #SBATCH --partition=krummellab,common
 
@@ -15,16 +15,6 @@
 # $3 is the JOB_ID of the main run that you want to resume
 # then pass as many additional arguments to nextflow as you'd like (e.g. -with-timeline, -profile test, etc.)
 
-function cleanup()
-{   
-    if [ $? -eq 0 ]
-    then
-	echo "COMPLETED on a resume! Please delete the working directory"
-    else 
-	echo "FAILED with exit code $?"
-    fi
-}
-trap cleanup EXIT
 
 export NXF_JAVA_HOME="/krummellab/data1/erflynn/software/java/jdk-17.0.5"
 export PATH=$PATH:/krummellab/data1/erflynn/software/nextflow/22.10.4_build_5836/
@@ -61,8 +51,8 @@ if [ "$failed" = true ];
 then
   exit 1
 else
+    unset SBATCH_PARTITION
     # create a working directory
-
 #    mkdir -p $nf_work
     export NXF_WORK=${nf_work}
 

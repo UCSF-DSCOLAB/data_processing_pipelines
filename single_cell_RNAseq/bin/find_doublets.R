@@ -1,9 +1,6 @@
 library(Seurat)
 library(tidyverse)
 library(DoubletFinder)
-# Default parameters
-minCellsForDoubletFinder=30   # Run doubletFinder only if there are at least minCellsForDoubletFinder cells per sample/freemuxlet cluster
-
 
 
 # Input arguments:
@@ -26,6 +23,23 @@ source(sprintf("%s/bin/seurat_utils.R", BASE_DIR))
 set.seed(RANDOMSEED)
 NPCS_DOUBLETFINDER=30
 
+print_message(sprintf(
+  "
+  -----------
+  Running doublet finder with the following params:
+    CELLR_H5_PATH=%s
+    FMX_SAMPLE_PATH=%s
+    SAMPLE=%s
+    NCELLS_LOADED=%s
+    MINFEATURE=%s
+    MINCELL=%s
+    RANDOMSEED=%s
+    BASE_DIR=%s
+  -----------
+  ", CELLR_H5_PATH, FMX_SAMPLE_PATH, SAMPLE, NCELLS_LOADED, MINFEATURE, MINCELL, RANDOMSEED, BASE_DIR)
+)
+
+
 # adapted from Arjun's get10xMultipletRate.R
 doublet_rate_df = data.frame(multiplet_rate_pct=c(0.40, 0.80, 1.60, 2.30, 3.10, 3.90, 4.60, 5.40, 6.10, 6.90, 7.60), 
                              num_cells_loaded=c(870, 1700, 3500, 5300, 7000, 8700, 10500, 12200, 14000, 15700, 17400),
@@ -43,7 +57,7 @@ genDoubletTable = function(doublet_stats, ncells_loaded, nsamples){
   dbl_rate_10x_loaded = predict(DBL_MODEL_loaded, new=data.frame(num_cells_loaded=ncells_loaded)) / 100
   predicted_recovery = predict(MODEL_recovered, new=data.frame(num_cells_loaded=ncells_loaded))
 
-  num_mx_dbls = doublet_stats$fmlDropletTypeComp["DBL",][[1]]
+  num_mx_dbls = ifelse("DBL" %in% rownames(doublet_stats$fmlDropletTypeComp), doublet_stats$fmlDropletTypeComp["DBL",][[1]], 10)
   num_mx_sngs = doublet_stats$fmlDropletTypeComp["SNG",][[1]]
 
   fmlDblRate = num_mx_dbls/(num_mx_sngs+num_mx_dbls)
@@ -72,7 +86,8 @@ runDoubletFinder <- function(sObj, freemuxlet=TRUE) {
     sngObj = subset(sObj, cells=present.cells)
 
     # freemuxlet doublet (DBL) rate
-    fmlDblRate = sngObj@misc$scStat$fmlDropletTypeProp["DBL",]
+    fmlDblRate = ifelse("DBL" %in% rownames(sngObj@misc$scStat$fmlDropletTypeProp), 
+      sngObj@misc$scStat$fmlDropletTypeProp["DBL",], 10)
 
     # Determine the number of samples pooled per 10x lane from the freemuxlet output.
     
@@ -180,7 +195,6 @@ if(is.null(FMX_SAMPLE_PATH)) {
 }
 
 
-print(colnames(seuratObj@meta.data))
 
 # Identify intra-sample doublets
 seuratObj = runDoubletFinder(seuratObj, freemuxlet)

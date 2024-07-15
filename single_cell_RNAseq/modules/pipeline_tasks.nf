@@ -1,6 +1,10 @@
 def date = new Date().format("yyyy-MM-dd")
 
+
+
 process TEST_GZIP_INTEGRITY {
+    publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log",
+       saveAs: { filename -> "gzip_test_${date}.log" }
 
     input:
     tuple val(library), val(data_type)
@@ -9,13 +13,23 @@ process TEST_GZIP_INTEGRITY {
     tuple val(library), val(data_type) 
 
     """
+    echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
+    echo "[running TEST_GZIP_INTEGRITY]"
+
     gex_library=${library}
     dt=${data_type}
     lib_to_use=\${gex_library/"SCG"/"SC\${dt:0:1}"}
 
+    echo " gzip --test ${params.project_dir}/data/single_cell_${data_type}/raw/\${lib_to_use}/\${lib_to_use}*.fastq.gz"
     gzip --test ${params.project_dir}/data/single_cell_${data_type}/raw/\${lib_to_use}/\${lib_to_use}*.fastq.gz
     
+    if [[ "${data_type}" == "CITE" ]]
+    then
+      echo " gzip --test ${params.project_dir}/data/single_cell_GEX/raw/${library}/${library}*.fastq.gz"
+      gzip --test ${params.project_dir}/data/single_cell_GEX/raw/${library}/${library}*.fastq.gz
+    fi
 
+    echo "-----------"
     """
 }
 
@@ -44,10 +58,10 @@ process CELLRANGER {
   path("cellranger/*"), emit: cr_out_files
   path(".command.log"), emit: log
   """
-#  my_dir=\${PWD}
-#  cd \${TMPDIR}
-#  echo \${TMPDIR}
-   echo \${PWD}
+
+  echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
+  echo "[running CELLRANGER]"
+
   # create the config
   gex_library=${library}
 
@@ -60,13 +74,20 @@ process CELLRANGER {
       scc_library=\${gex_library/"SCG"/"SCC"}
       echo "${params.project_dir}/data/single_cell_CITE/raw/\${scc_library},\${scc_library},Antibody Capture" >> ${library}_libraries.csv
   fi
-  
+  echo " Using container ${params.container.cellranger}"
+  echo " cellranger count --id=${library}  \
+    --libraries=${library}_libraries.csv \
+    --feature-ref=${params.ref.cite_feature_ref} \
+    --transcriptome=${params.ref.transcriptome} "
+  echo "-----------"
+
   cellranger count --id=${library}  \
     --libraries=${library}_libraries.csv \
     --feature-ref=${params.ref.cite_feature_ref} \
     --transcriptome=${params.ref.transcriptome} \
     --localcores=${task.cpus - 1} \
     --localmem=${task.memory.toGiga() - 2}
+
 
   mv ${library}/outs cellranger
   """
@@ -93,10 +114,10 @@ process CELLRANGER_VDJ {
   path(".command.log"), emit: log
   
   """
- # my_dir=\${PWD}
- # cd \${TMPDIR}
- # echo \${TMPDIR}
-  
+<<<<<<< HEAD:single_cell_RNAseq/modules/pipeline_tasks.nf
+
+  echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
+  echo "[running CELLRANGER_VDJ]"
   vdj_path=${params.project_dir}/data/single_cell_${data_type}/raw/${vdj_library}
   dt=${data_type}
     # TODO: update so that this only occurs on retries if there is a chain error
@@ -111,7 +132,16 @@ process CELLRANGER_VDJ {
     chain_type="auto"
   fi
   
-  cellranger vdj --id=${vdj_library}  \
+
+  echo " Using container ${params.container.cellranger}"
+  echo " cellranger vdj --id="\${vdj_library}"  \
+    --fastqs=\${vdj_path} \
+    --reference=${params.ref.vdj_ref} \
+    --chain=\${chain_type} "
+  echo "-----------"
+
+
+  cellranger vdj --id="\${vdj_library}"  \
     --fastqs=\${vdj_path} \
     --reference=${params.ref.vdj_ref} \
     --chain=\${chain_type} \
@@ -140,6 +170,12 @@ process FILTER_BARCODES{
   tuple val(library), path("barcodes_of_interest.filt.list"), emit: bc_list
   path(".command.log"), emit: log
   """
+  echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
+  echo "[running FILTER_BARCODES]"
+  echo " using container ${params.container.rsinglecell}"
+  echo " Rscript ${projectDir}/bin/make_valid_barcodelist.R ${raw_h5} ${params.settings.minfeature} ${params.settings.mincell}"  
+  echo "-----------"
+
   Rscript ${projectDir}/bin/make_valid_barcodelist.R ${raw_h5} ${params.settings.minfeature} ${params.settings.mincell}
   
   """
@@ -169,8 +205,14 @@ process SEURAT_PRE_FMX_QC {
   path(".command.log"), emit: log
 
   """
-  Rscript ${projectDir}/bin/load_sobj.R ${raw_h5} "null" ${library} ${params.settings.minfeature} ${params.settings.mincell} ${projectDir}
+  echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
+  echo "[running SEURAT_PRE_FMX_QC]"
+  echo " using container ${params.container.rsinglecell}"
+  echo " Rscript ${projectDir}/bin/load_sobj.R ${raw_h5} "null" ${library} ${params.settings.minfeature} ${params.settings.mincell} ${projectDir}"
+  echo " Rscript ${projectDir}/bin/process_with_seurat.R ${library} ${data_type} ${library}_initial_raw.rds ${projectDir} ${params.settings.default_qc_cuts_dir}/${params.settings.default_qc_cuts_file} ${raw_h5}"
+  echo "-----------"
 
+  Rscript ${projectDir}/bin/load_sobj.R ${raw_h5} "null" ${library} ${params.settings.minfeature} ${params.settings.mincell} ${projectDir}
   Rscript ${projectDir}/bin/process_with_seurat.R ${library} ${data_type} ${library}_initial_raw.rds ${projectDir} ${params.settings.default_qc_cuts_dir}/${params.settings.default_qc_cuts_file} ${raw_h5}
   
   """
@@ -203,6 +245,12 @@ process SEURAT_PRE_FMX_FILTER {
   path(".command.log"), emit: log
 
   """
+  echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
+  echo "[running SEURAT_PRE_FILTER]"
+  echo " using container ${params.container.rsinglecell}"
+  echo " Rscript ${projectDir}/bin/filter_barcodes_pre_fmx.R ${library} ${projectDir}"
+  echo "-----------"
+
   Rscript ${projectDir}/bin/filter_barcodes_pre_fmx.R ${library} ${projectDir} 
   
   """
@@ -228,6 +276,16 @@ process FILTER_BAM {
   path(".command.log"), emit: log
   
   """
+  echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
+  echo "[running FILTER_BAM]"
+  echo " using container ${params.container.popscle}"
+  echo " bash filter_bam_for_dsc_pileup.sh \
+    ${cr_bam} \
+    ${barcodes} \
+    ${params.ref.one_k_genome_vcf} \
+    ${library}_filtered.bam"
+  echo "-----------"
+
   bash filter_bam_for_dsc_pileup.sh \
     ${cr_bam} \
     ${barcodes} \
@@ -255,6 +313,18 @@ process DSC_PILEUP{
   path(".command.log"), emit: log
 
   """
+  echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
+  echo "[running DSC-PILEUP]"
+  echo " using container ${params.container.popscle}"
+  echo " popscle dsc-pileup --sam ${filtered_bam} \
+                   --tag-group CB \
+                   --tag-UMI UB \
+                   --vcf ${params.ref.one_k_genome_vcf} \
+                   --group-list ${barcodes} \
+                   --out ${library}"
+  echo "-----------"
+
+
   popscle dsc-pileup --sam ${filtered_bam} \
                    --tag-group CB \
                    --tag-UMI UB \
@@ -285,6 +355,12 @@ process MERGE_DSC {
   path(".command.log"), emit: log
 
   """
+  echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
+  echo "[running MERGE_DSC]"
+  echo " using container ${params.container.python}"
+  echo " python ${projectDir}/bin/merge_freemuxlet_dsc_pileups.py --freemuxlet_dir_tsv ${pool}.tsv --ignore_diff_lengths_error"
+  echo "-----------"
+
   # write out the config file
   printf "sample\n" > ${pool}.tsv
   echo `ls *.plp.gz`
@@ -297,6 +373,7 @@ process MERGE_DSC {
   # merge
   python ${projectDir}/bin/merge_freemuxlet_dsc_pileups.py --freemuxlet_dir_tsv ${pool}.tsv --ignore_diff_lengths_error
   mv merged.barcodes.gz ${pool}.barcodes.gz
+
 
   """
 }
@@ -325,6 +402,17 @@ process FREEMUXLET_POOL {
   path(".command.log"), emit: log
 
   """
+  echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
+  echo "[running FREEMUXLET_POOL]"
+  echo " using container ${params.container.popscle}"
+  echo " popscle freemuxlet --plp merged \
+                     --out merged \
+                     --nsample ${nsamples} \
+                     --seed ${params.settings.randomseed} \
+                     --group-list ${merged_barcodes}"
+  echo "-----------"
+
+
   # run freemuxlet
   popscle freemuxlet --plp merged \
                      --out merged \
@@ -356,6 +444,15 @@ process FREEMUXLET_LIBRARY {
   path(".command.log"), emit: log
 
   """
+  echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
+  echo "[running FREEMUXLET_LIBRARY]"
+  echo " using container ${params.container.popscle}"
+  echo " popscle freemuxlet --plp ${library} \
+                     --out ${library} \
+                     --nsample ${nsamples} \
+                     --seed ${params.settings.randomseed}"
+  echo "-----------"
+
 
   popscle freemuxlet --plp ${library} \
                      --out ${library} \
@@ -414,6 +511,15 @@ process DEMUXLET_LIBRARY {
   path("${library}*"), emit: dmx_files
   path(".command.log"), emit: log
   """
+  echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
+  echo "[running DEMUXLET_LIBRARY]"
+  echo " using container ${params.container.popscle}"
+  echo " popscle demuxlet --plp ${library} \
+                     --out ${library} \
+                     --vcf ${vcf} \
+                     --field GT"
+  echo "-----------"
+  
   popscle demuxlet --plp ${library} \
                      --out ${library} \
                      --vcf ${vcf} \
@@ -442,6 +548,15 @@ process DEMUXLET_POOL {
   path(".command.log"), emit: log
 
   """
+  echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
+  echo "[running DEMUXLET_POOL]"
+  echo " using container ${params.container.popscle}"
+  echo " popscle demuxlet --plp merged \
+                     --out merged \
+                     --vcf ${vcf} \
+                     --field GT"
+  echo "-----------"
+
   popscle demuxlet --plp merged \
                      --out merged \
                      --vcf ${vcf} \
@@ -464,6 +579,12 @@ process SEPARATE_DMX {
    path(".command.log"), emit: log
 
   """
+  echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
+  echo "[running SEPARATE_DMX]"
+  echo " library: ${library}"
+  echo " merged_best: ${merged_best}"
+  echo "-----------"
+
   head -1 ${merged_best} > ${library}.clust1.samples0
   grep "${library}\\s" ${merged_best} >> ${library}.clust1.samples0
   sed \"s/--${library}//g\" ${library}.clust1.samples0 > ${library}.clust1.samples
@@ -491,6 +612,12 @@ process UNMERGE_FMX {
   path(".command.log"), emit: log
 
   """
+  echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
+  echo "[running UNMERGE_FMX]"
+  echo " using container ${params.container.python}"
+  echo " python ${projectDir}/bin/unmerge_freemuxlet_dsc_pileups.py --freemuxlet_dir_tsv ${fmx_tsv}"
+  echo "-----------"
+
   # unmerge
   python ${projectDir}/bin/unmerge_freemuxlet_dsc_pileups.py --freemuxlet_dir_tsv ${fmx_tsv} 
   rm merged*
@@ -509,6 +636,11 @@ process SEPARATE_FMX {
    path(".command.log"), emit: log
 
   """
+  echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
+  echo "[running SEPARATE_FMX]"
+  echo " library: ${library}"
+  echo "-----------"
+
   gunzip -f ${library}.clust1.samples.gz
   awk {'printf (\"%s\t%s\t%s\t%s\t%s\\n\", \$2, \$3, \$4, \$5, \$6)'} ${library}.clust1.samples > ${library}.clust1.samples.reduced.tsv
   gzip -f ${library}.clust1.samples
@@ -540,6 +672,11 @@ process FIND_DOUBLETS {
   path(".command.log"), emit: log
 
   """
+  echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
+  echo "[running FIND_DOUBLETS]"
+  echo " using container ${params.container.rsinglecell}"
+  echo " Rscript ${projectDir}/bin/find_doublets.R ${raw_h5} ${fmx_clusters} ${library} ${ncells_loaded} ${params.settings.minfeature} ${params.settings.mincell} ${params.settings.randomseed} ${projectDir}"
+  echo "-----------"
   
   Rscript ${projectDir}/bin/find_doublets.R ${raw_h5} ${fmx_clusters} ${library} ${ncells_loaded} ${params.settings.minfeature} ${params.settings.mincell} ${params.settings.randomseed} ${projectDir}
   
@@ -561,6 +698,11 @@ process LOAD_SOBJ {
   path(".command.log"), emit: log
 
   """
+  echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
+  echo "[running LOAD_SOBJ]"
+  echo " using container ${params.container.rsinglecell}"
+  echo " Rscript ${projectDir}/bin/load_sobj.R ${raw_h5} ${fmx_clusters} ${library} ${params.settings.minfeature} ${params.settings.mincell} ${projectDir}"
+  echo "-----------"
   
   Rscript ${projectDir}/bin/load_sobj.R ${raw_h5} ${fmx_clusters} ${library} ${params.settings.minfeature} ${params.settings.mincell} ${projectDir}
   
@@ -593,15 +735,25 @@ process SEURAT_ADD_BCR {
   path(".command.log"), emit: log
 
   """
+  echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
+  echo "[running SEURAT_ADD_BCR]"
+  echo " using container ${params.container.rsinglecell}"
+  echo " data_type: ${data_type}"
+
   if [[ "${data_type}" == "no BCR" ]]
   then
     cp ${sobj} "${library}_w_BCR.RDS" # todo - switch to soft link
   else
+<<<<<<< HEAD:single_cell_RNAseq/modules/pipeline_tasks.nf
     Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${clonotypes_csv} ${contig_csv} ${projectDir}
+=======
+    echo " Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${projectDir}"
+    Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${projectDir}
+>>>>>>> baecdbf (additional logging output for each step):single_cell_RNAseq/pipeline_tasks.nf
   fi
   
+  echo "-----------"
   """
-
 }
 
 /* 
@@ -624,15 +776,25 @@ process SEURAT_ADD_TCR {
   path(".command.log"), emit: log
 
   """
+  echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
+  echo "[running SEURAT_ADD_TCR]"
+  echo " using container ${params.container.rsinglecell}"
+  echo " data_type: ${data_type}"
+
   if [[ "${data_type}" == "no TCR" ]]
   then
     cp ${sobj} "${library}_w_TCR.RDS" # todo - switch to soft link
   else
+<<<<<<< HEAD:single_cell_RNAseq/modules/pipeline_tasks.nf
     Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${clonotypes_csv} ${contig_csv} ${projectDir}
+=======
+    echo " Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${projectDir}"
+    Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${projectDir}
+>>>>>>> baecdbf (additional logging output for each step):single_cell_RNAseq/pipeline_tasks.nf
   fi
-  
+    
+  echo "-----------"
   """
-
 }
 
 /* 
@@ -662,8 +824,13 @@ process SEURAT_QC {
   path(".command.log"), emit: log
 
   """
-  Rscript ${projectDir}/bin/process_with_seurat.R ${library} ${main_dt} ${doublet_finder_sobj} ${projectDir} ${params.settings.default_qc_cuts_dir}/${params.settings.default_qc_cuts_file} ${raw_h5}
+  echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
+  echo "[running SEURAT_QC]"
+  echo " using container ${params.container.rsinglecell}"
+  echo " Rscript ${projectDir}/bin/process_with_seurat.R ${library} ${main_dt} ${doublet_finder_sobj} ${projectDir} ${params.settings.default_qc_cuts_dir}/${params.settings.default_qc_cuts_file} ${raw_h5}"
+  echo "-----------"
 
+  Rscript ${projectDir}/bin/process_with_seurat.R ${library} ${main_dt} ${doublet_finder_sobj} ${projectDir} ${params.settings.default_qc_cuts_dir}/${params.settings.default_qc_cuts_file} ${raw_h5}
   """
 }
 
@@ -718,6 +885,12 @@ process SEURAT_POST_FILTER {
   path(".command.log"), emit: log
 
   """
+  echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
+  echo "[running SEURAT_POST_FILTER]"
+  echo " using container ${params.container.rsinglecell}"
+  echo " Rscript ${projectDir}/bin/process_with_seurat_post_filter.R ${library} ${projectDir} ${raw_h5} ${params.settings.remove_demux_DBL} ${params.settings.remove_all_DBL}"
+  echo "-----------"
+
   Rscript ${projectDir}/bin/process_with_seurat_post_filter.R ${library} ${projectDir} ${raw_h5} ${params.settings.remove_demux_DBL} ${params.settings.remove_all_DBL}
   """
 }

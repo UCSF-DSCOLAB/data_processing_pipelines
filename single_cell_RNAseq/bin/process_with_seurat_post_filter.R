@@ -14,6 +14,21 @@ CELLR_H5_PATH=args[3]
 KEEP_FMX_SNG=(args[4]=="true")
 KEEP_ONLY_SNG=(args[5]=="true")
 
+print_message(sprintf(
+  "
+  -----------
+  Running seurat post-filter with the following params:
+    LIBRARY=%s
+    BASE_DIR=%s
+    CELLR_H5_PATH=%s
+    FMX_SAMPLE_PATH=%s
+    KEEP_FMX_SNG=%s
+    KEEP_ONLY_SNG=%s
+  -----------
+  ", LIBRARY, BASE_DIR, CELLR_H5_PATH, KEEP_FMX_SNG, KEEP_ONLY_SNG)
+)
+
+
 # params: TODO make these parameters
 VARS_TO_REGRESS=c("percent.mt","percent.ribo","nCount_RNA","nFeature_RNA",
   "S.Score", "G2M.Score")

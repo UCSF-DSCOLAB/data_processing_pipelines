@@ -10,6 +10,9 @@ MINCELL=as.numeric(args[3])
 count=Read10X_h5(CELLR_H5_PATH)
 
 
+print_message <- function(...) {
+  cat("[", format(Sys.time()), "] ", ..., "\n", sep="")
+}
 print_message(sprintf(
   "
   -----------

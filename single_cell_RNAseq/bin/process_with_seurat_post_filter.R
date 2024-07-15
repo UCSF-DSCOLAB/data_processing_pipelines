@@ -13,6 +13,7 @@ BASE_DIR=args[2]
 CELLR_H5_PATH=args[3]
 KEEP_FMX_SNG=(args[4]=="true")
 KEEP_ONLY_SNG=(args[5]=="true")
+source(sprintf("%s/bin/seurat_utils.R", BASE_DIR))
 
 print_message(sprintf(
   "
@@ -35,7 +36,6 @@ VARS_TO_REGRESS=c("percent.mt","percent.ribo","nCount_RNA","nFeature_RNA",
 truncate.adt = TRUE
 sct.transform = FALSE
 
-source(sprintf("%s/bin/seurat_utils.R", BASE_DIR))
 
 sobj = readRDS(sprintf("%s_raw.rds", LIBRARY))
 param_file = sprintf("%s_cutoffs.csv", LIBRARY)

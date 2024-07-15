@@ -89,6 +89,7 @@ process CELLRANGER {
     --localmem=${task.memory.toGiga() - 2}
 
 
+
   mv ${library}/outs cellranger
   """
 } 
@@ -115,6 +116,7 @@ process CELLRANGER_VDJ {
   
   """
 <<<<<<< HEAD:single_cell_RNAseq/modules/pipeline_tasks.nf
+<<<<<<< HEAD:single_cell_RNAseq/modules/pipeline_tasks.nf
 
   echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
   echo "[running CELLRANGER_VDJ]"
@@ -138,6 +140,21 @@ process CELLRANGER_VDJ {
     --fastqs=\${vdj_path} \
     --reference=${params.ref.vdj_ref} \
     --chain=\${chain_type} "
+=======
+  echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
+  echo "[running CELLRANGER_VDJ]"
+
+  gex_library=${library}
+  data_type_name = "${data_type}"
+  vdj_library=\${gex_library/"SCG"/"SC\${data_type_name:0:1}"}
+  vdj_path=\${params.project_dir}/data/single_cell_${data_type}/raw/\${vdj_library}
+  
+  echo " Using container ${params.container.cellranger}"
+  echo " cellranger vdj --id="\${vdj_library}"  \
+    --fastqs=\${vdj_path} \
+    --reference="\${vdj_library}" \
+    --reference=${params.ref.vdj_ref} "
+>>>>>>> baecdbf (additional logging output for each step):single_cell_RNAseq/pipeline_tasks.nf
   echo "-----------"
 
 
@@ -745,8 +762,11 @@ process SEURAT_ADD_BCR {
     cp ${sobj} "${library}_w_BCR.RDS" # todo - switch to soft link
   else
 <<<<<<< HEAD:single_cell_RNAseq/modules/pipeline_tasks.nf
+<<<<<<< HEAD:single_cell_RNAseq/modules/pipeline_tasks.nf
     Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${clonotypes_csv} ${contig_csv} ${projectDir}
 =======
+=======
+>>>>>>> baecdbf (additional logging output for each step):single_cell_RNAseq/pipeline_tasks.nf
     echo " Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${projectDir}"
     Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${projectDir}
 >>>>>>> baecdbf (additional logging output for each step):single_cell_RNAseq/pipeline_tasks.nf
@@ -786,8 +806,11 @@ process SEURAT_ADD_TCR {
     cp ${sobj} "${library}_w_TCR.RDS" # todo - switch to soft link
   else
 <<<<<<< HEAD:single_cell_RNAseq/modules/pipeline_tasks.nf
+<<<<<<< HEAD:single_cell_RNAseq/modules/pipeline_tasks.nf
     Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${clonotypes_csv} ${contig_csv} ${projectDir}
 =======
+=======
+>>>>>>> baecdbf (additional logging output for each step):single_cell_RNAseq/pipeline_tasks.nf
     echo " Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${projectDir}"
     Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${projectDir}
 >>>>>>> baecdbf (additional logging output for each step):single_cell_RNAseq/pipeline_tasks.nf
@@ -829,6 +852,7 @@ process SEURAT_QC {
   echo " using container ${params.container.rsinglecell}"
   echo " Rscript ${projectDir}/bin/process_with_seurat.R ${library} ${main_dt} ${doublet_finder_sobj} ${projectDir} ${params.settings.default_qc_cuts_dir}/${params.settings.default_qc_cuts_file} ${raw_h5}"
   echo "-----------"
+<<<<<<< HEAD:single_cell_RNAseq/modules/pipeline_tasks.nf
 
   Rscript ${projectDir}/bin/process_with_seurat.R ${library} ${main_dt} ${doublet_finder_sobj} ${projectDir} ${params.settings.default_qc_cuts_dir}/${params.settings.default_qc_cuts_file} ${raw_h5}
   """
@@ -855,7 +879,10 @@ process SEURAT_LOAD_POST_QC {
 
   """
   Rscript ${projectDir}/bin/process_with_seurat.R ${library} ${main_dt} ${doublet_finder_sobj} ${projectDir} ${cutoffs} ${raw_h5}
+=======
+>>>>>>> baecdbf (additional logging output for each step):single_cell_RNAseq/pipeline_tasks.nf
 
+  Rscript ${projectDir}/bin/process_with_seurat.R ${library} ${main_dt} ${doublet_finder_sobj} ${projectDir} ${params.settings.default_qc_cuts_dir}/${params.settings.default_qc_cuts_file} ${raw_h5}
   """
 }
 

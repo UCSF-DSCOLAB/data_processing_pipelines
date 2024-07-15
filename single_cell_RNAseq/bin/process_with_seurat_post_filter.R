@@ -22,7 +22,6 @@ print_message(sprintf(
     LIBRARY=%s
     BASE_DIR=%s
     CELLR_H5_PATH=%s
-    FMX_SAMPLE_PATH=%s
     KEEP_FMX_SNG=%s
     KEEP_ONLY_SNG=%s
   -----------

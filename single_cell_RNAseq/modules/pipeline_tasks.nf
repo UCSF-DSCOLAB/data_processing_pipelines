@@ -1,4 +1,4 @@
-
+def date = new Date().format("yyyy-MM-dd")
 
 process TEST_GZIP_INTEGRITY {
 
@@ -29,7 +29,8 @@ process CELLRANGER {
   
   publishDir "${params.project_dir}/10X_library_csvs/", mode: 'copy', pattern: "${library}_libraries.csv"
   publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/", pattern: "cellranger/*", mode: 'copy'
-  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "cellranger.log" }
+  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log",
+   saveAs: { filename -> "cellranger_${date}.log" }
 
 
   container "${params.container.cellranger}"
@@ -76,9 +77,9 @@ process CELLRANGER {
  * Step 1b. Run Cellranger vdj
  */
 process CELLRANGER_VDJ {
-  publishDir "${params.project_dir}/data/single_cell_${data_type}/processed/${vdj_library}/", pattern: "cellranger/*", mode: 'copy'
-  publishDir "${params.project_dir}/data/single_cell_${data_type}/logs/${vdj_library}/", mode: 'copy', pattern: ".command.log", saveAs: { 
-    filename -> "cellranger.log" }
+  publishDir "${params.project_dir}/data/single_cell_${data_type}/processed/${library}/cellranger", mode: 'copy'
+  publishDir "${params.project_dir}/data/single_cell_${data_type}/logs/${library}/", mode: 'copy', 
+    pattern: ".command.log", saveAs: { filename -> "cellranger__${date}.log" }
 
   container "${params.container.cellranger}"
   containerOptions "-B ${params.ref.dir} -B ${params.project_dir} -B /scratch/"
@@ -127,7 +128,8 @@ process CELLRANGER_VDJ {
  */ 
 process FILTER_BARCODES{
   publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/freemuxlet", mode: 'copy', pattern: "barcodes_of_interest.filt.list"
-  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "filter_bc.log" }
+  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', 
+    pattern: ".command.log", saveAs: { filename -> "filter_bc_${date}.log" }
   
   container "${params.container.rsinglecell}"
   
@@ -149,7 +151,8 @@ process FILTER_BARCODES{
  * alternately, filter barcodes based on QC cutoffs
  */
 process SEURAT_PRE_FMX_QC {
-  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "pre_fmx_qc.log" }
+  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", 
+    saveAs: { filename -> "pre_fmx_qc_${date}.log" }
   publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/cell_filter", mode: 'copy', pattern: "${library}*"
 
   container "${params.container.rsinglecell}" 
@@ -177,9 +180,15 @@ process SEURAT_PRE_FMX_QC {
 
 
 process SEURAT_PRE_FMX_FILTER {
-  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "pre_fmx_filter.log" }
-  publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/cell_filter", mode: 'copy', pattern: "${library}*"
-  publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing", mode: 'copy', pattern: "${library}_cutoffs.csv"
+  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", 
+    saveAs: { filename -> "pre_fmx_filter_${date}.log" }
+  publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/cell_filter", mode: 'copy', pattern: "${library}*" 
+
+  publishDir(
+    path: { params.settings.demux_method.equals("demuxlet") ? 
+            "${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing_dmx" : 
+            "${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing" }, 
+            mode: 'copy', pattern: "${library}_cutoffs.csv")
   publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/cell_filter", mode: 'copy', pattern: "barcodes_of_interest.filt.list"
 
   container "${params.container.rsinglecell}" 
@@ -208,7 +217,8 @@ process FILTER_BAM {
   container "${params.container.popscle}"
   containerOptions "-B ${params.ref.fmx_dir}"
 
-  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "filter_bam.log" }
+  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', 
+    pattern: ".command.log", saveAs: { filename -> "filter_bam_${date}.log" }
 
   input:
   tuple val(library), path(cr_bam), path(barcodes) 
@@ -232,9 +242,10 @@ process FILTER_BAM {
  */
 process DSC_PILEUP{
   container "${params.container.popscle}"
-  containerOptions "-B ${params.ref.fmx_dir}"
-  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "dsc_pileup.log" }
-  publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/${params.settings.demux_method}/", mode: 'copy', pattern: "${library}*.gz"
+  containerOptions "-B ${params.dirs.fmx_ref}"
+  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", 
+    saveAs: { filename -> "dsc_pileup_${date}.log" }
+  publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/freemuxlet/", mode: 'copy', pattern: "${library}*.gz"
 
   input:
   tuple val(library), path(barcodes), path(filtered_bam)
@@ -260,7 +271,8 @@ process DSC_PILEUP{
 process MERGE_DSC { 
   publishDir "${params.settings.merge_demux_dir}/${pool}/", mode: 'copy', pattern: "${pool}.tsv"
   publishDir "${params.settings.merge_demux_dir}/${pool}", mode: 'copy', pattern: "${pool}*.gz"
-  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${pool}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "merge_fmx.log" }
+  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${pool}/", mode: 'copy', 
+    pattern: ".command.log", saveAs: { filename -> "merge_fmx_${date}.log" }
 
   container "${params.container.python}"
 
@@ -298,7 +310,9 @@ process FREEMUXLET_POOL {
     pattern: "merged*", 
     saveAs : { filename -> "${pool}_${filename}" }
 
-  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${pool}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "freemuxlet.log" }
+  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${pool}/", mode: 'copy', 
+    pattern: ".command.log", 
+    saveAs: { filename -> "freemuxlet_${date}.log" }
 
   container "${params.container.popscle}"
 
@@ -327,7 +341,8 @@ process FREEMUXLET_POOL {
  */ 
 process FREEMUXLET_LIBRARY {
   publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/freemuxlet", mode: 'copy', pattern: "${library}*"
-  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "freemuxlet.log" }
+  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', 
+    pattern: ".command.log", saveAs: { filename -> "freemuxlet_${date}.log" }
 
   container "${params.container.popscle}"
 
@@ -387,7 +402,8 @@ process FMX_ASSIGN_TO_GT {
  */
 process DEMUXLET_LIBRARY {
   publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/demuxlet", mode: 'copy', pattern: "${library}*"
-  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "demuxlet.log" }
+  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', 
+    pattern: ".command.log", saveAs: { filename -> "demuxlet_${date}.log" }
   container "${params.container.popscle}"
   
   input:
@@ -414,7 +430,8 @@ process DEMUXLET_POOL {
     pattern: "merged*", 
     saveAs : { filename -> "${pool}_${filename}" }
 
-  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${pool}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "demuxlet.log" }
+  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${pool}/", mode: 'copy', pattern: ".command.log", 
+    saveAs: { filename -> "demuxlet_${date}.log" }
   container "${params.container.popscle}"
   
   input:
@@ -436,7 +453,7 @@ process DEMUXLET_POOL {
 process SEPARATE_DMX {
    publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/demuxlet", mode: 'copy', pattern: "${library}*"
    publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", 
-   saveAs: { filename -> "separate_dmx.log" }
+    saveAs: { filename -> "separate_dmx_${date}.log" }
 
 
   input: 
@@ -460,7 +477,9 @@ process SEPARATE_DMX {
 
 
 process UNMERGE_FMX {
-  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${pool}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "unmerge_fmx.log" }
+  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${pool}/", mode: 'copy', 
+    pattern: ".command.log", 
+    saveAs: { filename -> "unmerge_fmx_${date}.log" }
 
   container "${params.container.python}"
 
@@ -480,9 +499,9 @@ process UNMERGE_FMX {
 
 process SEPARATE_FMX {
    publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/freemuxlet", mode: 'copy', pattern: "${library}*"
-   publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "separate_fmx.log" }
-  input:
-   tuple val(library), path(vcf_file), path(sample_file), path(lmix_file)
+   publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', 
+    pattern: ".command.log", 
+    saveAs: { filename -> "separate_fmx_${date}.log" }
 
   output:
    tuple val(library), path("${library}.clust1.samples.gz"), path("${library}.clust1.vcf.gz"), path("${library}.lmix"), emit: fmx_files
@@ -504,6 +523,11 @@ process FIND_DOUBLETS {
   publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/finding_doublets", mode: 'copy', pattern: "${library}*"
   publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "run_df.log" }
 
+  publishDir ( 
+    path: "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", 
+    saveAs: { filename -> 
+          params.settings.demux_method.equals("demuxlet") ? "run_df_dmx_${date}.log" : "run_df_${date}.log" }
+  )
 
   container "${params.container.rsinglecell}" 
 
@@ -523,7 +547,9 @@ process FIND_DOUBLETS {
 }
 
 process LOAD_SOBJ {
-  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "load_sobj.log" }
+  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', 
+    pattern: ".command.log", 
+    saveAs: { filename -> "load_sobj_${date}.log" }
 
   container "${params.container.rsinglecell}" // todo update to one with DF
 
@@ -552,7 +578,9 @@ process LOAD_SOBJ {
  * Step 5a. Seurat add vdj
  */
 process SEURAT_ADD_BCR {
-  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "add_bcr.log" }
+  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', 
+    pattern: ".command.log", 
+    saveAs: { filename -> "add_bcr_${date}.log" }
 
   container "${params.container.rsinglecell}"
 
@@ -581,7 +609,9 @@ process SEURAT_ADD_BCR {
  */
 process SEURAT_ADD_TCR {
     
-  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "add_tcr.log" }
+  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', 
+    pattern: ".command.log", 
+    saveAs: { filename -> "add_tcr_${date}.log" }
 
   container "${params.container.rsinglecell}"
 
@@ -609,8 +639,14 @@ process SEURAT_ADD_TCR {
  * Step 6. Run Seurat
  */
 process SEURAT_QC {
-  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "seurat_qc.log" }
-  publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing", mode: 'copy', pattern: "${library}*"
+  publishDir ("${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", 
+    saveAs: { filename -> params.settings.demux_method.equals("demuxlet") ? "seurat_qc_dmx_${date}.log" : "seurat_qc_${date}.log" })
+  publishDir( 
+    path: { params.settings.demux_method.equals("demuxlet") ? 
+            "${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing_dmx" : 
+            "${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing" }, 
+            mode: 'copy', pattern: "${library}*"
+  )
 
   container "${params.container.rsinglecell}"
   containerOptions "-B ${params.settings.default_qc_cuts_dir}"
@@ -661,8 +697,14 @@ process SEURAT_LOAD_POST_QC {
  * Step 5b. Run Post filter
  */
 process SEURAT_POST_FILTER {
-  publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing", mode: 'copy', pattern: "${library}*"
-  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "post_filter.log" }
+  publishDir (
+    path: { params.settings.demux_method.equals("demuxlet") ? 
+            "${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing_dmx" : 
+            "${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing" },  
+            mode: 'copy', pattern: "${library}*"
+  )
+  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", 
+    saveAs: { filename -> params.settings.demux_method.equals("demuxlet") ? "post_filter_dmx_${date}.log" : "post_filter_${date}.log" }
     
   container "${params.container.rsinglecell}"
 

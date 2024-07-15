@@ -30,10 +30,10 @@ then
 fi
 
 
-VALID_STEPS=("pre_qc post_qc pre_fmx_qc post_fmx_qc")
+VALID_STEPS=("pre_qc post_qc pre_fmx_qc post_fmx_qc df_auto")
 if [[ ! " ${VALID_STEPS[*]} " =~ " ${STEP} " ]];
 then
-  echo "please include a valid step as the second argument -- must be one of 'pre_qc', 'post_qc', 'pre_fmx_qc', 'post_fmx_qc'"
+  echo "please include a valid step as the second argument -- must be one of 'pre_qc', 'post_qc', 'pre_fmx_qc', 'post_fmx_qc', 'df_auto'"
   failed=true;
 fi
 

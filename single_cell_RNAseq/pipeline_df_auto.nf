@@ -12,8 +12,6 @@ workflow.onComplete {
 include { 
 FIND_DOUBLETS;
 LOAD_SOBJ;
-SEURAT_ADD_BCR;
-SEURAT_ADD_TCR;
 SEURAT_QC;
 SEURAT_POST_FILTER
 } from './pipeline_tasks.nf'
@@ -22,22 +20,12 @@ def get_cutoffs(library){
     return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/cell_filter/${library}_cutoffs.csv", checkIfExists: true)
 }
 
-def get_sobj(library){
-  return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/cell_filter/${library}_raw.rds", checkIfExists: true)
-}
-
 def get_libraries (pool) {
   return params.pools[pool].libraries.keySet()
 }
 def get_data_types (pool, library){
   return params.pools[pool].libraries[library].data_types
 } 
-def get_nsamples (pool){
-  return params.pools[pool].nsamples
-}
-def get_vcf (pool){
-  return params.pools[pool].vcf
-}
 
 def get_cr_h5(library){
   return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/cellranger/raw_feature_bc_matrix.h5", checkIfExists: true)
@@ -65,7 +53,6 @@ workflow {
     list_pools = params.pools.keySet()
     for (pool in list_pools){
         libraries = get_libraries(pool)
-        nsamples = get_nsamples(pool)
         
         for (library in libraries){
           dts = get_data_types(pool, library)

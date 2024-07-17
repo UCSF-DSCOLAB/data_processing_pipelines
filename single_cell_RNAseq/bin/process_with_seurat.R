@@ -93,7 +93,7 @@ if (adt.present){
 
 }
 
-saveRDS(sobj, file=sprintf("%s_raw.rds", LIBRARY))
+saveRDS_(sobj, file=sprintf("%s_raw.rds", LIBRARY))
 
 # Generate various diagnostic plots
 params = load_params(params_df) 

@@ -350,7 +350,7 @@ process FREEMUXLET_LIBRARY {
   # then unzip and do next steps                   
   gunzip -f ${library}.clust1.samples.gz
   awk {'printf (\"%s\t%s\t%s\t%s\t%s\\n\", \$2, \$3, \$4, \$5, \$6)'} ${library}.clust1.samples > ${library}.clust1.samples.reduced.tsv
-  gzip -f ${library}.clust1.samples
+  gzip -f -n ${library}.clust1.samples
 
   """
 } 

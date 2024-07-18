@@ -351,7 +351,8 @@ process FREEMUXLET_LIBRARY {
   gunzip -f ${library}.clust1.samples.gz
   awk {'printf (\"%s\t%s\t%s\t%s\t%s\\n\", \$2, \$3, \$4, \$5, \$6)'} ${library}.clust1.samples > ${library}.clust1.samples.reduced.tsv
   gzip -f -n ${library}.clust1.samples
-
+  zgrep -v "^##fileDate" ${library}.clust1.vcf.gz | gzip -n -f > tmp.gz
+  mv tmp.gz ${library}.clust1.vcf.gz
   """
 } 
 

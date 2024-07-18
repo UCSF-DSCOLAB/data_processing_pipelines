@@ -317,7 +317,7 @@ process FILTER_BAM {
  */
 process DSC_PILEUP{
   container "${params.container.popscle}"
-  containerOptions "-B ${params.dirs.fmx_ref}"
+  containerOptions "-B ${params.ref.fmx_dir}"
   publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", 
     saveAs: { filename -> "dsc_pileup_${date}.log" }
   publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/freemuxlet/", mode: 'copy', pattern: "${library}*.gz"
@@ -646,7 +646,8 @@ process SEPARATE_FMX {
    publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', 
     pattern: ".command.log", 
     saveAs: { filename -> "separate_fmx_${date}.log" }
-
+  input:
+   tuple val(library), path(vcf_file), path(sample_file), path(lmix_file)
   output:
    tuple val(library), path("${library}.clust1.samples.gz"), path("${library}.clust1.vcf.gz"), path("${library}.lmix"), emit: fmx_files
    tuple val(library), path("${library}.clust1.samples.reduced.tsv"), emit: sample_map
@@ -852,7 +853,6 @@ process SEURAT_QC {
   echo " using container ${params.container.rsinglecell}"
   echo " Rscript ${projectDir}/bin/process_with_seurat.R ${library} ${main_dt} ${doublet_finder_sobj} ${projectDir} ${params.settings.default_qc_cuts_dir}/${params.settings.default_qc_cuts_file} ${raw_h5}"
   echo "-----------"
-<<<<<<< HEAD:single_cell_RNAseq/modules/pipeline_tasks.nf
 
   Rscript ${projectDir}/bin/process_with_seurat.R ${library} ${main_dt} ${doublet_finder_sobj} ${projectDir} ${params.settings.default_qc_cuts_dir}/${params.settings.default_qc_cuts_file} ${raw_h5}
   """

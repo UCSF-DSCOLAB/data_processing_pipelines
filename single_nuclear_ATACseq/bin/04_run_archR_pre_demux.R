@@ -2,45 +2,29 @@ library(ArchR)
 library(tidyverse)
 set.seed(1)
 
+PROJECT="my_project" # FILL IN
 args = commandArgs(trailingOnly=T)
 LIBRARY=args[1]
-PARENT_DIR="/krummellab/data1/immunox/AUTOIPI/data/single_nuclear_ATAC/processed"
+PARENT_DIR=sprintf("/krummellab/data1/immunox/%s/data/single_nuclear_ATAC/processed", PROJECT) 
+
 WORKING_DIR=sprintf("%s/%s/archR/", PARENT_DIR, LIBRARY)
-AMULET_DIR=sprintf("%s/%s/amulet/", PARENT_DIR, LIBRARY)
-DMX_DIR=sprintf("%s/%s/demuxlet/", PARENT_DIR, LIBRARY)
+dir.create(WORKING_DIR)
+#AMULET_DIR=sprintf("%s/%s/amulet/", PARENT_DIR, LIBRARY)
+FILTER_DIR=sprintf("%s/%s/cell_filter/", PARENT_DIR, LIBRARY)
+
+setwd(WORKING_DIR)
 
 # load
-load(file=sprintf("%s/proj.RData", WORKING_DIR))
-loadArchRProject("results")
+proj = loadArchRProject("results")
 
 # amulet
-mult_bc = read_tsv(sprintf("%s/MultipletBarcodes_01.txt", AMULET_DIR), col_names=F) %>%
-  dplyr::rename(cell_id=X1) %>%
-  mutate(amuletDBL=TRUE)
+bc_keep = read_tsv(sprintf("%s/post_amulet_barcodes_of_interest_filt.list", FILTER_DIR), col_names=F) %>%
+  mutate(X1=sprintf("%s#%s", LIBRARY, X1))
+dim(proj@cellColData)
 
+proj = proj[proj$cellNames %in% bc_keep$X1,]
 
-# demuxlet
-dmx_out = read_tsv(sprintf("%s/%s.clust1.samples.reduced.tsv", DMX_DIR, LIBRARY)) %>%
-  column_to_rownames("BARCODE")
-
-proj = proj[dmx_out$BARCODE,] # TODO: check on this filtering
- 
-proj = addCellColData(ArchRProj = proj, 
-                       data = dmx_out$DROPLET.TYPE,
-                       cells = rownames(dmx_out),
-                       name='DROPLET.TYPE')
-proj = addCellColData(ArchRProj = proj, 
-                       data = dmx_out$BEST.GUESS,
-                       cells = rownames(dmx_out),
-                       name='BEST.GUESS')
-
-dmx_counts = table(proj$DROPLET.TYPE)
-proj = proj[proj$DROPLET.TYPE=="SNG", ]
-write(sprintf("Removing %s dmx DBL and %s dmx AMB, resulting in %s nuclei.",
-              dmx_counts[["DBL"]], dmx_counts[["AMB"]], nrow(proj@cellColData)), file=sprintf("filter_log.txt", OUT_DIR),
-      append=T)
-saveArchRProject(proj)
-save(proj, file=sprintf("proj_filt.RData", WORKING_DIR) )
+#save(proj, file=sprintf("%s/proj_filt.RData", WORKING_DIR) )
 
 ### NOW RUN DOWNSTREAM STEPS ###
 
@@ -66,6 +50,11 @@ proj <- addDoubletScores(
 proj <- addClusters(input = proj, 
                     reducedDims = "IterativeLSI")
 
+plotEmbedding(ArchRProj = proj, 
+              colorBy = "cellColData", 
+              name = "Clusters", 
+              embedding = "UMAP")
+
 plotPDF(plotEmbedding(ArchRProj = proj, 
                       colorBy = "cellColData", 
                       name = "Clusters", 
@@ -75,13 +64,12 @@ plotPDF(plotEmbedding(ArchRProj = proj,
                       colorBy = "cellColData", 
                       name = "nFrags", 
                       embedding = "UMAP"), name="nFrags")
-saveArchRProject(proj)
 save(proj, file=sprintf("%s/proj2.RData", WORKING_DIR))
 
 
 # markers
 proj_markers <- getMarkerFeatures(proj)
-save(proj_markers, file=sprintf("%s/proj2_markers.RData", WORKING_DIR))
+save(proj_markers, file=sprintf("%s/proj_markers.RData", WORKING_DIR))
 
 markerList <- getMarkers(proj_markers, 
                          cutOff = "FDR <= 0.01 & Log2FC >= 1.5", 
@@ -127,5 +115,4 @@ plotPDF(ComplexHeatmap::draw(proj_heatmap,
 
 proj <- addImputeWeights(proj)
 saveArchRProject(proj)
-save(proj, file=sprintf("%s/proj2.RData", WORKING_DIR))
 

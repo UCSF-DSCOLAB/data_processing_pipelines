@@ -3,9 +3,12 @@ library(tidyverse)
 library(ArchR)
 set.seed(1)
 
+PROJECT="my_project" # fill in your project
+
+
 args = commandArgs(trailingOnly=T)
 LIBRARY=args[1]
-PARENT_DIR="/krummellab/data1/immunox/AUTOIPI/data/single_nuclear_ATAC/processed"
+PARENT_DIR=sprintf("/krummellab/data1/immunox/%s/data/single_nuclear_ATAC/processed", PROJECT) 
 OUT_DIR=sprintf("%s/%s/cell_filter/", PARENT_DIR, LIBRARY)
 WORKING_DIR=sprintf("%s/%s/archR/", PARENT_DIR, LIBRARY)
 

@@ -8,10 +8,10 @@
 #SBATCH -o /krummellab/data1/%u/logs/run_amulet-%j.out
 
 LIBRARY=$1
-PARENT_DIR=/krummellab/data1/immunox/AUTOIPI/data/single_nuclear_ATAC/processed
-REF_DIR=/krummellab/data1/erflynn/ref
-SOFTWARE_DIR=/krummellab/data1/erflynn/software
-CODE_DIR=/krummellab/data1/DSCoLab/AUTOIPI/snatac_pipeline_v0/03a_run_amulet/
+PARENT_DIR=/krummellab/data1/immunox/${PROJECT}/data/single_nuclear_ATAC/processed
+REF_DIR= # fill in 
+SOFTWARE_DIR= # fill in
+CODE_DIR=${PWD}
 RSINGULARITY_IMG=/krummellab/data1/singularity_images/RSingleCell/v3/RSingleCell.sif 
 
 blacklist=${REF_DIR}/blacklist/hg38-blacklist.v2.bed.gz

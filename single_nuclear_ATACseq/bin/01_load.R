@@ -3,23 +3,30 @@ library(tidyverse)
 library(yaml)
 set.seed(1)
 
+PROJECT="my_project" # fill in your project
+
 args = commandArgs(trailingOnly=T)
 LIBRARY=args[1]
-FRAGMENT_FILE=args[2]
-WORKING_DIR=args[3]
-OUT_DIR=args[4]
-
+PARENT_DIR=sprintf("/krummellab/data1/immunox/%s/data/single_nuclear_ATAC/processed", PROJECT) 
+WORKING_DIR=sprintf("%s/%s/archR/", PARENT_DIR, LIBRARY)
+OUT_DIR=sprintf("%s/%s/cell_filter/", PARENT_DIR, LIBRARY)
 dir.create(WORKING_DIR, showWarnings=T)
 dir.create(OUT_DIR, showWarnings=T)
 
-addArchRThreads(threads = 8) 
+addArchRThreads(threads = 4) 
 addArchRGenome("hg38")
 
 DEFAULT_TSS_MIN=4
 DEFAULT_NFRAG_MIN=1000
 
+list_inputs = ifelse(file.exists(sprintf('%s/%s/cellranger/atac_fragments.tsv.gz', PARENT_DIR, LIBRARY)),
+    sprintf('%s/%s/cellranger/atac_fragments.tsv.gz', PARENT_DIR, LIBRARY),
+    sprintf('%s/%s/cellranger/fragments.tsv.gz', PARENT_DIR, LIBRARY))
+
+setwd(WORKING_DIR)
+
 ArrowFiles <- createArrowFiles(
-  inputFiles = FRAGMENT_FILE,
+  inputFiles = list_inputs,
   sampleNames = LIBRARY,
   minTSS = DEFAULT_TSS_MIN,
   minFrags = DEFAULT_NFRAG_MIN, 
@@ -38,6 +45,7 @@ proj <- ArchRProject(
   copyArrows = TRUE 
 )
 saveArchRProject(proj)
+
 
 df <- getCellColData(proj, select = c("log10(nFrags)", "TSSEnrichment"))
 

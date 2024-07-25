@@ -1,0 +1,68 @@
+nextflow_pipeline {
+
+    name "Test Workflow pipeline_pre_qc.nf"
+    script "pipeline_pre_qc.nf"
+    tag "qc-quantiles"
+
+
+    def c4PathToTestFiles = "/krummellab/data1/integration_test_user/tutorial_lib_sep"
+
+    // Assertion directories
+    def finding_doublets = "/finding_doublets"
+    def automated_processing = "/automated_processing"
+    def freemuxlet = "/freemuxlet"
+    def test_directories = [finding_doublets, automated_processing, freemuxlet]
+
+    stage {
+        copy c4PathToTestFiles
+    }
+
+    test("Should successfully demultiplex merged libaries using freemuxlet and run doublet finder") {
+
+        def metaDir = "$metaDir"
+        def testDirAbsolute = metaDir + c4PathToTestFiles
+        def freemuxDir = testDirAbsolute + "/freemuxlet_data"
+
+        when {
+            params {
+                    load("./tests/inputs/pre_qc.json")
+                    project_dir = testDirAbsolute
+                    settings = {
+                        add_tcr = false
+                        add_bcr = false
+                        skip_cellranger = true
+                        merge_for_demux = true
+                        merge_demux_dir = freemuxDir
+                        demux_method = "freemuxlet"
+                        run_doubletfinder = true
+                        mincell = 3
+                        minfeature = 100
+                        default_qc_cuts_dir = testDirAbsolute
+                        default_qc_cuts_file = "default_qc_cuts.csv"
+                        randomseed = 21212
+                        remove_demux_DBL = true
+                        remove_all_DBL = true
+                    }
+            }
+        }
+
+        then {
+            // Setup assertion directories
+            def dm1_scg1 = testDirAbsolute + "/data/single_cell_GEX/processed/TEST-POOL-DM1-SCG1"
+            def dm1_scg2 = testDirAbsolute + "/data/single_cell_GEX/processed/TEST-POOL-DM1-SCG2"
+            def dm2_scg1 = testDirAbsolute + "/data/single_cell_GEX/processed/TEST-POOL-DM2-SCG1"
+            def test_sample_paths = [dm1_scg1, dm1_scg2, dm2_scg1]
+            def resultFilesList = []
+            for (sample in test_sample_paths) {
+                for (test_dir in test_directories) {
+                    def dir_to_test = sample + test_dir
+                    println "Processing: ${dir_to_test}"
+                    def resultFiles = path(dir_to_test).list()
+                    resultFilesList.addAll(resultFiles)
+                }
+            }
+            assert snapshot(workflow, resultFilesList).match()
+        }
+    }
+}
+

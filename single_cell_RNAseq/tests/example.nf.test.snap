@@ -1,0 +1,73 @@
+{
+    "Should successfully demultiplex merged libaries using freemuxlet and run doublet finder": {
+        "content": [
+            {
+                "stderr": [
+                    
+                ],
+                "errorReport": "",
+                "exitStatus": 0,
+                "failed": false,
+                "stdout": [
+                    "Pipeline completed at: 2024-07-25T12:39:50.342342691-07:00",
+                    "Execution status: OK",
+                    "Deleting working directory /c4/home/amazzara/data_processing_pipelines/single_cell_RNAseq/.nf-test/tests/e0af1c8c075a40a30edffe9047bb7bca/work"
+                ],
+                "errorMessage": "",
+                "name": "workflow",
+                "success": true
+            },
+            [
+                "TEST-POOL-DM1-SCG1_doubletStat.rds:md5,2abec2c196a0f2edc675aa54e4ef3e81",
+                "TEST-POOL-DM1-SCG1_doublet_counts.csv:md5,6ddbe773b71de72a979975ad7ecbfa15",
+                "TEST-POOL-DM1-SCG1_seurat_object_findingDoublets.rds:md5,58389f8af2a840dbb35c175c7001b990",
+                "TEST-POOL-DM1-SCG1_cutoffs.csv:md5,44e63748a1f261f028c093a463d1a09d",
+                "TEST-POOL-DM1-SCG1_diagnostic_plots_pre.pdf:md5,4847fcbba10e818f23408e2d99075659",
+                "TEST-POOL-DM1-SCG1_quantiles_pre.tsv:md5,94816302c1bce6019a4cfea34e07178b",
+                "TEST-POOL-DM1-SCG1_raw.rds:md5,ae40d8eb177c0ac53e42a907f29e0395",
+                "TEST-POOL-DM1-SCG1.cel.gz:md5,384faa9c2adc7a1e501ce074b633853b",
+                "TEST-POOL-DM1-SCG1.clust1.samples.gz:md5,374d0788a169c4d24f8ae415aa35a1e3",
+                "TEST-POOL-DM1-SCG1.clust1.samples.reduced.tsv:md5,afd48131fde269d3d7fb027e7ef4a0e8",
+                "TEST-POOL-DM1-SCG1.clust1.vcf.gz:md5,43c9b6cf2fa10cbd1cfd2effd2606a19",
+                "TEST-POOL-DM1-SCG1.lmix:md5,b7e4b08d9edc41d1e7985d5a37aa1ddd",
+                "TEST-POOL-DM1-SCG1.plp.gz:md5,08647959ea75f9e91cb291256e555a95",
+                "TEST-POOL-DM1-SCG1.umi.gz:md5,3ed88c443b3ec1cdd273b13fe6e8f42b",
+                "TEST-POOL-DM1-SCG1.var.gz:md5,9662b88288a0488d0ebe3908d1a11696",
+                "barcodes_of_interest.filt.list:md5,6cc4789ad17ab2865d026126d1c3eafa",
+                "TEST-POOL-DM1-SCG2_doubletStat.rds:md5,b3d31f12ee003848c7ef5cd07d08eb21",
+                "TEST-POOL-DM1-SCG2_doublet_counts.csv:md5,b379ccdbfc2abda59e35f19d9aada274",
+                "TEST-POOL-DM1-SCG2_seurat_object_findingDoublets.rds:md5,f33357c9281208c39792ceab4a0afb38",
+                "TEST-POOL-DM1-SCG2_cutoffs.csv:md5,44e63748a1f261f028c093a463d1a09d",
+                "TEST-POOL-DM1-SCG2_diagnostic_plots_pre.pdf:md5,7fb53955619654710481c239dd57f4f1",
+                "TEST-POOL-DM1-SCG2_quantiles_pre.tsv:md5,03c104a82af781e44ded3e03ccd4524c",
+                "TEST-POOL-DM1-SCG2_raw.rds:md5,c414b0c7ac36a4292b4e445ca11a26ed",
+                "TEST-POOL-DM1-SCG2.cel.gz:md5,8539d82f725231ab8afb8c0240670540",
+                "TEST-POOL-DM1-SCG2.clust1.samples.gz:md5,22f7177c5bd05376c97d3ff783c9aaf1",
+                "TEST-POOL-DM1-SCG2.clust1.samples.reduced.tsv:md5,f9c5e2c01b2aa3eb6e1f7cc8261f95bf",
+                "TEST-POOL-DM1-SCG2.clust1.vcf.gz:md5,43c9b6cf2fa10cbd1cfd2effd2606a19",
+                "TEST-POOL-DM1-SCG2.lmix:md5,e41a51bf1ea89f855f32b85785c1f8f6",
+                "TEST-POOL-DM1-SCG2.plp.gz:md5,2435cb5fb967a2495963f8b8239e38a1",
+                "TEST-POOL-DM1-SCG2.umi.gz:md5,2fe85c95f28cb26e075764d50d2e7fc3",
+                "TEST-POOL-DM1-SCG2.var.gz:md5,3d8a0bbf63ee663f9b4edb430d4e6d19",
+                "barcodes_of_interest.filt.list:md5,5eb29c41775ec1d4d59b526b51f41d91",
+                "TEST-POOL-DM2-SCG1_doubletStat.rds:md5,ae65810041d783a0b8d5bcc3e0538bff",
+                "TEST-POOL-DM2-SCG1_doublet_counts.csv:md5,9a5fcc173622e3d965e276d4af5ab6a9",
+                "TEST-POOL-DM2-SCG1_seurat_object_findingDoublets.rds:md5,326103e3b50fb26953b3f9726a538e25",
+                "TEST-POOL-DM2-SCG1_cutoffs.csv:md5,44e63748a1f261f028c093a463d1a09d",
+                "TEST-POOL-DM2-SCG1_diagnostic_plots_pre.pdf:md5,68ea72e87a4ca1a63c67445fa6a938ba",
+                "TEST-POOL-DM2-SCG1_quantiles_pre.tsv:md5,fd9ad3a0d63fdbf72bbe94084ba45531",
+                "TEST-POOL-DM2-SCG1_raw.rds:md5,4001a01db8a1a700b83bf4920cbb8ced",
+                "TEST-POOL-DM2-SCG1.cel.gz:md5,a1e20a724875c86bec7062846d503492",
+                "TEST-POOL-DM2-SCG1.clust1.samples.gz:md5,1e089a3f9a8a18c0466b1aca49a31c37",
+                "TEST-POOL-DM2-SCG1.clust1.samples.reduced.tsv:md5,6c27161f7516e101abe8bf1150c4a564",
+                "TEST-POOL-DM2-SCG1.clust1.vcf.gz:md5,5e18d4c149cc2718acb2e10254733d3d",
+                "TEST-POOL-DM2-SCG1.lmix:md5,75d7df0745f9f5d91719fa730f0337de",
+                "TEST-POOL-DM2-SCG1.plp.gz:md5,1878aad0bae0ea20e3494ab444960353",
+                "TEST-POOL-DM2-SCG1.umi.gz:md5,a8f73466b2ff5cd18c589da5e07da44e",
+                "TEST-POOL-DM2-SCG1.var.gz:md5,195c7444775020f2d83bdfdc534d92b6",
+                "barcodes_of_interest.filt.list:md5,c35e74b984701342ea0181b8f58135fb"
+            ]
+        ],
+        "timestamp": "2024-07-25T12:39:51.012880974"
+    }
+}

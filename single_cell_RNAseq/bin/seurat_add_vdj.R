@@ -13,6 +13,19 @@ CONTIG_PATH = args[5]
 BASE_DIR = args[6]
 source(sprintf("%s/bin/seurat_utils.R", BASE_DIR))
 
+print_message(sprintf(
+  "
+  -----------
+  Running seurat add vdj with the following params:
+    LIBRARY=%s
+    SOBJ=%s
+    DATA_TYPE=%s
+    BASE_DIR=%s
+  -----------
+  ", LIBRARY, SOBJ, DATA_TYPE, BASE_DIR)
+)
+
+
 sobj = readRDS(SOBJ)
 
 clonotype_data = load_clonotypes(LIBRARY, DATA_TYPE, CLONOTYPE_PATH, CONTIG_PATH)

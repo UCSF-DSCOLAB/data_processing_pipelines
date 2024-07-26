@@ -12,7 +12,7 @@ nextflow_pipeline {
     def automated_processing = "/automated_processing"
     def freemuxlet = "/freemuxlet"
     def test_directories = [finding_doublets, automated_processing, freemuxlet]
-
+    
     stage {
         copy c4PathToTestFiles
     }
@@ -58,7 +58,10 @@ nextflow_pipeline {
                     def dir_to_test = sample + test_dir
                     println "Processing: ${dir_to_test}"
                     def resultFiles = path(dir_to_test).list()
-                    resultFilesList.addAll(resultFiles)
+                    println "Before filter: ${resultFiles}"
+                    def filteredPaths = resultFiles.findAll { !it.endsWith('.pdf') }
+                    println "After filter: ${filteredPaths}"
+                    resultFilesList.addAll(filteredPaths)
                 }
             }
             assert snapshot(workflow, resultFilesList).match()

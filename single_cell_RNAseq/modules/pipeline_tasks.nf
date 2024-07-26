@@ -14,8 +14,6 @@ process TEST_GZIP_INTEGRITY {
     lib_to_use=\${gex_library/"SCG"/"SC\${dt:0:1}"}
 
     gzip --test ${params.project_dir}/data/single_cell_${data_type}/raw/\${lib_to_use}/\${lib_to_use}*.fastq.gz
-    
-
     """
 }
 
@@ -89,10 +87,6 @@ process CELLRANGER_VDJ {
   path(".command.log"), emit: log
   
   """
- # my_dir=\${PWD}
- # cd \${TMPDIR}
- # echo \${TMPDIR}
-  
   vdj_path=${params.project_dir}/data/single_cell_${data_type}/raw/${vdj_library}
   dt=${data_type}
     # TODO: update so that this only occurs on retries if there is a chain error
@@ -270,6 +264,8 @@ process MERGE_DSC {
   path(".command.log"), emit: log
 
   """
+  source utils.sh
+
   # write out the config file
   printf "sample\n" > ${pool}.tsv
   echo `ls *.plp.gz`
@@ -281,10 +277,10 @@ process MERGE_DSC {
   
   # merge
   python ${projectDir}/bin/merge_freemuxlet_dsc_pileups.py --freemuxlet_dir_tsv ${pool}.tsv --ignore_diff_lengths_error
-  gunzip -f merged.plp.gz && gzip -n -f merged.plp
-  gunzip -f merged.cel.gz && gzip -n -f merged.cel
-  gunzip -f merged.var.gz && gzip -n -f merged.var
-  gunzip -f merged.barcodes.gz && gzip -n -f merged.barcodes && mv merged.barcodes.gz ${pool}.barcodes.gz
+  gzipStripDttm merged.plp.gz
+  gzipStripDttm merged.cel.gz
+  gzipStripDttm merged.var.gz
+  gzipStripDttm merged.barcodes.gz && mv merged.barcodes.gz ${pool}.barcodes.gz
   """
 }
 
@@ -310,6 +306,8 @@ process FREEMUXLET_POOL {
   path(".command.log"), emit: log
 
   """
+  source utils.sh
+
   # run freemuxlet
   popscle freemuxlet --plp merged \
                      --out merged \
@@ -317,8 +315,8 @@ process FREEMUXLET_POOL {
                      --seed ${params.settings.randomseed} \
                      --group-list ${merged_barcodes}
   
-  gunzip -f merged.clust1.samples.gz && gzip -n -f merged.clust1.samples
-  zgrep -v "^##fileDate" ${library}.merged.clust1.vcf.gz | gzip -n -f > tmp.gz && mv tmp.gz merged.clust1.vcf.gz
+  gzipStripDttm merged.clust1.samples.gz
+  vcfStripDttm merged.clust1.vcf.gz
   
   """
 } 
@@ -342,23 +340,21 @@ process FREEMUXLET_LIBRARY {
   path(".command.log"), emit: log
 
   """
+  source utils.sh
 
   popscle freemuxlet --plp ${library} \
                      --out ${library} \
                      --nsample ${nsamples} \
                      --seed ${params.settings.randomseed} 
   
-  # then unzip and do next steps                   
-  gunzip -f ${library}.clust1.samples.gz
-  awk {'printf (\"%s\t%s\t%s\t%s\t%s\\n\", \$2, \$3, \$4, \$5, \$6)'} ${library}.clust1.samples > ${library}.clust1.samples.reduced.tsv
-  gzip -f -n ${library}.clust1.samples
-  zgrep -v "^##fileDate" ${library}.clust1.vcf.gz | gzip -n -f > tmp.gz && mv tmp.gz ${library}.clust1.vcf.gz
+  # then unzip and do next steps   
+  vcfStripDttm ${library}.clust1.vcf.gz
+  gzipStripDttm ${library}.plp.gz
+  gzipStripDttm ${library}.cel.gz
+  gzipStripDttm ${library}.var.gz
+  gzipStripDttm ${library}.umi.gz
 
-  gunzip -f ${library}.cel.gz && gzip -f -n ${library}.cel
-  gunzip -f ${library}.plp.gz && gzip -f -n ${library}.plp
-  gunzip -f ${library}.umi.gz && gzip -f -n ${library}.umi
-  gunzip -f ${library}.var.gz && gzip -f -n ${library}.var
-
+  demuxTsvFromFmx ${library} 
   """
 } 
 
@@ -405,13 +401,15 @@ process DEMUXLET_LIBRARY {
   path("${library}.clust1.samples.gz"), emit: dmx_files
   path(".command.log"), emit: log
   """
+  source utils.sh
+
   popscle demuxlet --plp ${library} \
                      --out ${library} \
                      --vcf ${vcf} \
                      --field GT 
   
   # select desired files              
-  awk {'printf (\"%s\t%s\t%s\t%s\t%s\\n\", \$2, \$3, \$4, \$5, \$6)'} ${library}.best > ${library}.clust1.samples.reduced.tsv
+  extractDemuxTsv ${library}.best ${library}
   mv ${library}.best ${library}.clust1.samples && gzip -f -n ${library}.clust1.samples
   """
 }
@@ -455,10 +453,12 @@ process SEPARATE_DMX {
    path(".command.log"), emit: log
 
   """
+  source utils.sh
+
   head -1 ${merged_best} > ${library}.clust1.samples0
   grep "${library}\\s" ${merged_best} >> ${library}.clust1.samples0
   sed \"s/--${library}//g\" ${library}.clust1.samples0 > ${library}.clust1.samples
-  awk {'printf (\"%s\t%s\t%s\t%s\t%s\\n\", \$2, \$3, \$4, \$5, \$6)'} "${library}.clust1.samples" > ${library}.clust1.samples.reduced.tsv
+  extractDemuxTsv ${library}.clust1.samples ${library}
   gzip -f -n ${library}.clust1.samples
   """
 }
@@ -498,10 +498,10 @@ process SEPARATE_FMX {
    path(".command.log"), emit: log
 
   """
-  gunzip -f ${library}.clust1.samples.gz
-  awk {'printf (\"%s\t%s\t%s\t%s\t%s\\n\", \$2, \$3, \$4, \$5, \$6)'} ${library}.clust1.samples > ${library}.clust1.samples.reduced.tsv
-  gzip -f -n ${library}.clust1.samples
-  zgrep -v "^##fileDate" ${library}.clust1.vcf.gz | gzip -n -f > tmp.gz && mv tmp.gz ${library}.clust1.vcf.gz
+  source utils.sh
+
+  demuxTsvFromFmx ${library}
+  vcfStripDttm ${library}.clust1.vcf.gz
 
   """
 }

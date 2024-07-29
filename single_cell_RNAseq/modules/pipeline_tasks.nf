@@ -110,13 +110,11 @@ process CELLRANGER_VDJ {
   tuple val(library), val(data_type), val(vdj_library) 
   
   output:
-  tuple val(library), val(data_type), path("cellranger/clonotypes.csv"), path("cellranger/all_contig_annotations.csv"), emit: vdj_csvs
+  tuple val(library), val(data_type), path("cellranger/all_contig_annotations.csv"), emit: vdj_csvs
   path("cellranger/*"), emit: cr_out_files
   path(".command.log"), emit: log
   
   """
-<<<<<<< HEAD:single_cell_RNAseq/modules/pipeline_tasks.nf
-<<<<<<< HEAD:single_cell_RNAseq/modules/pipeline_tasks.nf
 
   echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
   echo "[running CELLRANGER_VDJ]"
@@ -140,21 +138,6 @@ process CELLRANGER_VDJ {
     --fastqs=\${vdj_path} \
     --reference=${params.ref.vdj_ref} \
     --chain=\${chain_type} "
-=======
-  echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
-  echo "[running CELLRANGER_VDJ]"
-
-  gex_library=${library}
-  data_type_name = "${data_type}"
-  vdj_library=\${gex_library/"SCG"/"SC\${data_type_name:0:1}"}
-  vdj_path=\${params.project_dir}/data/single_cell_${data_type}/raw/\${vdj_library}
-  
-  echo " Using container ${params.container.cellranger}"
-  echo " cellranger vdj --id="\${vdj_library}"  \
-    --fastqs=\${vdj_path} \
-    --reference="\${vdj_library}" \
-    --reference=${params.ref.vdj_ref} "
->>>>>>> baecdbf (additional logging output for each step):single_cell_RNAseq/pipeline_tasks.nf
   echo "-----------"
 
 
@@ -746,7 +729,7 @@ process SEURAT_ADD_BCR {
 
   
   input:
-  tuple val(library), path(sobj), val(data_type), path(clonotypes_csv), path(contig_csv)
+  tuple val(library), path(sobj), val(data_type), path(contig_csv)
   
   output:
   tuple val(library), path("${library}_w_BCR.RDS"), emit: sobj
@@ -762,6 +745,7 @@ process SEURAT_ADD_BCR {
   then
     cp ${sobj} "${library}_w_BCR.RDS" # todo - switch to soft link
   else
+<<<<<<< HEAD
 <<<<<<< HEAD:single_cell_RNAseq/modules/pipeline_tasks.nf
 <<<<<<< HEAD:single_cell_RNAseq/modules/pipeline_tasks.nf
     Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${clonotypes_csv} ${contig_csv} ${projectDir}
@@ -771,6 +755,9 @@ process SEURAT_ADD_BCR {
     echo " Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${projectDir}"
     Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${projectDir}
 >>>>>>> baecdbf (additional logging output for each step):single_cell_RNAseq/pipeline_tasks.nf
+=======
+    Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${contig_csv} ${projectDir}
+>>>>>>> origin/db/vdj-columns
   fi
   
   echo "-----------"
@@ -790,7 +777,7 @@ process SEURAT_ADD_TCR {
 
   
   input:
-  tuple val(library), path(sobj), val(data_type), path(clonotypes_csv), path(contig_csv)
+  tuple val(library), path(sobj), val(data_type), path(contig_csv)
   
   output:
   tuple val(library), path("${library}_w_TCR.RDS"), emit: sobj
@@ -806,6 +793,7 @@ process SEURAT_ADD_TCR {
   then
     cp ${sobj} "${library}_w_TCR.RDS" # todo - switch to soft link
   else
+<<<<<<< HEAD
 <<<<<<< HEAD:single_cell_RNAseq/modules/pipeline_tasks.nf
 <<<<<<< HEAD:single_cell_RNAseq/modules/pipeline_tasks.nf
     Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${clonotypes_csv} ${contig_csv} ${projectDir}
@@ -815,6 +803,9 @@ process SEURAT_ADD_TCR {
     echo " Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${projectDir}"
     Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${projectDir}
 >>>>>>> baecdbf (additional logging output for each step):single_cell_RNAseq/pipeline_tasks.nf
+=======
+    Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${contig_csv} ${projectDir}
+>>>>>>> origin/db/vdj-columns
   fi
     
   echo "-----------"

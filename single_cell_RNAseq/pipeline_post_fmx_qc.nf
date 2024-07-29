@@ -39,7 +39,7 @@ include {
 get_c4_h5; get_c4_bam; get_c4_h5_bam; get_pool_library_meta; get_libraries_data_type_tuples;
 get_pool_by_sample_count; get_library_by_sample_count; get_single_library_by_pool;
 get_multi_pool_by_library ; get_library_by_pool; get_multi_library_by_pool; get_pool_vcf ; get_library_ncells;
-get_vdj_tuple; get_vdj_name ; get_clonotypes; get_contigs; get_pre_fmx_qc_outputs;
+get_vdj_tuple; get_vdj_name ; get_contigs; get_pre_fmx_qc_outputs;
 get_pre_fmx_cutoffs
 } from  './helpers/params_parse.nf'
 
@@ -242,7 +242,7 @@ workflow {
                 
               ch_vdj_libs = ch_library_bcr_tcr
               .map{
-                it -> [it[0], it[1], get_clonotypes(it[0], it[1]), get_contigs(it[0], it[1])]
+                it -> [it[0], it[1], get_contigs(it[0], it[1])]
               }
               .branch { 
                         tcr: it[1].contains("TCR")

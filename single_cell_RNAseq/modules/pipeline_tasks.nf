@@ -117,8 +117,9 @@ process CELLRANGER_VDJ {
  * Step 2a. Create barcode list
  */ 
 process FILTER_BARCODES{
-  publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/freemuxlet", mode: 'copy', pattern: "barcodes_of_interest.filt.list"
-  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "filter_bc.log" }
+  publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/freemuxlet", mode: 'copy', pattern: "${library}_barcodes_of_interest.filt.list"
+  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", 
+  saveAs: { filename -> "filter_bc.log" }
   
   container "${params.container.rsinglecell}"
   
@@ -126,10 +127,11 @@ process FILTER_BARCODES{
   tuple val(library), path(raw_h5) 
   
   output:
-  tuple val(library), path("barcodes_of_interest.filt.list"), emit: bc_list
+  tuple val(library), path("${library}_barcodes_of_interest.filt.list"), emit: bc_list
   path(".command.log"), emit: log
   """
   Rscript ${projectDir}/bin/make_valid_barcodelist.R ${raw_h5} ${params.settings.minfeature} ${params.settings.mincell}
+  mv barcodes_of_interest.filt.list ${library}_barcodes_of_interest.filt.list
   
   """
 }
@@ -171,7 +173,6 @@ process SEURAT_PRE_FMX_FILTER {
   publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "pre_fmx_filter.log" }
   publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/cell_filter", mode: 'copy', pattern: "${library}*"
   publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing", mode: 'copy', pattern: "${library}_cutoffs.csv"
-  publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/cell_filter", mode: 'copy', pattern: "barcodes_of_interest.filt.list"
 
   container "${params.container.rsinglecell}" 
 
@@ -179,7 +180,7 @@ process SEURAT_PRE_FMX_FILTER {
   tuple val(library), path(cutoffs), path(raw_sobj)
 
   output:
-  tuple val(library), path("barcodes_of_interest.filt.list"), emit: bc_list
+  tuple val(library), path("${library}_barcodes_of_interest.filt.list"), emit: bc_list
   tuple val(library), path("${library}_cutoffs.csv"), emit: cutoffs_file
   path("${library}*"), emit: filter_files
   path(".command.log"), emit: log

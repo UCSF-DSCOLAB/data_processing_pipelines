@@ -115,8 +115,6 @@ process CELLRANGER_VDJ {
   path(".command.log"), emit: log
   
   """
-<<<<<<< HEAD:single_cell_RNAseq/modules/pipeline_tasks.nf
-<<<<<<< HEAD:single_cell_RNAseq/modules/pipeline_tasks.nf
 
   echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
   echo "[running CELLRANGER_VDJ]"
@@ -762,15 +760,8 @@ process SEURAT_ADD_BCR {
   then
     cp ${sobj} "${library}_w_BCR.RDS" # todo - switch to soft link
   else
-<<<<<<< HEAD:single_cell_RNAseq/modules/pipeline_tasks.nf
-<<<<<<< HEAD:single_cell_RNAseq/modules/pipeline_tasks.nf
+    echo " Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${clonotypes_csv} ${contig_csv} ${projectDir}
     Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${clonotypes_csv} ${contig_csv} ${projectDir}
-=======
-=======
->>>>>>> baecdbf (additional logging output for each step):single_cell_RNAseq/pipeline_tasks.nf
-    echo " Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${projectDir}"
-    Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${projectDir}
->>>>>>> baecdbf (additional logging output for each step):single_cell_RNAseq/pipeline_tasks.nf
   fi
   
   echo "-----------"
@@ -806,15 +797,8 @@ process SEURAT_ADD_TCR {
   then
     cp ${sobj} "${library}_w_TCR.RDS" # todo - switch to soft link
   else
-<<<<<<< HEAD:single_cell_RNAseq/modules/pipeline_tasks.nf
-<<<<<<< HEAD:single_cell_RNAseq/modules/pipeline_tasks.nf
+    echo "Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${clonotypes_csv} ${contig_csv} ${projectDir}"
     Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${clonotypes_csv} ${contig_csv} ${projectDir}
-=======
-=======
->>>>>>> baecdbf (additional logging output for each step):single_cell_RNAseq/pipeline_tasks.nf
-    echo " Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${projectDir}"
-    Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${projectDir}
->>>>>>> baecdbf (additional logging output for each step):single_cell_RNAseq/pipeline_tasks.nf
   fi
     
   echo "-----------"
@@ -878,10 +862,7 @@ process SEURAT_LOAD_POST_QC {
   path(".command.log"), emit: log
 
   """
-  Rscript ${projectDir}/bin/process_with_seurat.R ${library} ${main_dt} ${doublet_finder_sobj} ${projectDir} ${cutoffs} ${raw_h5}
-=======
->>>>>>> baecdbf (additional logging output for each step):single_cell_RNAseq/pipeline_tasks.nf
-
+  echo "Rscript ${projectDir}/bin/process_with_seurat.R ${library} ${main_dt} ${doublet_finder_sobj} ${projectDir} ${params.settings.default_qc_cuts_dir}/${params.settings.default_qc_cuts_file} ${raw_h5}"
   Rscript ${projectDir}/bin/process_with_seurat.R ${library} ${main_dt} ${doublet_finder_sobj} ${projectDir} ${params.settings.default_qc_cuts_dir}/${params.settings.default_qc_cuts_file} ${raw_h5}
   """
 }

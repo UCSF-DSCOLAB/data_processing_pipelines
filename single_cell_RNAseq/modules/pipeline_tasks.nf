@@ -491,10 +491,10 @@ process FMX_ASSIGN_TO_GT {
   publishDir "${params.project_dir}/data/single_cell_GEX/logs/${pool}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "fmx_assign_to_gt.log" }
 
   container "${params.container.rplus_bcftools}"
-  containerOptions "-B ${params.project_dir} -B ${params.settings.ref_vcf_dir}"
+  containerOptions "-B ${params.project_dir}"
 
   input:
-  tuple val(pool), val(ref_vcf), path(fmx_vcf) 
+  tuple val(pool), path(ref_vcf), path(fmx_vcf) 
 
   output:
   tuple val(pool), path("${pool}*"), emit: outfiles
@@ -502,7 +502,7 @@ process FMX_ASSIGN_TO_GT {
 
 
   """
-  bash ${projectDir}/bin/run_gtcheck.sh ${pool} ${params.settings.ref_vcf_dir}/${ref_vcf} ${fmx_vcf} ${params.settings.ref_vcf_type}
+  bash ${projectDir}/bin/run_gtcheck.sh ${pool} ${ref_vcf} ${fmx_vcf} ${params.settings.ref_vcf_type}
   Rscript ${projectDir}/bin/examine_gtcheck.R ${pool} ${pool}_gtcheck.out
   """
 

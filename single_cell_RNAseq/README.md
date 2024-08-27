@@ -140,6 +140,8 @@ To run regression tests:
 
 `/krummellab/data1/software/bin/nf-test test tests/pipeline_pre_qc.nf.test --without-trace`
 
+Note that a snapshot *must* be present for this to work, otherwise it will state it has "PASSED" and generate a new snapshot instead of comparing to previous versions. 
+
 #### How do the tests work
 
 At a high level the tests should work like:
@@ -149,7 +151,7 @@ At a high level the tests should work like:
 That is they run tests on a downsampled data. This data can be found in  `/krummellab/data1/pipeline_test_data/`.
 However, running cellranger takes a long time, so all tests skip this step. Instead we have copied
 the cell ranger output to specific paths in this directory: `/krummellab/data1/integration_test_user/tutorial_lib_sep`.
-The `test_vcsfs` are still referenced in a downstream step however.
+The `test_vcfs` are still referenced in a downstream step however.
 
 In any case, the tests operate on this top level directory.
 

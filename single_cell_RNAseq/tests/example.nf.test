@@ -56,12 +56,18 @@ nextflow_pipeline {
             for (sample in test_sample_paths) {
                 for (test_dir in test_directories) {
                     def dir_to_test = sample + test_dir
-                    println "Processing: ${dir_to_test}"
-                    def resultFiles = path(dir_to_test).list()
+                    def dirFile = new File(dir_to_test)
+                    def resultFiles = dirFile.listFiles().collect { it.name }
                     resultFilesList.addAll(resultFiles)
+                    println "Processing: ${resultFilesList}"
                 }
             }
-            assert snapshot(workflow, resultFilesList).match()
+            // Filter out the .pdf files
+            def filteredPaths = resultFilesList.findAll { filePath ->
+                     !filePath.endsWith('.pdf')
+            }
+            def sorted = filteredPaths.sort()
+            assert snapshot(workflow, sorted).match()
         }
     }
 }

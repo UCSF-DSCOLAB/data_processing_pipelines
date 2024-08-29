@@ -138,21 +138,7 @@ process CELLRANGER_VDJ {
     --fastqs=\${vdj_path} \
     --reference=${params.ref.vdj_ref} \
     --chain=\${chain_type} "
-=======
-  echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
-  echo "[running CELLRANGER_VDJ]"
 
-  gex_library=${library}
-  data_type_name = "${data_type}"
-  vdj_library=\${gex_library/"SCG"/"SC\${data_type_name:0:1}"}
-  vdj_path=\${params.project_dir}/data/single_cell_${data_type}/raw/\${vdj_library}
-  
-  echo " Using container ${params.container.cellranger}"
-  echo " cellranger vdj --id="\${vdj_library}"  \
-    --fastqs=\${vdj_path} \
-    --reference="\${vdj_library}" \
-    --reference=${params.ref.vdj_ref} "
->>>>>>> baecdbf (additional logging output for each step):single_cell_RNAseq/pipeline_tasks.nf
   echo "-----------"
 
 
@@ -668,15 +654,17 @@ process SEPARATE_FMX {
  * Step 3. Run DoubletFinder
  */
 process FIND_DOUBLETS {
-  publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/finding_doublets", mode: 'copy', pattern: "${library}*"
-  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "run_df.log" }
-
   publishDir ( 
     path: "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", 
     saveAs: { filename -> 
           params.settings.demux_method.equals("demuxlet") ? "run_df_dmx_${date}.log" : "run_df_${date}.log" }
   )
-
+  publishDir( 
+    path: { params.settings.demux_method.equals("demuxlet") ? 
+            "${params.project_dir}/data/single_cell_GEX/processed/${library}/finding_doublets_dmx" : 
+            "${params.project_dir}/data/single_cell_GEX/processed/${library}/finding_doublets" }, 
+            mode: 'copy', pattern: "${library}*"
+  )
   container "${params.container.rsinglecell}" 
 
   input:

@@ -14,6 +14,21 @@ MINCELL=as.numeric(args[5])
 BASE_DIR=args[6]
 source(sprintf("%s/bin/seurat_utils.R", BASE_DIR))
 
+print_message(sprintf(
+  "
+  -----------
+  Running seurat with the following params:
+    CELLR_H5_PATH=%s
+    FMX_SAMPLE_PATH=%s
+    SAMPLE=%s
+    MINFEATURE=%s
+    MINCELL=%s
+    BASE_DIR=%s
+  -----------
+  ", CELLR_H5_PATH, FMX_SAMPLE_PATH, SAMPLE, MINFEATURE, MINCELL, BASE_DIR)
+)
+
+
 
 data = Read10X_h5(CELLR_H5_PATH)
 if ("Gene Expression" %in% names(data)){

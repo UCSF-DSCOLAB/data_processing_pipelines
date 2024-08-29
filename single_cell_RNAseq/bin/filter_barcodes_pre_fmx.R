@@ -12,6 +12,17 @@ LIBRARY=args[1]
 BASE_DIR=args[2]
 source(sprintf("%s/bin/seurat_utils.R", BASE_DIR))
 
+print_message(sprintf(
+  "
+  -----------
+  Running filter barcodes pre-fmx with the following params:
+    LIBRARY=%s
+    BASE_DIR=%s
+  -----------
+  ", LIBRARY, BASE_DIR)
+)
+
+
 sobj = readRDS(sprintf("%s_raw.rds", LIBRARY))
 param_file = sprintf("%s_cutoffs.csv", LIBRARY)
 params_df = read_csv(param_file)

@@ -6,11 +6,13 @@ library(ggExtra)
 
 args = commandArgs(trailingOnly=TRUE)
 LIBRARY = args[1]
-main_data_type = args[2] # CITE or GEX
+MAIN_DATA_TYPE = args[2] # CITE or GEX
 SOBJ = args[3]
 BASE_DIR=args[4]
 source(sprintf("%s/bin/seurat_utils.R", BASE_DIR))
 
+QCCUTOFFS = args[5] # default QC cutoffs
+CELLR_H5_PATH=args[6] # used for processing ADT
 
 # Input arguments:
 # 1. LIBRARY (e.g. SICCA1-POOL-GN1-SCG1)
@@ -19,19 +21,31 @@ source(sprintf("%s/bin/seurat_utils.R", BASE_DIR))
 # 3. where to look for the TCR/BCR data -- and has it completed?
 
 ### PARAMS
-# default QC cutoffs
 # mitochondia gene name pattern
 # ribosomal gene name pattern
-QCCUTOFFS = args[5]
 MTPATTERN = "^MT-"
 RIBOPATTERN = "^RP[SL][[:digit:]]|^RPLP[[:digit:]]|^RPSA"
 
-CELLR_H5_PATH=args[6]
+
+print_message(sprintf(
+  "
+  -----------
+  Running seurat processing with the following params:
+    LIBRARY=%s
+    MAIN_DATA_TYPE=%s
+    SOBJ=%s
+    BASE_DIR=%s
+    QCCUTOFFS=%s
+    CELLR_H5_PATH=%s
+  -----------
+  ", LIBRARY, MAIN_DATA_TYPE, SOBJ, BASE_DIR, QCCUTOFFS, CELLR_H5_PATH)
+)
 
 
 
 # Process the qc cutoff values.
 params_df = read_csv(QCCUTOFFS)
+
 if (!file.exists( sprintf("%s_cutoffs.csv", LIBRARY))){
   write_csv(params_df, sprintf("%s_cutoffs.csv", LIBRARY))
 }
@@ -40,7 +54,7 @@ if (!file.exists( sprintf("%s_cutoffs.csv", LIBRARY))){
 sobj = readRDS(SOBJ)
 
 # check if we have ADT data too
-adt.present = (main_data_type=="CITE")
+adt.present = (MAIN_DATA_TYPE=="CITE")
 
 if (adt.present){
   # then load it

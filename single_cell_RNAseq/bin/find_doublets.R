@@ -1,10 +1,6 @@
 library(Seurat)
 library(tidyverse)
 library(DoubletFinder)
-# Default parameters
-minCellsForDoubletFinder=30   # Run doubletFinder only if there are at least minCellsForDoubletFinder cells 
-
-
 
 # Input arguments:
 # 1. H5 file path
@@ -25,6 +21,23 @@ source(sprintf("%s/bin/seurat_utils.R", BASE_DIR))
 
 set.seed(RANDOMSEED)
 NPCS_DOUBLETFINDER=30
+
+print_message(sprintf(
+  "
+  -----------
+  Running doublet finder with the following params:
+    CELLR_H5_PATH=%s
+    FMX_SAMPLE_PATH=%s
+    SAMPLE=%s
+    NCELLS_LOADED=%s
+    MINFEATURE=%s
+    MINCELL=%s
+    RANDOMSEED=%s
+    BASE_DIR=%s
+  -----------
+  ", CELLR_H5_PATH, FMX_SAMPLE_PATH, SAMPLE, NCELLS_LOADED, MINFEATURE, MINCELL, RANDOMSEED, BASE_DIR)
+)
+
 
 # adapted from Arjun's get10xMultipletRate.R
 doublet_rate_df = data.frame(multiplet_rate_pct=c(0.40, 0.80, 1.60, 2.30, 3.10, 3.90, 4.60, 5.40, 6.10, 6.90, 7.60), 
@@ -72,13 +85,8 @@ runDoubletFinder <- function(sObj, freemuxlet=TRUE) {
     sngObj = subset(sObj, cells=present.cells)
 
     # freemuxlet doublet (DBL) rate
-    # handle the case where there are no doublets
-    if (!"DBL" %in% rownames(sngObj@misc$scStat$fmlDropletTypeProp)){
-      print_message("Warning there are no doublets, setting doublet rate to 0.01")
-      fmlDblRate = 0.01
-    } else {
-      fmlDblRate = sngObj@misc$scStat$fmlDropletTypeProp["DBL",][[1]]
-    }
+    fmlDblRate = ifelse("DBL" %in% rownames(sngObj@misc$scStat$fmlDropletTypeProp), 
+      sngObj@misc$scStat$fmlDropletTypeProp["DBL",], 10)
 
     # Determine the number of samples pooled per 10x lane from the freemuxlet output.
     
@@ -185,12 +193,14 @@ if(is.null(FMX_SAMPLE_PATH)) {
   seuratObj = loadFreemuxletData(seuratObj, FMX_SAMPLE_PATH)
 }
 
+
 # TODO: should this cause an error?
 if (!"SNG" %in% rownames(seuratObj@misc$scStat$fmlDropletTypeComp)){
   print_message("Warning - there are no singlets in your demultiplexing output. 
                 Please re-run free/demuxlet with alternate parameters or filtering before running doublet finder.")
   exit()
 }
+
 
 # Identify intra-sample doublets
 seuratObj = runDoubletFinder(seuratObj, freemuxlet)

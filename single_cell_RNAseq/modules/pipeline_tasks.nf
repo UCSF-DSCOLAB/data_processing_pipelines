@@ -834,10 +834,22 @@ process SEURAT_QC {
  * Step 6b. Run Seurat
  */
 process SEURAT_LOAD_POST_QC {
-  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "seurat_qc.log" }
-  publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing", mode: 'copy', pattern: "${library}*"
+  publishDir ("${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", 
+    saveAs: { filename -> params.settings.demux_method.equals("demuxlet") ? "seurat_qc_dmx_${date}.log" : "seurat_qc_${date}.log" })
+  publishDir( 
+    path: { params.settings.demux_method.equals("demuxlet") ? 
+            "${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing_dmx" : 
+            "${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing" }, 
+            mode: 'copy', pattern: "${library}*"
+  )
+
   // For testing
-  publishDir "${workDir}/data/single_cell_GEX/processed/${library}/automated_processing", mode: 'copy', pattern: "${library}*"
+  publishDir( 
+    path: { params.settings.demux_method.equals("demuxlet") ? 
+            "${workDir}/data/single_cell_GEX/processed/${library}/automated_processing_dmx" : 
+            "${workDir}/data/single_cell_GEX/processed/${library}/automated_processing" }, 
+            mode: 'copy', pattern: "${library}*"
+  )
 
   container "${params.container.rsinglecell}"
 

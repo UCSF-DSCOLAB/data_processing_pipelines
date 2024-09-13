@@ -36,6 +36,14 @@ if (ncol(tab_in) == 6 & "CN" %in% tab_in$X1){ ### for 1.3.1
     rename(individual=X2, cluster=X3, err=X4, avg_neg_hwe=X5,
            num_sites=X6, num_matching_gt=X7) %>%
     select(-avg_neg_hwe, -num_sites, -num_matching_gt)
+    if (nrow(my_tab)==0) {
+    my_tab = tab_in %>%
+      select(-X1) %>%
+      filter(str_detect(X2, "CLUST"), !str_detect(X3, "CLUST")) %>%
+      rename(individual=X3, cluster=X2, err=X4, avg_neg_hwe=X5,
+           num_sites=X6, num_matching_gt=X7) %>%
+      select(-avg_neg_hwe, -num_sites, -num_matching_gt)
+  }
 } else { # 1.10
   my_tab = tab_in %>%
     filter(!str_detect(X4, "CLUST"), str_detect(X5, "CLUST"), X1=="ERR") %>%

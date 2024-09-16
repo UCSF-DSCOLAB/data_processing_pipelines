@@ -10,7 +10,7 @@ scatterhist <- function(x, y, sobj, params) {
     xy_data[,2] >= y_lower
   filter_cell_percent = round( sum(filter_cells) / ncol(sobj) ,3) * 100
   p = ggplot(sobj@meta.data, aes(x=!!sym(x), y=!!sym(y))) +
-    geom_point(size=0.1,alpha=0.1) +
+    # geom_point(size=0.1,alpha=0.1) +
     geom_hex(bins=100) +
     scale_fill_distiller(palette = "RdYlBu") +
     theme_classic() +
@@ -19,7 +19,12 @@ scatterhist <- function(x, y, sobj, params) {
     geom_hline(yintercept = y_upper) +
     geom_hline(yintercept = y_lower) + 
     geom_rect(aes(xmin=x_lower, xmax=x_upper, ymin=y_lower, ymax=y_upper), color="red", alpha=0) +
-    geom_text(data = data.frame(x=x_lower, y=y_upper,text=paste0(filter_cell_percent, "%")), aes(x=x,y=y,label=text), hjust=0, vjust=1, color="darkred", size=8)
+    geom_text(data = data.frame(x=x_lower, y=y_upper,text=paste0(filter_cell_percent, "%")), aes(x=x,y=y,label=text), hjust=0, vjust=1, color="darkred", size=8) +
+    if (x == "nCount_ADT") {
+      xlim(NA, 25000)
+    } else if (y == "nCount_ADT") {
+      ylim(NA, 25000)
+    }
   
   return( ggExtra::ggMarginal(p, type = "histogram", bins=50) )
 }

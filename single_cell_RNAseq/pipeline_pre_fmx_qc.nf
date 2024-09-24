@@ -39,7 +39,10 @@ SEURAT_PRE_FMX_QC
 } from './modules/pipeline_tasks.nf'
 
 include {
-get_c4_h5_bam; get_pool_library_meta; get_libraries_data_type_tuples;
+get_c4_h5; get_c4_bam; get_c4_h5_bam; get_pool_library_meta; get_libraries_data_type_tuples;
+get_pool_by_sample_count; get_library_by_sample_count; get_single_library_by_pool;
+get_multi_pool_by_library ; get_library_by_pool; get_multi_library_by_pool; get_pool_vcf ; get_library_ncells;
+get_vdj_tuple; get_vdj_name ; get_contigs
 } from  './helpers/params_parse.nf'
 
 

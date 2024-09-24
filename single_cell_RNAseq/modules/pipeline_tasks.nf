@@ -653,15 +653,17 @@ process SEPARATE_FMX {
  * Step 3. Run DoubletFinder
  */
 process FIND_DOUBLETS {
-  publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/finding_doublets", mode: 'copy', pattern: "${library}*"
-  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "run_df.log" }
-
   publishDir ( 
     path: "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", 
     saveAs: { filename -> 
           params.settings.demux_method.equals("demuxlet") ? "run_df_dmx_${date}.log" : "run_df_${date}.log" }
   )
-
+  publishDir( 
+    path: { params.settings.demux_method.equals("demuxlet") ? 
+            "${params.project_dir}/data/single_cell_GEX/processed/${library}/finding_doublets_dmx" : 
+            "${params.project_dir}/data/single_cell_GEX/processed/${library}/finding_doublets" }, 
+            mode: 'copy', pattern: "${library}*"
+  )
   container "${params.container.rsinglecell}" 
 
   input:
@@ -831,10 +833,22 @@ process SEURAT_QC {
  * Step 6b. Run Seurat
  */
 process SEURAT_LOAD_POST_QC {
-  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "seurat_qc.log" }
-  publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing", mode: 'copy', pattern: "${library}*"
+  publishDir ("${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", 
+    saveAs: { filename -> params.settings.demux_method.equals("demuxlet") ? "seurat_qc_dmx_${date}.log" : "seurat_qc_${date}.log" })
+  publishDir( 
+    path: { params.settings.demux_method.equals("demuxlet") ? 
+            "${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing_dmx" : 
+            "${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing" }, 
+            mode: 'copy', pattern: "${library}*"
+  )
+
   // For testing
-  publishDir "${workDir}/data/single_cell_GEX/processed/${library}/automated_processing", mode: 'copy', pattern: "${library}*"
+  publishDir( 
+    path: { params.settings.demux_method.equals("demuxlet") ? 
+            "${workDir}/data/single_cell_GEX/processed/${library}/automated_processing_dmx" : 
+            "${workDir}/data/single_cell_GEX/processed/${library}/automated_processing" }, 
+            mode: 'copy', pattern: "${library}*"
+  )
 
   container "${params.container.rsinglecell}"
 
@@ -847,10 +861,7 @@ process SEURAT_LOAD_POST_QC {
   path(".command.log"), emit: log
 
   """
-  Rscript ${projectDir}/bin/process_with_seurat.R ${library} ${main_dt} ${doublet_finder_sobj} ${projectDir} ${cutoffs} ${raw_h5}
-=======
->>>>>>> baecdbf (additional logging output for each step):single_cell_RNAseq/pipeline_tasks.nf
-
+  echo "Rscript ${projectDir}/bin/process_with_seurat.R ${library} ${main_dt} ${doublet_finder_sobj} ${projectDir} ${params.settings.default_qc_cuts_dir}/${params.settings.default_qc_cuts_file} ${raw_h5}"
   Rscript ${projectDir}/bin/process_with_seurat.R ${library} ${main_dt} ${doublet_finder_sobj} ${projectDir} ${params.settings.default_qc_cuts_dir}/${params.settings.default_qc_cuts_file} ${raw_h5}
   """
 }

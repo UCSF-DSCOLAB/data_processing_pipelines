@@ -745,19 +745,8 @@ process SEURAT_ADD_BCR {
   then
     cp ${sobj} "${library}_w_BCR.RDS" # todo - switch to soft link
   else
-<<<<<<< HEAD
-<<<<<<< HEAD:single_cell_RNAseq/modules/pipeline_tasks.nf
-<<<<<<< HEAD:single_cell_RNAseq/modules/pipeline_tasks.nf
-    Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${clonotypes_csv} ${contig_csv} ${projectDir}
-=======
-=======
->>>>>>> baecdbf (additional logging output for each step):single_cell_RNAseq/pipeline_tasks.nf
-    echo " Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${projectDir}"
-    Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${projectDir}
->>>>>>> baecdbf (additional logging output for each step):single_cell_RNAseq/pipeline_tasks.nf
-=======
+    echo " Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${contig_csv} ${projectDir}"
     Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${contig_csv} ${projectDir}
->>>>>>> origin/db/vdj-columns
   fi
   
   echo "-----------"
@@ -793,19 +782,8 @@ process SEURAT_ADD_TCR {
   then
     cp ${sobj} "${library}_w_TCR.RDS" # todo - switch to soft link
   else
-<<<<<<< HEAD
-<<<<<<< HEAD:single_cell_RNAseq/modules/pipeline_tasks.nf
-<<<<<<< HEAD:single_cell_RNAseq/modules/pipeline_tasks.nf
-    Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${clonotypes_csv} ${contig_csv} ${projectDir}
-=======
-=======
->>>>>>> baecdbf (additional logging output for each step):single_cell_RNAseq/pipeline_tasks.nf
-    echo " Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${projectDir}"
-    Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${projectDir}
->>>>>>> baecdbf (additional logging output for each step):single_cell_RNAseq/pipeline_tasks.nf
-=======
+    echo " Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${contig_csv} ${projectDir}"
     Rscript ${projectDir}/bin/seurat_add_vdj.R ${library} ${sobj} ${data_type} ${contig_csv} ${projectDir}
->>>>>>> origin/db/vdj-columns
   fi
     
   echo "-----------"

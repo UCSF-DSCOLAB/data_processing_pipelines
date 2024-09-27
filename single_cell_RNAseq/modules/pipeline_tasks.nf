@@ -99,8 +99,8 @@ process CELLRANGER {
  * Step 1b. Run Cellranger vdj
  */
 process CELLRANGER_VDJ {
-  publishDir "${params.project_dir}/data/single_cell_${data_type}/processed/${library}/cellranger", mode: 'copy'
-  publishDir "${params.project_dir}/data/single_cell_${data_type}/logs/${library}/", mode: 'copy', 
+  publishDir "${params.project_dir}/data/single_cell_${data_type}/processed/${vdj_library}/cellranger", mode: 'copy'
+  publishDir "${params.project_dir}/data/single_cell_${data_type}/logs/${vdj_library}/", mode: 'copy', 
     pattern: ".command.log", saveAs: { filename -> "cellranger__${date}.log" }
 
   container "${params.container.cellranger}"

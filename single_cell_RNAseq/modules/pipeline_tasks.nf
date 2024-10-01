@@ -100,8 +100,8 @@ process CELLRANGER {
  * Step 1b. Run Cellranger vdj
  */
 process CELLRANGER_VDJ {
-  publishDir "${params.project_dir}/data/single_cell_${data_type}/processed/${library}/cellranger", mode: 'copy'
-  publishDir "${params.project_dir}/data/single_cell_${data_type}/logs/${library}/", mode: 'copy', 
+  publishDir "${params.project_dir}/data/single_cell_${data_type}/processed/${vdj_library}/cellranger", mode: 'copy'
+  publishDir "${params.project_dir}/data/single_cell_${data_type}/logs/${vdj_library}/", mode: 'copy', 
     pattern: ".command.log", saveAs: { filename -> "cellranger__${date}.log" }
 
   container "${params.container.cellranger}"
@@ -690,15 +690,17 @@ process SEPARATE_FMX {
  * Step 3. Run DoubletFinder
  */
 process FIND_DOUBLETS {
-  publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/finding_doublets", mode: 'copy', pattern: "${library}*"
-  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "run_df.log" }
-
   publishDir ( 
     path: "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", 
     saveAs: { filename -> 
           params.settings.demux_method.equals("demuxlet") ? "run_df_dmx_${date}.log" : "run_df_${date}.log" }
   )
-
+  publishDir( 
+    path: { params.settings.demux_method.equals("demuxlet") ? 
+            "${params.project_dir}/data/single_cell_GEX/processed/${library}/finding_doublets_dmx" : 
+            "${params.project_dir}/data/single_cell_GEX/processed/${library}/finding_doublets" }, 
+            mode: 'copy', pattern: "${library}*"
+  )
   container "${params.container.rsinglecell}" 
 
   input:
@@ -868,10 +870,22 @@ process SEURAT_QC {
  * Step 6b. Run Seurat
  */
 process SEURAT_LOAD_POST_QC {
-  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "seurat_qc.log" }
-  publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing", mode: 'copy', pattern: "${library}*"
+  publishDir ("${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", 
+    saveAs: { filename -> params.settings.demux_method.equals("demuxlet") ? "seurat_qc_dmx_${date}.log" : "seurat_qc_${date}.log" })
+  publishDir( 
+    path: { params.settings.demux_method.equals("demuxlet") ? 
+            "${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing_dmx" : 
+            "${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing" }, 
+            mode: 'copy', pattern: "${library}*"
+  )
+
   // For testing
-  publishDir "${workDir}/data/single_cell_GEX/processed/${library}/automated_processing", mode: 'copy', pattern: "${library}*"
+  publishDir( 
+    path: { params.settings.demux_method.equals("demuxlet") ? 
+            "${workDir}/data/single_cell_GEX/processed/${library}/automated_processing_dmx" : 
+            "${workDir}/data/single_cell_GEX/processed/${library}/automated_processing" }, 
+            mode: 'copy', pattern: "${library}*"
+  )
 
   container "${params.container.rsinglecell}"
 

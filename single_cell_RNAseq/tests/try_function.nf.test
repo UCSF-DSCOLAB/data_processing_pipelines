@@ -1,0 +1,45 @@
+
+nextflow_pipeline {
+
+    name "Test Workflow pipeline_pre_qc.nf"
+    script "pipeline_pre_qc.nf"
+    tag "qc-quantiles"
+
+
+    def c4PathToTestFiles = "/krummellab/data1/integration_test_user/tutorial_lib_sep"
+
+    // Assertion directories
+
+
+    stage {
+        copy c4PathToTestFiles
+    }
+
+    test("Should successfully demultiplex merged libaries using freemuxlet and run doublet finder") {
+
+        def metaDir = "$metaDir"
+        def testDirAbsolute = metaDir + c4PathToTestFiles
+        def freemuxDir = testDirAbsolute + "/freemuxlet_data"
+
+        when {
+            params {
+                    load("./tests/inputs/pre_qc.json")
+                    project_dir = testDirAbsolute
+                    settings = {
+                        skip_cellranger = true
+                        merge_for_demux = true
+                        merge_demux_dir = freemuxDir
+                        demux_method = "freemuxlet"
+                        default_qc_cuts_dir = testDirAbsolute
+                        default_qc_cuts_file = "default_qc_cuts.csv"
+                    }
+            }
+        }
+
+        then {
+            sorted = TestingFunctions.get_result_files(testDirAbsolute.toString())    
+            assert snapshot(workflow, sorted).match()
+        }
+    }
+}
+

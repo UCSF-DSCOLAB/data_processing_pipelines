@@ -1,0 +1,32 @@
+{
+    "Should successfully filter libraries before freemuxlet": {
+        "content": [
+            {
+                "stderr": [
+                    
+                ],
+                "errorReport": "",
+                "exitStatus": 0,
+                "failed": false,
+                "stdout": [
+                    
+                ],
+                "errorMessage": "",
+                "name": "workflow",
+                "success": true
+            },
+            [
+                "TEST-POOL-DM1-SCG1_cutoffs.csv",
+                "TEST-POOL-DM1-SCG1_quantiles_pre.tsv",
+                "TEST-POOL-DM1-SCG1_raw.rds",
+                "TEST-POOL-DM1-SCG2_cutoffs.csv",
+                "TEST-POOL-DM1-SCG2_quantiles_pre.tsv",
+                "TEST-POOL-DM1-SCG2_raw.rds",
+                "TEST-POOL-DM2-SCG1_cutoffs.csv",
+                "TEST-POOL-DM2-SCG1_quantiles_pre.tsv",
+                "TEST-POOL-DM2-SCG1_raw.rds"
+            ]
+        ],
+        "timestamp": "2024-10-10T13:24:03.843041105"
+    }
+}

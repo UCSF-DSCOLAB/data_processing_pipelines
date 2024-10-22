@@ -146,6 +146,14 @@ loadFreemuxletData <- function(sObj, freemuxletSampleF) {
   return(sObj)
 }
 
+saveRDS_ <- function(x, file, ...) {
+    if (is(x, "Seurat")) {
+        for (i in seq_along(x@commands)) {
+            x@commands[[i]]@time.stamp <- as.POSIXct(NA)
+        }
+    }
+    saveRDS(x, file, ...)
+}
 
 print_message <- function(...) {
   cat("[", format(Sys.time()), "] ", ..., "\n", sep="")

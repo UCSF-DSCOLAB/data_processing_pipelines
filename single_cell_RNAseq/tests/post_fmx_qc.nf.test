@@ -5,13 +5,13 @@ nextflow_pipeline {
     tag "post_fmx_qc"
 
 
-    def c4PathToTestFiles = "/krummellab/data1/integration_test_user/tutorial_lib_sep"
+    def c4PathToTestFiles = "/krummellab/data1/integration_test_user/post_fmx_qc_test"
 
     stage {
         copy c4PathToTestFiles
     }
 
-    test("Should successfully demultiplex merged libaries using freemuxlet and run doublet finder") {
+    test("Post-fmx-qc: Freemuxlet and run doublet finder") {
 
         def metaDir = "$metaDir"
         def testDirAbsolute = metaDir + c4PathToTestFiles
@@ -63,13 +63,12 @@ nextflow_pipeline {
         }
     }
 
-    test("Should successfully demultiplex merged libaries using demuxlet and run doublet finder") {
+    test("Post-fmx-qc: Demuxlet and doublet finder") {
 
         def metaDir = "$metaDir"
         def testDirAbsolute = metaDir + c4PathToTestFiles
         def freemuxDir = testDirAbsolute + "/freemuxlet_data"
         def demuxMethod = "demuxlet"
-        def demux_dir = "/demuxlet"
 
         def finding_doublets = "/finding_doublets_dmx"
         def automated_processing = "/automated_processing_dmx"

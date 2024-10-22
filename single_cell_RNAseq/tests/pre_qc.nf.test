@@ -14,7 +14,7 @@ nextflow_pipeline {
         copy c4PathToTestFiles
     }
 
-    test("Should successfully demultiplex merged libaries using freemuxlet and run doublet finder") {
+    test("Pre-qc: freemuxlet and doubletfinder") {
 
         def metaDir = "$metaDir"
         def testDirAbsolute = metaDir + c4PathToTestFiles
@@ -66,7 +66,7 @@ nextflow_pipeline {
         }
     }
 
-    test("Should successfully demultiplex merged libaries using demuxlet and run doublet finder") {
+    test("Pre-qc: demuxlet and doubletfinder") {
 
         def metaDir = "$metaDir"
         def testDirAbsolute = metaDir + c4PathToTestFiles

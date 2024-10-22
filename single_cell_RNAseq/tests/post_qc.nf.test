@@ -5,7 +5,7 @@ nextflow_pipeline {
     tag "post_qc"
 
 
-    def c4PathToTestFiles = "/krummellab/data1/integration_test_user/tutorial_lib_sep"
+    def c4PathToTestFiles = "/krummellab/data1/integration_test_user/post_qc_test"
 
     // Assertion directories
     def automated_processing = "/automated_processing"
@@ -15,7 +15,7 @@ nextflow_pipeline {
         copy c4PathToTestFiles
     }
 
-    test("Should successfully run seurat filtering and normalization") {
+    test("Post-qc, freemuxlet: Run seurat filtering and normalization") {
 
         def metaDir = "$metaDir"
         def testDirAbsolute = metaDir + c4PathToTestFiles

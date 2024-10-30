@@ -1,5 +1,6 @@
 process STAR_ALIGN {
     tag "$meta.id"
+    clusterOptions = '-S /bin/bash'
     label 'star_align'
     memory {
         if (meta.single_end) {

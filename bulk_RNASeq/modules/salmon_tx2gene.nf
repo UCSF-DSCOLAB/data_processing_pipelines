@@ -1,5 +1,6 @@
 process SALMON_TX2GENE {
     tag "$gtf"
+    clusterOptions = '-S /bin/bash'
     publishDir "${params.results_directory}/salmon", mode: 'copy'
 
     input:

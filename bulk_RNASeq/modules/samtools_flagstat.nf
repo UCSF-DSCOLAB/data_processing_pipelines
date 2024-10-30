@@ -1,5 +1,6 @@
 process SAMTOOLS_FLAGSTAT {
     tag "$meta.id"
+    clusterOptions = '-S /bin/bash'
     label 'samtools_flagstat'
     memory {
         // File size in GB

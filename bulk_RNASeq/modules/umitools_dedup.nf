@@ -1,5 +1,6 @@
 process UMITOOLS_DEDUP {
     tag "$meta.id"
+    clusterOptions = '-S /bin/bash'
 
     input:
     tuple val(meta), path(bam), path(bai)

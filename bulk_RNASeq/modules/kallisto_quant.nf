@@ -1,5 +1,6 @@
 process KALLISTO_QUANT {
     tag "$meta.id"
+    clusterOptions = '-S /bin/bash'
     label 'kallisto_quant'
     memory {
         if (meta.single_end) {

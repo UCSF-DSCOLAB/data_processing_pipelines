@@ -1,5 +1,6 @@
 process SAMTOOLS_SORT {
     tag "$meta.id"
+    clusterOptions = '-S /bin/bash'
     label 'samtools_sort'
     memory {
         // File size in GB

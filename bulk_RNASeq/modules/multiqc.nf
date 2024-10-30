@@ -1,5 +1,6 @@
 process MULTIQC {
     publishDir "${params.results_directory}/multiqc", mode: 'copy'
+    clusterOptions = '-S /bin/bash'
     label 'multiqc'
     memory {
         // File size in GB

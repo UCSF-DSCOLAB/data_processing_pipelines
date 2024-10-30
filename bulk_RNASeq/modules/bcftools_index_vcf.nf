@@ -1,5 +1,6 @@
 process BCFTOOLS_INDEX_VCF {
     tag "$meta.id"
+    clusterOptions = '-S /bin/bash'
     label 'bcftools_index_vcf'
     publishDir "${params.results_directory}/snps", mode: 'copy'
     memory {

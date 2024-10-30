@@ -1,5 +1,6 @@
 process SALMON_QUANT {
     tag "$meta.id"
+    clusterOptions = '-S /bin/bash'
     publishDir "${params.results_directory}/salmon", mode: 'copy'
 
     input:

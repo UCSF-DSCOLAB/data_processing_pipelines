@@ -1,6 +1,7 @@
 // Merge fastq files, if needed
 process CAT_FASTQ {
     tag "$meta.id"
+    clusterOptions = '-S /bin/bash'
     label 'cat_fastq'
 
     input:

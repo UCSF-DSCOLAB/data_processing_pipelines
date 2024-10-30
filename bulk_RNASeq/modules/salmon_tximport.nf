@@ -1,5 +1,6 @@
 process SALMON_TXIMPORT {
     publishDir "${params.results_directory}/salmon", mode: 'copy'
+    clusterOptions = '-S /bin/bash'
 
     input:
     path ("salmon/*")

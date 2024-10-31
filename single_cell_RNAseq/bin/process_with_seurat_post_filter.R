@@ -50,11 +50,11 @@ adt.present = ("ADT" %in% names(sobj@assays))
 # plots with final reviewed params
 params = load_params(params_df)
 
-plot_list = make_plots(sobj, params)
+plot_list = suppressWarnings(make_plots(sobj, params, adt.present))
 num_rows = ifelse(adt.present, 3, 2)
-pdf( sprintf("%s_diagnostic_plots_post.pdf", LIBRARY) , width=25, height=7*num_rows)
-ggarrange(plotlist=plot_list, ncol=3,nrow=num_rows)
-dev.off()
+merge = ggarrange(plotlist=plot_list, ncol=3,nrow=num_rows)
+ggsave(merge, file=sprintf("%s_diagnostic_plots_post.png", LIBRARY) , width=25, height=7*num_rows, bg="white", dpi=72)
+
 
 # Adding Seurat parameters to the misc slot of the Seurat object.
 
@@ -129,12 +129,19 @@ if (adt.present){
     rna.size = log10(colSums(raw$`Gene Expression`)) # -Inf from 0 ones
    )   
    md = md[md$rna.size > 0 & md$prot.size > 0, ]
-
-   background_drops = rownames(
-    md[ md$prot.size > 1.5 & 
-      md$prot.size < 3 & 
+   if (!any(str_detect(rownames(params), "background"))){
+    background_drops = rownames(
+      md[ md$prot.size > 2 & 
       md$rna.size < 2.5, ]
-   ) 
+    )
+   } else {
+    background_drops = rownames(
+      md[ md$prot.size > log10(params['background_ADT.lower',]) & 
+        md$prot.size < log10(params['background_ADT.upper',]) &
+      md$rna.size < log10(params['background_RNA.upper',]), ]
+    )
+   }
+    
    print(sprintf("FILTER background with %s empty drops",
                   length(background_drops)))
    

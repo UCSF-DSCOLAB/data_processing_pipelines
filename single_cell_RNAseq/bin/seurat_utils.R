@@ -1,4 +1,4 @@
-scatterhist <- function(x, y, sobj, params) {
+scatterhist <- function(x, y, sobj, params, log.scale.x=F, log.scale.y=F) {
   x_upper = as.numeric(params[paste0(x,".upper"),])
   x_lower = as.numeric(params[paste0(x,".lower"),])
   y_upper = as.numeric(params[paste0(y,".upper"),])
@@ -9,18 +9,27 @@ scatterhist <- function(x, y, sobj, params) {
     xy_data[,2] <= y_upper & 
     xy_data[,2] >= y_lower
   filter_cell_percent = round( sum(filter_cells) / ncol(sobj) ,3) * 100
-  p = ggplot(sobj@meta.data, aes(x=!!sym(x), y=!!sym(y))) +
+  p = ggplot(sobj@meta.data, aes(x=!!sym(x)+0.1, y=!!sym(y)+0.1)) +
     geom_point(size=0.1,alpha=0.1) +
     geom_hex(bins=100) +
     scale_fill_distiller(palette = "RdYlBu") +
     theme_classic() +
+    xlab(x)+
+    ylab(y)+
     geom_vline(xintercept = x_upper) +
     geom_vline(xintercept = x_lower) +
     geom_hline(yintercept = y_upper) +
     geom_hline(yintercept = y_lower) + 
     geom_rect(aes(xmin=x_lower, xmax=x_upper, ymin=y_lower, ymax=y_upper), color="red", alpha=0) +
     geom_text(data = data.frame(x=x_lower, y=y_upper,text=paste0(filter_cell_percent, "%")), aes(x=x,y=y,label=text), hjust=0, vjust=1, color="darkred", size=8)
-  
+  if (log.scale.x){
+    p = p+ scale_x_log10(breaks = scales::trans_breaks("log10", function(x) 10^(x)),
+          labels = scales::trans_format("log10", scales::math_format(10^.x))) 
+  } 
+  if (log.scale.y){
+    p = p+ scale_y_log10(breaks = scales::trans_breaks("log10", function(x) 10^(x)),
+          labels = scales::trans_format("log10", scales::math_format(10^.x))) 
+  } 
   return( ggExtra::ggMarginal(p, type = "histogram", bins=50) )
 }
 
@@ -182,18 +191,18 @@ TriPlot <- function(sobj, features, reduction.use="umap", group.by="seurat_clust
 }
 
 
-make_plots = function(sobj, params) {
+make_plots = function(sobj, params, adt.present=F) {
   plot_list = list()
   plot_list[[length(plot_list)+1]] = scatterhist("percent.ribo","percent.mt",sobj,params)
-  plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","percent.mt",sobj,params)
-  plot_list[[length(plot_list)+1]] = scatterhist("nFeature_RNA","percent.mt",sobj,params)
-  plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","percent.ribo",sobj,params)
-  plot_list[[length(plot_list)+1]] = scatterhist("nFeature_RNA","percent.ribo",sobj,params)
-  plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","nFeature_RNA",sobj,params)
+  plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","percent.mt",sobj,params, log.scale.x=T)
+  plot_list[[length(plot_list)+1]] = scatterhist("nFeature_RNA","percent.mt",sobj,params, log.scale.x=T)
+  plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","percent.ribo",sobj,params, log.scale.x=T)
+  plot_list[[length(plot_list)+1]] = scatterhist("nFeature_RNA","percent.ribo",sobj,params, log.scale.x=T)
+  plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","nFeature_RNA",sobj,params, log.scale.x=T, log.scale.y=T)
   if (adt.present){
-    plot_list[[length(plot_list)+1]] = scatterhist("nCount_ADT","percent.mt",sobj,params)
-    plot_list[[length(plot_list)+1]] = scatterhist("nCount_ADT","percent.ribo",sobj,params)
-    plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","nCount_ADT",sobj,params)
+    plot_list[[length(plot_list)+1]] = scatterhist("nCount_ADT","percent.mt",sobj,params, log.scale.x=T)
+    plot_list[[length(plot_list)+1]] = scatterhist("nCount_ADT","percent.ribo",sobj,params, log.scale.x=T)
+    plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","nCount_ADT",sobj,params, log.scale.x=T,log.scale.y=T)
   }
   return(plot_list)
 }

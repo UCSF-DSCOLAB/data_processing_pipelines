@@ -117,8 +117,8 @@ df = quantile_frac_table(sobj, adt.present)
 write.table(df, sprintf("%s_quantiles_pre.tsv", LIBRARY), sep="\t")
 
 
-plot_list = make_plots(sobj, params)
+plot_list = suppressWarnings(make_plots(sobj, params, adt.present))
 num_rows = ifelse(adt.present, 3, 2)
-pdf( sprintf("%s_diagnostic_plots_pre.pdf", LIBRARY) , width=25, height=7*num_rows)
-ggarrange(plotlist=plot_list, ncol=3,nrow=num_rows)
-dev.off()
+merge = ggarrange(plotlist=plot_list, ncol=3,nrow=num_rows)
+ggsave(merge, file=sprintf("%s_diagnostic_plots_pre.png", LIBRARY) , width=25, height=7*num_rows, bg="white", dpi=72)
+

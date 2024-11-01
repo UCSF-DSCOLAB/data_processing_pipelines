@@ -52,11 +52,11 @@ if (adt.present){
 
 # plots with final reviewed params
 params = load_params(params_df) 
-plot_list = make_plots(sobj, params)
+plot_list = suppressWarnings(make_plots(sobj, params, adt.present))
 num_rows = ifelse(adt.present, 3, 2)
-pdf( sprintf("%s_diagnostic_plots_final.pdf", LIBRARY) , width=25, height=7*num_rows)
-ggarrange(plotlist=plot_list, ncol=3,nrow=num_rows)
-dev.off()
+merge = ggarrange(plotlist=plot_list, ncol=3,nrow=num_rows)
+ggsave(merge, file=sprintf("%s_diagnostic_plots_post.png", LIBRARY) , width=25, height=7*num_rows, bg="white", dpi=72)
+
 
 
 # Adding Seurat parameters to the misc slot of the Seurat object.

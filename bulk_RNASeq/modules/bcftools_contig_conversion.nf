@@ -1,11 +1,12 @@
 process BCFTOOLS_CONTIG_CONVERSION {
     tag "$meta.id"
+    clusterOptions = '-S /bin/bash'
     label 'bcftools_contig_conversion'
     publishDir "${params.results_directory}/snps", mode: 'copy'
     memory {
         // File size in GB
         fileSize = vcf.size() / (1024 * 1024 * 1024)
-        return 1.GB + (1.GB * fileSize * 0.01)
+        return 1.GB + (1.GB * fileSize)
     }
 
     input:

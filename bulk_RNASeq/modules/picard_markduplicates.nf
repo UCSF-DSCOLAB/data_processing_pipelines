@@ -5,7 +5,7 @@ process PICARD_MARKDUPLICATES {
     memory {
         // File size in GB
         fileSize = bam.size() / (1024 * 1024 * 1024)
-        return 120.GB + (5.GB * fileSize)
+        return 60.GB + (5.GB * fileSize * 4)
     }
 
     input:

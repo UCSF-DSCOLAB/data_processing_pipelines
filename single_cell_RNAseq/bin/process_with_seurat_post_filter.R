@@ -85,6 +85,13 @@ print(sprintf("Following filtering there are %s cells remaining", ncol(sobj)))
 df = quantile_frac_table(sobj, adt.present)
 write.table(df, sprintf("%s_quantiles_post.tsv", LIBRARY), sep="\t")
 
+# final plots 
+plot_list = suppressWarnings(make_plots(sobj, params, adt.present, add_stats=F))
+num_rows = ifelse(adt.present, 3, 2)
+merge = ggarrange(plotlist=plot_list, ncol=3,nrow=num_rows)
+ggsave(merge, file=sprintf("%s_diagnostic_plots_final.png", LIBRARY) , width=25, height=7*num_rows, bg="white", dpi=72)
+
+
 
 # Adding cell count to misc slot after filtering low-quality cells.
 sobj@misc$scStat$nCells_after_filter = ncol(sobj)

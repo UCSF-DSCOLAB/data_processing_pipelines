@@ -66,7 +66,7 @@ print(sprintf("Before filtering there are %s cells", ncol(sobj)))
 
 # Filter out the low-quality cells.
 sobj = filter_cells(sobj, params, adt.present)
-make_doublet_plot(sobj)
+make_doublet_plot(sobj, adt.present)
 ggsave(sprintf("%s_doublet_plot.png",LIBRARY), height=5, width=12, bg="white", dpi=100)
 
 if (KEEP_FMX_SNG){

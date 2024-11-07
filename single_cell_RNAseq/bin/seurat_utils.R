@@ -159,26 +159,32 @@ loadFreemuxletData <- function(sObj, freemuxletSampleF) {
   return(sObj)
 }
 
-make_doublet_plot = function(sobj){
+make_doublet_plot = function(sobj, adt.present=F){
   doublet_colors = c("gray", dittoColors()[c(3,2,1)])
   sobj = subset(sobj, DROPLET.TYPE.FINAL %in% c("AMB", "Intra.DBL", "Inter.DBL", "SNG"))
   names(doublet_colors)= c("AMB", "Intra.DBL", "Inter.DBL", "SNG")
-  p = ggplot(sobj@meta.data, aes(x=nCount_RNA, y=nCount_ADT, col=DROPLET.TYPE.FINAL))+
-    geom_point(size=0.01)+
-    scale_color_manual(values=doublet_colors)+
-    theme_bw()+
-    theme(panel.grid=element_blank(), legend.position="none") 
+  
+  if (adt.present){
+    p = ggplot(sobj@meta.data, aes(x=nCount_RNA, y=nCount_ADT, col=DROPLET.TYPE.FINAL))
+  } else {
+    p = ggplot(sobj@meta.data, aes(x=nCount_RNA, y=percent.mt, col=DROPLET.TYPE.FINAL))
+  }
+  p = p +
+        geom_point(size=0.01)+
+        scale_color_manual(values=doublet_colors)+
+        theme_bw()+
+        labs(col="DROPLET.TYPE")+
+        theme(panel.grid=element_blank(),
+              axis.title.y=element_blank())
+  p = p+theme(legend.position="none") 
   p = p %>% ggMarginal(type = "density", groupColour = TRUE, groupFill = TRUE)
-
-  p2 = ggplot(sobj@meta.data, aes(x=nCount_RNA, y=nCount_ADT, col=DROPLET.TYPE.FINAL))+
-    geom_point(size=0.01)+
-    scale_color_manual(values=doublet_colors)+
-    theme_bw()+
-    labs(col="DROPLET.TYPE")+
-    theme(panel.grid=element_blank(),
-          axis.title.y=element_blank())+ 
-  scale_y_log10(breaks = scales::trans_breaks("log10", function(x) 10^(x)),
-                  labels = scales::trans_format("log10", scales::math_format(10^.x)))+
+  if (adt.present){
+    p2 = p+scale_y_log10(breaks = scales::trans_breaks("log10", function(x) 10^(x)),
+                  labels = scales::trans_format("log10", scales::math_format(10^.x)))
+  } else {
+    p2 = p
+  }
+  p2 = p2 +
     scale_x_log10(breaks = scales::trans_breaks("log10", function(x) 10^(x)),
                   labels = scales::trans_format("log10", scales::math_format(10^.x))) 
   legend = get_legend(p2)

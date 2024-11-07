@@ -155,6 +155,32 @@ loadFreemuxletData <- function(sObj, freemuxletSampleF) {
   return(sObj)
 }
 
+make_doublet_plot = function(sobj){
+  p = ggplot(sobj@meta.data, aes(x=nCount_RNA, y=nCount_ADT, col=DROPLET.TYPE.FINAL))+
+    geom_point(size=0.01)+
+    scale_color_manual(values=c("gray", dittoColors()[c(3,2,1)]))+
+    theme_bw()+
+    theme(panel.grid=element_blank(), legend.position="none") 
+  p = p %>% ggMarginal(type = "density", groupColour = TRUE, groupFill = TRUE)
+
+  p2 = ggplot(sobj@meta.data, aes(x=nCount_RNA, y=nCount_ADT, col=DROPLET.TYPE.FINAL))+
+    geom_point(size=0.01)+
+    scale_color_manual(values=c("gray", dittoColors()[c(3,2,1)]))+
+    theme_bw()+
+    labs(col="DROPLET.TYPE")+
+    theme(panel.grid=element_blank(),
+          axis.title.y=element_blank())+ 
+  scale_y_log10(breaks = scales::trans_breaks("log10", function(x) 10^(x)),
+                  labels = scales::trans_format("log10", scales::math_format(10^.x)))+
+    scale_x_log10(breaks = scales::trans_breaks("log10", function(x) 10^(x)),
+                  labels = scales::trans_format("log10", scales::math_format(10^.x))) 
+  legend = get_legend(p2)
+  p2 = p2+theme(legend.position="none")
+  p2 = p2 %>% ggMarginal(type = "density", groupColour = TRUE, groupFill = TRUE)
+
+  return(plot_grid(p, p2, legend, rel_widths = c(1, 0.9, 0.35), ncol=3))
+}
+
 
 print_message <- function(...) {
   cat("[", format(Sys.time()), "] ", ..., "\n", sep="")

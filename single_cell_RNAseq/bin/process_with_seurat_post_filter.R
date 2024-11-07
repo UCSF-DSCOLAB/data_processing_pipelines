@@ -92,7 +92,6 @@ merge = ggarrange(plotlist=plot_list, ncol=3,nrow=num_rows)
 ggsave(merge, file=sprintf("%s_diagnostic_plots_final.png", LIBRARY) , width=25, height=7*num_rows, bg="white", dpi=72)
 
 
-
 # Adding cell count to misc slot after filtering low-quality cells.
 sobj@misc$scStat$nCells_after_filter = ncol(sobj)
 

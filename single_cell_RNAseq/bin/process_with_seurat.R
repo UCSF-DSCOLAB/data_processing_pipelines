@@ -118,7 +118,7 @@ write.table(df, sprintf("%s_quantiles_pre.tsv", LIBRARY), sep="\t")
 
 
 plot_list = suppressWarnings(make_plots(sobj, params, adt.present))
-num_rows = ifelse(adt.present, 3, 2)
-merge = ggarrange(plotlist=plot_list, ncol=3,nrow=num_rows)
-ggsave(merge, file=sprintf("%s_diagnostic_plots_pre.png", LIBRARY) , width=25, height=7*num_rows, bg="white", dpi=72)
+num_rows = ifelse(adt.present, 5, 3)
+merge = ggarrange(plotlist=plot_list, ncol=4,nrow=num_rows)
+ggsave(merge, file=sprintf("%s_diagnostic_plots_default.png", LIBRARY) , width=30, height=7*num_rows, bg="white", dpi=72)
 

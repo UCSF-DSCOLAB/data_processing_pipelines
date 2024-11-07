@@ -51,9 +51,9 @@ adt.present = ("ADT" %in% names(sobj@assays))
 params = load_params(params_df)
 
 plot_list = suppressWarnings(make_plots(sobj, params, adt.present))
-num_rows = ifelse(adt.present, 3, 2)
-merge = ggarrange(plotlist=plot_list, ncol=3,nrow=num_rows)
-ggsave(merge, file=sprintf("%s_diagnostic_plots_post.png", LIBRARY) , width=25, height=7*num_rows, bg="white", dpi=72)
+num_rows = ifelse(adt.present, 5, 3)
+merge = ggarrange(plotlist=plot_list, ncol=4,nrow=num_rows)
+ggsave(merge, file=sprintf("%s_diagnostic_plots_reviewed.png", LIBRARY) , width=30, height=7*num_rows, bg="white", dpi=72)
 
 
 # Adding Seurat parameters to the misc slot of the Seurat object.
@@ -87,9 +87,9 @@ write.table(df, sprintf("%s_quantiles_post.tsv", LIBRARY), sep="\t")
 
 # final plots 
 plot_list = suppressWarnings(make_plots(sobj, params, adt.present, add_stats=F))
-num_rows = ifelse(adt.present, 3, 2)
-merge = ggarrange(plotlist=plot_list, ncol=3,nrow=num_rows)
-ggsave(merge, file=sprintf("%s_diagnostic_plots_final.png", LIBRARY) , width=25, height=7*num_rows, bg="white", dpi=72)
+num_rows = ifelse(adt.present, 5, 3)
+merge = ggarrange(plotlist=plot_list, ncol=4,nrow=num_rows)
+ggsave(merge, file=sprintf("%s_diagnostic_plots_filtered.png", LIBRARY) , width=30, height=7*num_rows, bg="white", dpi=72)
 
 
 # Adding cell count to misc slot after filtering low-quality cells.

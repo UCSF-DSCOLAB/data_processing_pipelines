@@ -1,5 +1,5 @@
 
-isotype_ctl_plot = function(isotype_ctl_data, params){
+isotype_ctl_plot = function(ADT_counts, isotype_ctl_data, params){
   iso_max = apply(isotype_ctl_data, 2, max)
   adt_tab = tibble("iso_max"=iso_max+0.1, "nadt"=colSums(ADT_counts))
 

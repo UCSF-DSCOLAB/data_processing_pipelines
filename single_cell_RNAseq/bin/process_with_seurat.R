@@ -106,7 +106,7 @@ if (adt.present){
     sobj = AddMetaData(sobj, apply(isotype_ctl_data, 2, max), "isotype_ctl_max")
 
     # TODO: isotype control plot
-    plt_iso = isotype_ctl_plot(isotype_ctl_data, params)
+    plt_iso = isotype_ctl_plot(ADT_counts, isotype_ctl_data, params)
 
     ggarrange(plt, plt_iso, ncol=2)
     ggsave(sprintf("%s_adt_diagnostic_plots.png", LIBRARY), height=7, width=14, dpi=72, bg="white")

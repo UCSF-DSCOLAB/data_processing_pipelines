@@ -1,3 +1,65 @@
+
+isotype_ctl_plot = function(isotype_ctl_data, params){
+  iso_max = apply(isotype_ctl_data, 2, max)
+  adt_tab = tibble("iso_max"=iso_max+0.1, "nadt"=colSums(ADT_counts))
+
+  nabove = adt_tab %>% filter(iso_max > params["ADT_isotype_ctl.upper",]) %>% nrow() # 41
+
+  p= ggplot(adt_tab, aes(x=nadt, y=iso_max))+
+    geom_point(size=0.1,alpha=0.1) +
+    geom_hex(bins=100) +
+    scale_fill_distiller(palette = "RdYlBu") +
+    theme_classic() +
+    scale_x_log10(breaks = scales::trans_breaks("log10", function(x) 10^(x)),
+                  labels = scales::trans_format("log10", scales::math_format(10^.x)))+
+    scale_y_log10(breaks = scales::trans_breaks("log10", function(x) 10^(x)),
+                  labels = scales::trans_format("log10", scales::math_format(10^.x)))+
+    geom_hline(yintercept=params["ADT_isotype_ctl.upper",], alpha=0.5)+
+    geom_vline(xintercept=params["nCount_ADT.upper",], alpha=0.5)+
+    ylab("isotype control max")+
+    xlab("nCount_ADT")+
+    geom_text(data = data.frame(x=1, y=params["nCount_ADT.upper",],text=sprintf("%s droplets > isotype ctl max", nabove)), 
+              aes(x=x,y=y,label=text), hjust=0, vjust=1, color="darkred", size=4)
+  return(ggExtra::ggMarginal(p, type = "histogram", bins=50))
+}
+
+background_plot <- function(gex_data, ab_data, params){
+  tab = tibble(
+  "nCount_RNA" = colSums(gex_data),
+  "nCount_ADT" = colSums(ab_data)
+  ) %>% filter(nCount_RNA > 0, nCount_ADT > 0)
+  if (!any(str_detect(rownames(params), "background"))){
+    adt_lower=10
+    adt_upper=5000
+    rna_upper=300
+  } else {
+    adt_lower=params['background_ADT.lower',]
+    rna_upper=params['background_RNA.upper',]
+    adt_upper=params['background_ADT.upper',]
+  }
+
+  nbackground = tab %>% filter(nCount_RNA < rna_upper,
+                nCount_ADT < adt_upper,
+                nCount_ADT > adt_lower) %>% nrow() 
+
+  p = ggplot(tab, aes(x=nCount_RNA, y=nCount_ADT))+
+    geom_point(size=0.1,alpha=0.1) +
+    geom_hex(bins=100) +
+    geom_vline(xintercept=rna_upper, alpha=0.5)+
+    geom_hline(yintercept=adt_lower, alpha=0.5)+
+    geom_hline(yintercept=adt_upper, alpha=0.5)+
+    scale_fill_distiller(palette = "RdYlBu") +
+    theme_classic() +
+    scale_x_log10(breaks = scales::trans_breaks("log10", function(x) 10^(x)),
+                    labels = scales::trans_format("log10", scales::math_format(10^.x)))+
+    scale_y_log10(breaks = scales::trans_breaks("log10", function(x) 10^(x)),
+                  labels = scales::trans_format("log10", scales::math_format(10^.x)))+
+    geom_text(data = data.frame(x=1, y=adt_upper,text=sprintf("%s droplets (%s%%)", nbackground, round(nbackground/nrow(tab)*100,1))), 
+                                aes(x=x,y=y,label=text), hjust=0, vjust=1, color="darkred", size=4)
+
+  return(ggExtra::ggMarginal(p, type = "histogram", bins=50))
+}
+
 scatterhist <- function(x, y, sobj, params, add_stats=T, log.scale.x=F, log.scale.y=F) {
 
   p = ggplot(sobj@meta.data, aes(x=!!sym(x)+0.1, y=!!sym(y)+0.1)) +

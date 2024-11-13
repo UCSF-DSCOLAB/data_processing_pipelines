@@ -45,6 +45,7 @@ print_message(sprintf(
 
 # Process the qc cutoff values.
 params_df = read_csv(QCCUTOFFS)
+params = load_params(params_df) 
 
 if (!file.exists( sprintf("%s_cutoffs.csv", LIBRARY))){
   write_csv(params_df, sprintf("%s_cutoffs.csv", LIBRARY))
@@ -55,6 +56,7 @@ sobj = readRDS(SOBJ)
 
 # check if we have ADT data too
 adt.present = (MAIN_DATA_TYPE=="CITE")
+
 
 if (adt.present){
   # then load it
@@ -95,14 +97,27 @@ if (adt.present){
   ADT_counts = sobj@assays[["ADT"]]@counts
   isotype_ctls = rownames(ADT_counts)[str_detect(tolower(rownames(ADT_counts)), "iso")]
 
+  plt = background_plot(raw$`Gene Expression`, ab_data, params)
+
   if (length(isotype_ctls) > 0){
     print("the following will be used as isotype controls:")
     print(paste(isotype_ctls, collapse=","))
     isotype_ctl_data = as.matrix(ADT_counts[isotype_ctls,])
     sobj = AddMetaData(sobj, apply(isotype_ctl_data, 2, max), "isotype_ctl_max")
+
+    # TODO: isotype control plot
+    plt_iso = isotype_ctl_plot(isotype_ctl_data, params)
+
+    ggarrange(plt, plt_iso, ncol=2)
+    ggsave(sprintf("%s_adt_diagnostic_plots.png", LIBRARY), height=7, width=14, dpi=72, bg="white")
+
   } else {
     print("Warning - no isotype controls found in ADT data")
     sobj = AddMetaData(sobj, rep(0, ncol(sobj)), "isotype_ctl_max")
+
+    ggarrange(plt)
+    ggsave(sprintf("%s_adt_diagnostic_plots.png", LIBRARY), height=7, width=7, dpi=72, bg="white")
+
   }
 
 }
@@ -110,7 +125,7 @@ if (adt.present){
 saveRDS(sobj, file=sprintf("%s_raw.rds", LIBRARY))
 
 # Generate various diagnostic plots
-params = load_params(params_df) 
+
 
 # make tsvs detailing the quantile fractions
 df = quantile_frac_table(sobj, adt.present)

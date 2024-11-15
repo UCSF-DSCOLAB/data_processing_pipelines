@@ -13,7 +13,7 @@ process FASTP_TRIM_ADAPTERS {
 	if (fileSize > 5){
 	   fileSize = 5
 	}
-        return 32.GB * (1 + (fileSize * 4))
+        return 10.GB * (1 + (fileSize * 2))
     }
 
     input:

@@ -6,7 +6,7 @@ process GATK4_HAPLOTYPECALLER {
     memory {
         // File size in GB
         fileSize = input.size() / (1024 * 1024 * 1024)
-        return 50.GB + (1.GB * fileSize * 5)
+        return 17.GB + (1.GB * fileSize * 3)
     }
 
     input:

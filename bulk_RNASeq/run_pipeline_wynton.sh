@@ -6,8 +6,8 @@
 #$ -pe smp 1          # Request 1 CPU core
 #$ -l mem_free=2G     # Job requires up to 2 GiB of RAM per slot
 #$ -l scratch=50G     # Job requires up to 50 GiB of local space
-#$ -l h_rt=24:00:00  # Job requires up to 168 hours of runtime (7 days)
-#$ -r y               # If job crashes, it should be2 restarted
+#$ -l h_rt=314:00:00  # Job requires up to 314 hours of runtime (13 days)
+#$ -r y               # If job crashes, it should be restarted
 #$ -o /wynton/scratch/$USER/logs/bulk_rnaseq_nf_$JOB_ID.log
 
 ## To run:

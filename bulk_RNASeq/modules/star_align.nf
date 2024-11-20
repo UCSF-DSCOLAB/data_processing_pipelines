@@ -10,7 +10,7 @@ process STAR_ALIGN {
           // File size in GB
           fileSize = reads[0].size() / (1024 * 1024 * 1024)
         }
-	return 20.GB * (1 + (fileSize * 2 / 37))
+	return 20.GB * (1 + fileSize)
     }
     publishDir "${params.results_directory}/star", mode: 'copy', pattern: "${prefix}ReadsPerGene.out.tab"
     publishDir "${params.results_directory}/star", mode: 'copy', pattern: "${prefix}Log.final.out"

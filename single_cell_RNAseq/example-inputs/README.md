@@ -16,7 +16,7 @@ This full workflow test case was created from the a dataset of 50:50 jurkat-293t
 
 ### Parameter file fields explained
 
-Below is the json for `param_2.json`, with comments added to describe what each line does.
+Below is some of the json for `param_2.json`, with comments added to describe what each line does.
 Note that comments cannot be included in json used for a run.
 
 ```
@@ -29,7 +29,6 @@ Note that comments cannot be included in json used for a run.
     "merge_demux_dir" : "freemuxlet_data/", # where to put the merged data for free/demuxlet. these data will be unmerged and stored in the appropriate `processed/<library>` directory, but it can be helpful to keep the merged data for future re-runs
     "demux_method" : "freemuxlet", # this can be one of freemuxlet or demuxlet
     "fmx_assign_to_gt": false, # whether to assign to genotypes
-    "ref_vcf_dir": "ref_dir", # directory where reference vcf is located
     "ref_vcf_type": "bulk", # can be "bulk" or "array", the source of the vcf for gtcheck
     "run_doubletfinder" : true, # whether to run doubletfinder to ID intra-individual doublets. the number of intra-individual doublets will be based on the number of inter-individual doublets identified by free/demuxlet
     "mincell" : 3, # parameter for load into seurat -- minimum number of cells required to keep a gene
@@ -43,11 +42,11 @@ Note that comments cannot be included in json used for a run.
   "pools" : [
     { "name" : "DM1", # name of the pool
       "nsamples" : "2", # number of samples in the pool, needed for freemuxlet
-      "vcf": "jurkat_293t_exons_only_w_chr_hg38.vcf ", # vcf containing just the individuals in the pool, needed for demuxlet or fmx_assign_to_gt, can be left blank otherwise
+      "vcf": "/krummellab/data1/pipeline_test_data/assays/scRNA_seq/modality/gex/downsampled_jurkat_tcell/inputs/variants/jurkat_293t_exons_only_w_chr_hg38.vcf ", # vcf containing just the individuals in the pool, needed for demuxlet or fmx_assign_to_gt, can be left blank otherwise
       "libraries": [
         { "name": "TEST-POOL-DM1-SCG1",  # name of the library
           "ncells_loaded": 200, # number of cells loaded, helpful for checking counts and relative doublets
-          "data_types": ["GEX"]  # should be a list [], must contain one of GEX or CITE (cannot contain both), and then additional modalities such as TCR or BCR
+          "data_types": ["GEX"]  # must be one but not both of GEX or CITE, can also include TCR, or BCR for other data types
         },
         {"name" : "TEST-POOL-DM1-SCG2",
           "ncells_loaded": 200,

@@ -47,12 +47,12 @@
         {
           "name": "TEST1-POOL-GN2-SCG1",
           "ncells_loaded": 40000,
-          "data_types": ["TCR", "BCR"]
+          "data_types": ["GEX", "TCR", "BCR"]
         },
         {
           "name": "TEST1-POOL-GN2-SCG2",
           "ncells_loaded": 40000,
-          "data_types": ["TCR", "BCR"]
+          "data_types": ["GEX", "TCR", "BCR"]
         }
       ]
     },
@@ -64,7 +64,7 @@
         {
           "name": "TEST1-POOL-GN3-SCG1",
           "ncells_loaded": 40000,
-          "data_types": []
+          "data_types": ["GEX"]
         }
       ]
     }

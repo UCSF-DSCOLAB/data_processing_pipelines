@@ -29,9 +29,9 @@ background_plot <- function(gex_data, ab_data, params){
   "nCount_ADT" = colSums(ab_data)
   ) %>% filter(nCount_RNA > 0, nCount_ADT > 0)
   if (!any(str_detect(rownames(params), "background"))){
-    adt_lower=10
-    adt_upper=5000
-    rna_upper=300
+    adt_lower=10^1.5
+    adt_upper=params['nCount_ADT.upper',]
+    rna_upper=max(300, params['nFeature_RNA.lower',])
   } else {
     adt_lower=params['background_ADT.lower',]
     rna_upper=params['background_RNA.upper',]
@@ -60,15 +60,27 @@ background_plot <- function(gex_data, ab_data, params){
   return(ggExtra::ggMarginal(p, type = "histogram", bins=50))
 }
 
-scatterhist <- function(x, y, sobj, params, add_stats=T, log.scale.x=F, log.scale.y=F) {
+scatterhist <- function(x, y, sobj, params, add_stats=T, log.scale.x=F, log.scale.y=F, group_col=NULL, legend_only=F) {
 
-  p = ggplot(sobj@meta.data, aes(x=!!sym(x)+0.1, y=!!sym(y)+0.1)) +
-    geom_point(size=0.1,alpha=0.1) +
-    geom_hex(bins=100) +
-    scale_fill_distiller(palette = "RdYlBu") +
+  if (!is.null(group_col)){
+    p = ggplot(sobj@meta.data, aes(x=!!sym(x)+0.1, y=!!sym(y)+0.1, col=!!sym(group_col))) +
+      scale_color_manual()+
+      geom_point(size=0.01)+
+      scale_color_manual(values=dittoColors())
+
+  } else {
+    p = ggplot(sobj@meta.data, aes(x=!!sym(x)+0.1, y=!!sym(y)+0.1)) +
+      geom_hex(bins=100)+
+      scale_fill_distiller(palette = "RdYlBu") 
+  }
+
+  p = p + 
     theme_classic() +
     xlab(x)+
     ylab(y)
+  if (legend_only & !is.null(group_col)){
+    return(get_legend(p))
+  }
   if (add_stats){
     x_upper = as.numeric(params[paste0(x,".upper"),])
     x_lower = as.numeric(params[paste0(x,".lower"),])
@@ -96,7 +108,12 @@ scatterhist <- function(x, y, sobj, params, add_stats=T, log.scale.x=F, log.scal
     p = p+ scale_y_log10(breaks = scales::trans_breaks("log10", function(x) 10^(x)),
           labels = scales::trans_format("log10", scales::math_format(10^.x))) 
   } 
-  return( ggExtra::ggMarginal(p, type = "histogram", bins=50) )
+  if (!is.null(group_col)){
+    p = p+theme(legend.position="none")
+    return( ggExtra::ggMarginal(p, type = "density", groupColour = TRUE, groupFill = TRUE))
+  } else {
+    return( ggExtra::ggMarginal(p, type = "histogram", bins=50) )
+  }
 }
 
 load_params <- function(params_df){
@@ -313,5 +330,31 @@ make_plots = function(sobj, params, adt.present=F, add_stats=T) {
     plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","nCount_ADT",sobj,params, add_stats, log.scale.x=T,log.scale.y=T)
     plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","nCount_ADT",sobj,params, add_stats, log.scale.x=F,log.scale.y=F)
   }
+  return(plot_list)
+}
+
+make_cr_plots = function(sobj, params, adt.present=F, add_stats=T) {
+  plot_list = list()
+  plot_list[[length(plot_list)+1]] = scatterhist("percent.ribo","percent.mt",sobj,params, add_stats, group_col="cellranger_cell")
+  plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","percent.mt",sobj,params, add_stats, log.scale.x=F, group_col="cellranger_cell")
+  plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","percent.mt",sobj,params, add_stats, log.scale.x=T, group_col="cellranger_cell")
+  plot_list[[length(plot_list)+1]] = scatterhist("nFeature_RNA","percent.mt",sobj,params, add_stats, log.scale.x=T, group_col="cellranger_cell")
+  plot_list[[length(plot_list)+1]] = scatterhist("nFeature_RNA","percent.mt",sobj,params, add_stats, log.scale.x=F, group_col="cellranger_cell")
+  plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","percent.ribo",sobj,params, add_stats, log.scale.x=T, group_col="cellranger_cell")
+  plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","percent.ribo",sobj,params, add_stats, log.scale.x=F, group_col="cellranger_cell")
+  plot_list[[length(plot_list)+1]] = scatterhist("nFeature_RNA","percent.ribo",sobj,params, add_stats, log.scale.x=T, group_col="cellranger_cell")
+  plot_list[[length(plot_list)+1]] = scatterhist("nFeature_RNA","percent.ribo",sobj,params, add_stats, log.scale.x=F, group_col="cellranger_cell")
+  plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","nFeature_RNA",sobj,params, add_stats, log.scale.x=T, log.scale.y=T, group_col="cellranger_cell")
+  plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","nFeature_RNA",sobj,params, add_stats, log.scale.x=F, log.scale.y=F, group_col="cellranger_cell")
+  if (adt.present){
+    plot_list[[length(plot_list)+1]] = scatterhist("nCount_ADT","percent.mt",sobj,params, add_stats, log.scale.x=T, group_col="cellranger_cell")
+    plot_list[[length(plot_list)+1]] = scatterhist("nCount_ADT","percent.mt",sobj,params, add_stats, log.scale.x=F, group_col="cellranger_cell")
+    plot_list[[length(plot_list)+1]] = scatterhist("nCount_ADT","percent.ribo",sobj,params, add_stats, log.scale.x=T, group_col="cellranger_cell")
+    plot_list[[length(plot_list)+1]] = scatterhist("nCount_ADT","percent.ribo",sobj,params, add_stats, log.scale.x=F, group_col="cellranger_cell")
+    plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","nCount_ADT",sobj,params, add_stats, log.scale.x=T,log.scale.y=T, group_col="cellranger_cell")
+    plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","nCount_ADT",sobj,params, add_stats, log.scale.x=F,log.scale.y=F, group_col="cellranger_cell")
+  }
+  # add a legend
+  plot_list[[length(plot_list)+1]] = scatterhist("percent.ribo","percent.mt",sobj,params, group_col="cellranger_cell", legend_only=T)
   return(plot_list)
 }

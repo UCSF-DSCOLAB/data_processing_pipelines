@@ -140,8 +140,8 @@ if (adt.present){
    md = md[md$rna.size > 0 & md$prot.size > 0, ]
    if (!any(str_detect(rownames(params), "background"))){
     background_drops = rownames(
-      md[ md$prot.size > 1 & 
-      md$rna.size < 2.5, ]
+      md[ md$prot.size > 1.5 & 
+      md$rna.size < max(2.5, log10(params['nFeature_RNA.lower',]+0.1)), ]
     )
    } else {
     background_drops = rownames(

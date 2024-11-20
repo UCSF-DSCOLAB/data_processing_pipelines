@@ -13,7 +13,7 @@ process SORTMERNA_RIBOSOMAL_RNA_REMOVAL {
         if (fileSize > 3) {
             fileSize = 3
         }
-        return 20.GB * (1 + (fileSize * 1))
+        return 20.GB * (1 + (fileSize * 0.2))
     }
 
     input:

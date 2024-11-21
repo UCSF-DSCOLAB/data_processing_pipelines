@@ -14,7 +14,8 @@
     "default_qc_cuts_file": "default_qc_cuts.csv",
     "randomseed": 21212,
     "remove_demux_DBL": true,
-    "remove_all_DBL": true
+    "remove_all_DBL": true,
+    "use_inter_dbl_rate": true
   },
   "pools": [
     {

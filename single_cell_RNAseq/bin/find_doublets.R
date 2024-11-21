@@ -16,7 +16,8 @@ MINFEATURE=as.numeric(args[5])
 MINCELL=as.numeric(args[6])
 
 RANDOMSEED =args[7]
-BASE_DIR=args[8]
+USE_INTER_DBL_RATE=args[8]
+BASE_DIR=args[9]
 source(sprintf("%s/bin/seurat_utils.R", BASE_DIR))
 
 set.seed(RANDOMSEED)
@@ -47,7 +48,7 @@ doublet_rate_df = data.frame(multiplet_rate_pct=c(0.40, 0.80, 1.60, 2.30, 3.10, 
 DBL_MODEL_recovered <- lm(multiplet_rate_pct ~ num_cells_recovered, data=doublet_rate_df)
 DBL_MODEL_loaded <- lm(multiplet_rate_pct ~ num_cells_loaded, data=doublet_rate_df)
 MODEL_recovered <- lm(num_cells_recovered ~ num_cells_loaded, data=doublet_rate_df)
-
+MODEL_loaded <- lm(num_cells_loaded ~ num_cells_recovered, data=doublet_rate_df)
 
 genDoubletTable = function(doublet_stats, ncells_loaded, nsamples){
   
@@ -55,30 +56,35 @@ genDoubletTable = function(doublet_stats, ncells_loaded, nsamples){
   dbl_rate_10x_recovered = predict(DBL_MODEL_recovered, new=data.frame(num_cells_recovered=ncells)) / 100
   dbl_rate_10x_loaded = predict(DBL_MODEL_loaded, new=data.frame(num_cells_loaded=ncells_loaded)) / 100
   predicted_recovery = predict(MODEL_recovered, new=data.frame(num_cells_loaded=ncells_loaded))
+  predicted_loaded = predict(MODEL_loaded, new=data.frame(num_cells_recovered=ncells))
 
   num_mx_dbls = ifelse("DBL" %in% rownames(doublet_stats$fmlDropletTypeComp), doublet_stats$fmlDropletTypeComp["DBL",][[1]], 10)
   num_mx_sngs = doublet_stats$fmlDropletTypeComp["SNG",][[1]]
 
-  fmlDblRate = num_mx_dbls/(num_mx_sngs+num_mx_dbls)
+  fmlDblRate = num_mx_dbls/ncells
   dblRateIntra = fmlDblRate/(nsamples-1)
-  effectiveDblRate = dblRateIntra*(ncells/num_mx_sngs) 
-  num_dbls_intra = effectiveDblRate*num_mx_sngs
-  num_rem_dbl_recovered = dbl_rate_10x_recovered*ncells-num_mx_dbls # negative
-  num_rem_dbl_loaded = dbl_rate_10x_loaded*ncells-num_mx_dbls # 316
+  num_dbls_intra = dblRateIntra*ncells
+
+  # doublet rate is fraction of *loaded* cells
+  num_rem_dbl_recovered = dbl_rate_10x_recovered*predicted_loaded-num_mx_dbls 
+  num_rem_dbl_loaded = dbl_rate_10x_loaded*ncells_loaded-num_mx_dbls 
+
   df_stat_tib = tibble(
-    stat = c("ncells loaded", "ncells",  "predicted ncells recovered", "nsamples",
+    stat = c("ncells loaded", "ncells",  "predicted ncells recovered", "predicted loaded", "nsamples",
             "DBL rate (10x based on ncells recovered)", "DBL rate (10x based on ncells loaded)",
             "FMX interDBL rate", "FMX intraDBL rate", "Remaining doublets (10x recovered)", 
             "Remaining doublets (10x loaded)", "Remaining intra DBL (FMX)"),
-    value = c(ncells_loaded, ncells, predicted_recovery,nsamples,  dbl_rate_10x_recovered, dbl_rate_10x_loaded,
-              fmlDblRate, dblRateIntra, num_rem_dbl_recovered, num_rem_dbl_loaded, num_dbls_intra)
+    value = c(ncells_loaded, ncells, predicted_recovery, predicted_loaded, nsamples, 
+      dbl_rate_10x_recovered, dbl_rate_10x_loaded, fmlDblRate, dblRateIntra, num_rem_dbl_recovered, 
+      num_rem_dbl_loaded,  num_dbls_intra)
   )
   return(df_stat_tib)
 }
 
-runDoubletFinder <- function(sObj, freemuxlet=TRUE) {
+runDoubletFinder <- function(sObj, freemuxlet=TRUE, use_inter_dbl_rate=FALSE) {
   effectiveIntraDblRate = 0 # Initialize
-  if(freemuxlet) {        # freemuxlet == true, means freemuxlet data is loaded to the meta.data slot.
+  if(freemuxlet & use_inter_dbl_rate ) {        # freemuxlet == true, means freemuxlet data is loaded to the meta.data slot.
+    print_message("Using inter-individual doublet rate to estimate number of doublets")
 
     # remove filtered cells
     present.cells = rownames(sObj@meta.data[!is.na(sObj@meta.data$DROPLET.TYPE),])
@@ -107,17 +113,25 @@ runDoubletFinder <- function(sObj, freemuxlet=TRUE) {
     effectiveDblRate = dblRateIntra*adjustFactor 
 
     sngObj = subset(sngObj, DROPLET.TYPE=="SNG")
+    nExp_poi <- ceiling( effectiveDblRate * ncol(sngObj))# remaining doublets
   } else {
-
+    print_message("Using cells recovered to estimate number of doublets")
     effectiveDblRate = predict(DBL_MODEL_recovered, new=data.frame(num_cells_recovered=ncol(sObj))) / 100
-    
-    sngObj = sObj
-
+    predicted_loaded = predict(MODEL_loaded, new=data.frame(num_cells_recovered=nCol(sObj)))
+     if (freemuxlet & !use_inter_dbl_rate){
+      num_intra_dbl = sum(sObj$DROPLET.TYPE=="DBL")
+      sngObj = subset(sngObj, DROPLET.TYPE=="SNG")
+      nExp_poi = predicted_loaded*effectiveDblRate - num_intra_dbl
+     } else {
+       sngObj = sObj
+       nExp_poi <- ceiling( effectiveDblRate * predicted_loaded )
+     } 
   }
 
   names(effectiveDblRate) = NULL
   sObj@misc$scStat$effDblRate = effectiveDblRate
   print_message("Effective intra-sample doublet rate: ", round(effectiveDblRate * 100, 4), "%")
+  print_message("Number of remaining doublets: ", nExp_poi)
 
   # Now that the effective intra-sample doublet rate has been calculated, let's run doubletFinder 
   doubletF_stat = list()
@@ -150,9 +164,8 @@ runDoubletFinder <- function(sObj, freemuxlet=TRUE) {
   # The modeling of homotypic doublets requires celltype annotation. In place of the celltype annotation, I am using the cluster identity as celltype labels (as suggested by the authors of doubletFinder) - since clusters should correspond to different celltypes anyway.
   annotations = sngObj@active.ident
   homotypic.prop <- modelHomotypic(annotations)           ## ex: annotations <- sObj@meta.data$ClusteringResults
-  nExp_poi <- ceiling( effectiveDblRate * ncol(sngObj))
-  nExp_poi.adj <- ceiling(nExp_poi*(1-homotypic.prop))
 
+  nExp_poi.adj <- ceiling(nExp_poi*(1-homotypic.prop))
   print_message("\tEstimated no. of heterotypic doublets:", nExp_poi.adj)
 
   print_message("\tRunning DoubletFinder")
@@ -186,9 +199,11 @@ print_message("Dimension of the GEX count data:", paste(dim(seuratObj), collapse
 seuratObj@misc$scStat = list()
 
 # Load freemuxlet calls
+use_inter_dbl_rate = (USE_INTER_DBL_RATE=="true")
 freemuxlet = TRUE
 if(is.null(FMX_SAMPLE_PATH)) {
   freemuxlet = FALSE
+  use_inter_dbl_rate = FALSE
 } else {
   seuratObj = loadFreemuxletData(seuratObj, FMX_SAMPLE_PATH)
 }
@@ -203,7 +218,7 @@ if (!"SNG" %in% rownames(seuratObj@misc$scStat$fmlDropletTypeComp)){
 
 
 # Identify intra-sample doublets
-seuratObj = runDoubletFinder(seuratObj, freemuxlet)
+seuratObj = runDoubletFinder(seuratObj, freemuxlet, use_inter_dbl_rate)
 seuratObj@meta.data$DROPLET.TYPE.FINAL = ifelse(
     seuratObj$DROPLET.TYPE == "AMB", "AMB", ifelse(
       seuratObj$DROPLET.TYPE == "DBL", "Inter.DBL", ifelse(

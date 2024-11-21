@@ -679,10 +679,10 @@ process FIND_DOUBLETS {
   echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
   echo "[running FIND_DOUBLETS]"
   echo " using container ${params.container.rsinglecell}"
-  echo " Rscript ${projectDir}/bin/find_doublets.R ${raw_h5} ${fmx_clusters} ${library} ${ncells_loaded} ${params.settings.minfeature} ${params.settings.mincell} ${params.settings.randomseed} ${params.use_inter_dbl_rate} ${projectDir}"
+  echo " Rscript ${projectDir}/bin/find_doublets.R ${raw_h5} ${fmx_clusters} ${library} ${ncells_loaded} ${params.settings.minfeature} ${params.settings.mincell} ${params.settings.randomseed} ${params.settings.use_inter_dbl_rate} ${projectDir}"
   echo "-----------"
   
-  Rscript ${projectDir}/bin/find_doublets.R ${raw_h5} ${fmx_clusters} ${library} ${ncells_loaded} ${params.settings.minfeature} ${params.settings.mincell} ${params.settings.randomseed} ${params.use_inter_dbl_rate} ${projectDir}
+  Rscript ${projectDir}/bin/find_doublets.R ${raw_h5} ${fmx_clusters} ${library} ${ncells_loaded} ${params.settings.minfeature} ${params.settings.mincell} ${params.settings.randomseed} ${params.settings.use_inter_dbl_rate} ${projectDir}
   
   """
 }

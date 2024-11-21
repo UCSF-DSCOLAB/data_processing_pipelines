@@ -29,7 +29,7 @@ if (typeof(count) == "list"){
   sobj=CreateSeuratObject(counts = count$`Gene Expression`, project = "temp", 
                           min.cells = MINCELL, min.features = MINFEATURE)
 } else {
-  sobj=CreateSeuratObject(counts = count, project = "temp", min.cells = mincell, min.features = minfeat)
+  sobj=CreateSeuratObject(counts = count, project = "temp", min.cells = MINCELL, min.features = MINFEATURE)
 }
 print(dim(sobj))
 bc=row.names(sobj@meta.data)

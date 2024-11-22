@@ -20,6 +20,9 @@ USE_INTER_DBL_RATE=args[8]
 BASE_DIR=args[9]
 source(sprintf("%s/bin/seurat_utils.R", BASE_DIR))
 
+options(future.globals.maxSize= (2400*1024^2))
+
+
 set.seed(RANDOMSEED)
 NPCS_DOUBLETFINDER=30
 
@@ -81,8 +84,9 @@ genDoubletTable = function(doublet_stats, ncells_loaded, nsamples){
   return(df_stat_tib)
 }
 
-runDoubletFinder <- function(sObj, freemuxlet=TRUE, use_inter_dbl_rate=FALSE) {
+runDoubletFinder <- function(sObj, freemuxlet=TRUE, use_inter_dbl_rate=TRUE, ncells_loaded) {
   effectiveIntraDblRate = 0 # Initialize
+  nExp_poi=0
   if(freemuxlet & use_inter_dbl_rate ) {        # freemuxlet == true, means freemuxlet data is loaded to the meta.data slot.
     print_message("Using inter-individual doublet rate to estimate number of doublets")
 
@@ -115,17 +119,22 @@ runDoubletFinder <- function(sObj, freemuxlet=TRUE, use_inter_dbl_rate=FALSE) {
     sngObj = subset(sngObj, DROPLET.TYPE=="SNG")
     nExp_poi <- ceiling( effectiveDblRate * ncol(sngObj))# remaining doublets
   } else {
-    print_message("Using cells recovered to estimate number of doublets")
-    effectiveDblRate = predict(DBL_MODEL_recovered, new=data.frame(num_cells_recovered=ncol(sObj))) / 100
-    predicted_loaded = predict(MODEL_loaded, new=data.frame(num_cells_recovered=nCol(sObj)))
-     if (freemuxlet & !use_inter_dbl_rate){
-      num_intra_dbl = sum(sObj$DROPLET.TYPE=="DBL")
+    if (freemuxlet & !use_inter_dbl_rate){
+      print_message("Using cells recovered to estimate number of doublets")
+      present.cells = rownames(sObj@meta.data[!is.na(sObj@meta.data$DROPLET.TYPE),])
+      sngObj = subset(sObj, cells=present.cells)
+      num_inter_dbl = sum(sngObj$DROPLET.TYPE=="DBL")
       sngObj = subset(sngObj, DROPLET.TYPE=="SNG")
-      nExp_poi = predicted_loaded*effectiveDblRate - num_intra_dbl
+      effectiveDblRate = unname(predict(DBL_MODEL_recovered, new=data.frame(num_cells_recovered=ncol(sngObj))) / 100)
+      predicted_loaded = unname(predict(MODEL_loaded, new=data.frame(num_cells_recovered=ncol(sngObj))))
+      nExp_poi = ceiling(predicted_loaded*effectiveDblRate) - num_inter_dbl
      } else {
+       print_message("No freemuxlet data, using number of cells loaded to estimate")
        sngObj = sObj
-       nExp_poi <- ceiling( effectiveDblRate * predicted_loaded )
+       effectiveDblRate = unname(predict(DBL_MODEL_loaded, new=data.frame(num_cells_loaded=ncells_loaded)) / 100)
+       nExp_poi = ceiling(ncells_loaded*effectiveDblRate) 
      } 
+
   }
 
   names(effectiveDblRate) = NULL
@@ -206,19 +215,20 @@ if(is.null(FMX_SAMPLE_PATH)) {
   use_inter_dbl_rate = FALSE
 } else {
   seuratObj = loadFreemuxletData(seuratObj, FMX_SAMPLE_PATH)
+  # TODO: should this cause an error?
+  if (!"SNG" %in% rownames(seuratObj@misc$scStat$fmlDropletTypeComp)){
+    print_message("Warning - there are no singlets in your demultiplexing output. 
+                  Please re-run free/demuxlet with alternate parameters or filtering before running doublet finder.")
+    exit()
+  }
 }
 
 
-# TODO: should this cause an error?
-if (!"SNG" %in% rownames(seuratObj@misc$scStat$fmlDropletTypeComp)){
-  print_message("Warning - there are no singlets in your demultiplexing output. 
-                Please re-run free/demuxlet with alternate parameters or filtering before running doublet finder.")
-  exit()
-}
+
 
 
 # Identify intra-sample doublets
-seuratObj = runDoubletFinder(seuratObj, freemuxlet, use_inter_dbl_rate)
+seuratObj = runDoubletFinder(seuratObj, freemuxlet, use_inter_dbl_rate, NCELLS_LOADED)
 seuratObj@meta.data$DROPLET.TYPE.FINAL = ifelse(
     seuratObj$DROPLET.TYPE == "AMB", "AMB", ifelse(
       seuratObj$DROPLET.TYPE == "DBL", "Inter.DBL", ifelse(

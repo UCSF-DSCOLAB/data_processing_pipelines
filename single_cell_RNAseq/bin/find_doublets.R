@@ -216,8 +216,8 @@ tbl = table(seuratObj$DROPLET.TYPE.FINAL)
 seuratObj@misc$scStat$finalDropletTypeComp = as.matrix(tbl)
 seuratObj@misc$scStat$finalDropletTypeProp = as.matrix(prop.table(tbl))
 
-saveRDS(seuratObj@misc$scStat, file=sprintf("%s_doubletStat.rds", SAMPLE))
-saveRDS(seuratObj, file=sprintf("%s_seurat_object_findingDoublets.rds", SAMPLE))
+saveRDS_(seuratObj@misc$scStat, file=sprintf("%s_doubletStat.rds", SAMPLE))
+saveRDS_(seuratObj, file=sprintf("%s_seurat_object_findingDoublets.rds", SAMPLE))
 
 nsamples = length( unique( seuratObj$BEST.GUESS[ seuratObj$DROPLET.TYPE == "SNG" & !is.na(seuratObj$DROPLET.TYPE) ] ) )
 

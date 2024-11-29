@@ -53,4 +53,4 @@ if(FMX_SAMPLE_PATH=="null") {
 } else {
   seuratObj = loadFreemuxletData(seuratObj, FMX_SAMPLE_PATH)
 }
-saveRDS(seuratObj, file=sprintf("%s_initial_raw.rds", SAMPLE))
+saveRDS_(seuratObj, file=sprintf("%s_initial_raw.rds", SAMPLE))

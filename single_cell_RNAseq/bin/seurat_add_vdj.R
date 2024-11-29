@@ -30,4 +30,4 @@ sobj = readRDS(SOBJ)
 
 clonotype_data = load_clonotypes(LIBRARY, DATA_TYPE, CLONOTYPE_PATH, CONTIG_PATH)
 sobj = AddMetaData(sobj, metadata=clonotype_data[colnames(sobj),])
-saveRDS(sobj, file=sprintf("%s_w_%s.RDS", LIBRARY, DATA_TYPE), compress=F)
+saveRDS_(sobj, file=sprintf("%s_w_%s.RDS", LIBRARY, DATA_TYPE), compress=F)

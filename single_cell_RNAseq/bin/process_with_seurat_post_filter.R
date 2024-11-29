@@ -98,7 +98,7 @@ sobj = sobj %>% NormalizeData()
 sobj = CellCycleScoring(sobj, s.features = s.genes, g2m.features = g2m.genes, set.ident = FALSE)
 DefaultAssay(sobj) = "RNA"
 
-saveRDS(sobj, file=sprintf("%s_filtered.rds", LIBRARY))
+saveRDS_(sobj, file=sprintf("%s_filtered.rds", LIBRARY))
 
 # write out the list of filtered barcodes
 
@@ -186,7 +186,7 @@ if ("PTPRC" %in% rownames(sobj)){
   dev.off()
 }
 # Save the final seurat object
-saveRDS(sobj, file=sprintf("%s_processed.rds", LIBRARY))
+saveRDS_(sobj, file=sprintf("%s_processed.rds", LIBRARY))
 
 list_cells = colnames(sobj)
 tibble("cell"=list_cells) %>% write_tsv( file="barcodes_of_interest_filt.list", col_names=FALSE)

@@ -142,16 +142,46 @@ To run regression tests:
 
 `cd single_cell_RNAseq`
 
-`/krummellab/data1/software/bin/nf-testtest tests/pipeline_pre_qc.nf.test --without-trace`
+`/krummellab/data1/software/bin/nf-test test tests/pipeline_pre_qc.nf.test --without-trace`
+
+Note that a snapshot *must* be present for this to work, otherwise it will state it has "PASSED" and generate a new snapshot instead of comparing to previous versions. 
 
 #### How do the tests work
 
-- For each test we copy all the necessary file inputs from `/krummellab/data1/integration_test_user/tutorial_lib_sep` 
-into an isolated testing environment.
-- That testing environment is `.nf-test/hash/meta`
-- We inject these input paths into our pipeline.
-- The tests then operate on these files.
-- We assert that the necessary files are created in this testing environment.
+At a high level the tests should work like:
+
+```TEST(test_vcfs, test_fastqs)```
+
+That is they run tests on a downsampled data. This data can be found in  `/krummellab/data1/pipeline_test_data/`.
+However, running cellranger takes a long time, so all tests skip this step. Instead we have copied
+the cell ranger output to specific paths in this directory: `/krummellab/data1/integration_test_user/tutorial_lib_sep`.
+The `test_vcfs` are still referenced in a downstream step however.
+
+In any case, the tests operate on this top level directory.
+
+Now take a look at the `tests/example.nf.test`
+
+- For this test we copy the directory (and all subpaths) from `/krummellab/data1/integration_test_user/tutorial_lib_sep` 
+into an isolated testing environment. That testing environment is `.nf-test/hash/meta/{HASH}/`. This is done using
+the `stage` keyword. So effectively for each test we have an environment: `.nf-test/hash/meta/{HASH}/krummellab/data1/integration_test_user/tutorial_lib_sep` 
+- We can now reference this isolated environment, this can be done using the built in `$metaDir` keyword.
+- We build the entire path to this directory via: `def testDirAbsolute = metaDir + c4PathToTestFiles`
+- We populate all the necessary params for the test case we would like to run. We must be sure that the pipeline runs
+in our isolated environment, and inject the necessary params. Ie: `project_dir = testDirAbsolute`
+- The test workflow then operate on these files.
+- We then determine which directories and their respective files we want to create snapshots for:
+```
+def test_directories = [finding_doublets, automated_processing, freemuxlet]
+def dm1_scg1 = testDirAbsolute + "/data/single_cell_GEX/processed/TEST-POOL-DM1-SCG1"
+def dm1_scg2 = testDirAbsolute + "/data/single_cell_GEX/processed/TEST-POOL-DM1-SCG2"
+def dm2_scg1 = testDirAbsolute + "/data/single_cell_GEX/processed/TEST-POOL-DM2-SCG1"
+```
+- We then take a snapshot of each of the directories.
+
+In order to update or clean the snapshots:
+
+https://www.nf-test.com/docs/assertions/snapshots/#updating-snapshots
+https://www.nf-test.com/docs/assertions/snapshots/#cleaning-obsolete-snapshots
 
 #### Test data
 

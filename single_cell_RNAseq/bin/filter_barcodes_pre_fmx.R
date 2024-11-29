@@ -69,7 +69,7 @@ sobj = filter_cells(sobj, params, adt.present)
 sobj@misc$scStat$nCells_after_filter = ncol(sobj)
 
 list_cells = colnames(sobj)
-tibble("cell"=list_cells) %>% write_tsv( file="barcodes_of_interest.filt.list", col_names=FALSE)
+tibble("cell"=list_cells) %>% write_tsv( file=sprintf("%s_barcodes_of_interest.filt.list", LIBRARY), col_names=FALSE)
 
 ### now run the next steps of process_10x_with_seurat
 

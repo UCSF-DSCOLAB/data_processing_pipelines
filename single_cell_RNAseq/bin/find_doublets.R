@@ -51,35 +51,34 @@ doublet_rate_df = data.frame(multiplet_rate_pct=c(0.40, 0.80, 1.60, 2.30, 3.10, 
 DBL_MODEL_recovered <- lm(multiplet_rate_pct ~ num_cells_recovered, data=doublet_rate_df)
 DBL_MODEL_loaded <- lm(multiplet_rate_pct ~ num_cells_loaded, data=doublet_rate_df)
 MODEL_recovered <- lm(num_cells_recovered ~ num_cells_loaded, data=doublet_rate_df)
-MODEL_loaded <- lm(num_cells_loaded ~ num_cells_recovered, data=doublet_rate_df)
 
 genDoubletTable = function(doublet_stats, ncells_loaded, nsamples){
   
   ncells = sum(doublet_stats$fmlDropletTypeComp)
-  dbl_rate_10x_recovered = predict(DBL_MODEL_recovered, new=data.frame(num_cells_recovered=ncells)) / 100
-  dbl_rate_10x_loaded = predict(DBL_MODEL_loaded, new=data.frame(num_cells_loaded=ncells_loaded)) / 100
-  predicted_recovery = predict(MODEL_recovered, new=data.frame(num_cells_loaded=ncells_loaded))
-  predicted_loaded = predict(MODEL_loaded, new=data.frame(num_cells_recovered=ncells))
-
   num_mx_dbls = ifelse("DBL" %in% rownames(doublet_stats$fmlDropletTypeComp), doublet_stats$fmlDropletTypeComp["DBL",][[1]], 10)
   num_mx_sngs = doublet_stats$fmlDropletTypeComp["SNG",][[1]]
+  nrecovered = num_mx_dbls + num_mx_sngs
+  
+  dbl_rate_10x_recovered = predict(DBL_MODEL_recovered, new=data.frame(num_cells_recovered=nrecovered)) / 100
+  dblRateIntra_recovered = dbl_rate_10x_recovered/nsamples
+  dbl_rate_10x_loaded = predict(DBL_MODEL_loaded, new=data.frame(num_cells_loaded=ncells_loaded)) / 100
+  predicted_recovery = predict(MODEL_recovered, new=data.frame(num_cells_loaded=ncells_loaded))
 
-  fmlDblRate = num_mx_dbls/ncells
+  fmlDblRate = num_mx_dbls/nrecovered
   dblRateIntra = fmlDblRate/(nsamples-1)
-  num_dbls_intra = dblRateIntra*ncells
-
-  # doublet rate is fraction of *loaded* cells
-  num_rem_dbl_recovered = dbl_rate_10x_recovered*predicted_loaded-num_mx_dbls 
-  num_rem_dbl_loaded = dbl_rate_10x_loaded*ncells_loaded-num_mx_dbls 
+  num_dbls_intra = dblRateIntra*nrecovered
 
   df_stat_tib = tibble(
-    stat = c("ncells loaded", "ncells",  "predicted ncells recovered", "predicted loaded", "nsamples",
+    stat = c("ncells loaded", "ncells",  "predicted ncells recovered", "recovered (dbl + sng)", "nsamples",
             "DBL rate (10x based on ncells recovered)", "DBL rate (10x based on ncells loaded)",
-            "FMX interDBL rate", "FMX intraDBL rate", "Remaining doublets (10x recovered)", 
-            "Remaining doublets (10x loaded)", "Remaining intra DBL (FMX)"),
-    value = c(ncells_loaded, ncells, predicted_recovery, predicted_loaded, nsamples, 
-      dbl_rate_10x_recovered, dbl_rate_10x_loaded, fmlDblRate, dblRateIntra, num_rem_dbl_recovered, 
-      num_rem_dbl_loaded,  num_dbls_intra)
+            "FMX interDBL rate", "FMX intraDBL rate", "Recovered intraDBL rate", "Percent increase intraDBL rate (FMX vs Recovered)",
+             "Number of FMX DBL", "Remaining intra DBL (FMX)", "Doublets (10x recovered)", "Doublets (10x loaded)" ),
+    value = c(ncells_loaded, ncells, predicted_recovery, nrecovered, nsamples, 
+      dbl_rate_10x_recovered, dbl_rate_10x_loaded, fmlDblRate, dblRateIntra, dblRateIntra_recovered, 
+      (dblRateIntra-dblRateIntra_recovered)/dblRateIntra_recovered*100,
+      num_mx_dbls, num_dbls_intra, 
+      dbl_rate_10x_recovered*nrecovered, 
+      dbl_rate_10x_loaded*nrecovered )
   )
   return(df_stat_tib)
 }
@@ -114,7 +113,7 @@ runDoubletFinder <- function(sObj, freemuxlet=TRUE, use_inter_dbl_rate=TRUE, nce
     adjustFactor = ncol(sngObj)/num_singlets
 
     # Effective doublet rate after accounting for removal of DBL cells.
-    effectiveDblRate = dblRateIntra*adjustFactor 
+    effectiveDblRate = unname(dblRateIntra*adjustFactor )
 
     sngObj = subset(sngObj, DROPLET.TYPE=="SNG")
     nExp_poi <- ceiling( effectiveDblRate * ncol(sngObj))# remaining doublets
@@ -124,20 +123,19 @@ runDoubletFinder <- function(sObj, freemuxlet=TRUE, use_inter_dbl_rate=TRUE, nce
       present.cells = rownames(sObj@meta.data[!is.na(sObj@meta.data$DROPLET.TYPE),])
       sngObj = subset(sObj, cells=present.cells)
       num_inter_dbl = sum(sngObj$DROPLET.TYPE=="DBL")
-      sngObj = subset(sngObj, DROPLET.TYPE=="SNG")
-      effectiveDblRate = unname(predict(DBL_MODEL_recovered, new=data.frame(num_cells_recovered=ncol(sngObj))) / 100)
-      predicted_loaded = unname(predict(MODEL_loaded, new=data.frame(num_cells_recovered=ncol(sngObj))))
-      nExp_poi = ceiling(predicted_loaded*effectiveDblRate) - num_inter_dbl
+      num_sng = sum(sngObj$DROPLET.TYPE=="SNG")
+      nrecovered = num_inter_dbl + num_sng
+      effectiveDblRate = unname(predict(DBL_MODEL_recovered, new=data.frame(num_cells_recovered=nrecovered)) / 100)
+      nExp_poi = ceiling(nrecovered*effectiveDblRate) 
      } else {
        print_message("No freemuxlet data, using number of cells loaded to estimate")
        sngObj = sObj
-       effectiveDblRate = unname(predict(DBL_MODEL_loaded, new=data.frame(num_cells_loaded=ncells_loaded)) / 100)
+       effectiveDblRate = unname(predict(DBL_MODEL_loaded, new=data.frame(num_cells_loaded=ncol(sngObj))) / 100)
        nExp_poi = ceiling(ncells_loaded*effectiveDblRate) 
      } 
 
   }
 
-  names(effectiveDblRate) = NULL
   sObj@misc$scStat$effDblRate = effectiveDblRate
   print_message("Effective intra-sample doublet rate: ", round(effectiveDblRate * 100, 4), "%")
   print_message("Number of remaining doublets: ", nExp_poi)

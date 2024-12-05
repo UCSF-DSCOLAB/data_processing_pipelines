@@ -11,7 +11,12 @@ def get_cutoffs(library){
 }
 
 def get_pre_fmx_cutoffs(library){
-  return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/cell_filter/${library}_cutoffs.csv", checkIfExists: true)
+  path = "${params.project_dir}/data/single_cell_GEX/processed/${library}/cell_filter/${library}_cutoffs.csv"
+  if (file(path).exists()){
+    return file(path, checkIfExists: true)
+  } else {
+    return(get_cutoffs(library))
+  }
 }
 
 def get_sobj(library){

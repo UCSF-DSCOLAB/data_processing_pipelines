@@ -37,9 +37,10 @@ print_message(sprintf(
     MINFEATURE=%s
     MINCELL=%s
     RANDOMSEED=%s
+    USE_INTER_DBL_RATE=%s
     BASE_DIR=%s
   -----------
-  ", CELLR_H5_PATH, FMX_SAMPLE_PATH, SAMPLE, NCELLS_LOADED, MINFEATURE, MINCELL, RANDOMSEED, BASE_DIR)
+  ", CELLR_H5_PATH, FMX_SAMPLE_PATH, SAMPLE, NCELLS_LOADED, MINFEATURE, MINCELL, RANDOMSEED, USE_INTER_DBL_RATE, BASE_DIR)
 )
 
 
@@ -72,7 +73,7 @@ genDoubletTable = function(doublet_stats, ncells_loaded, nsamples){
     stat = c("ncells loaded", "ncells",  "predicted ncells recovered", "recovered (dbl + sng)", "nsamples",
             "DBL rate (10x based on ncells recovered)", "DBL rate (10x based on ncells loaded)",
             "FMX interDBL rate", "FMX intraDBL rate", "Recovered intraDBL rate", "Percent increase intraDBL rate (FMX vs Recovered)",
-             "Number of FMX DBL", "Remaining intra DBL (FMX)", "Doublets (10x recovered)", "Doublets (10x loaded)" ),
+             "Number of FMX DBL", "Remaining intra DBL (FMX)", "Doublets (10x recovered)", "Doublets (10x loaded)"),
     value = c(ncells_loaded, ncells, predicted_recovery, nrecovered, nsamples, 
       dbl_rate_10x_recovered, dbl_rate_10x_loaded, fmlDblRate, dblRateIntra, dblRateIntra_recovered, 
       (dblRateIntra-dblRateIntra_recovered)/dblRateIntra_recovered*100,
@@ -236,6 +237,7 @@ seuratObj@meta.data$DROPLET.TYPE.FINAL = ifelse(
   )
 
 tbl = table(seuratObj$DROPLET.TYPE.FINAL)
+seuratObj@misc$scStat$doublet_estimation_method_used=ifelse(USE_INTER_DBL_RATE=="true", "FMX", "recovered")
 seuratObj@misc$scStat$finalDropletTypeComp = as.matrix(tbl)
 seuratObj@misc$scStat$finalDropletTypeProp = as.matrix(prop.table(tbl))
 

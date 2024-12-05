@@ -676,13 +676,22 @@ process FIND_DOUBLETS {
   path(".command.log"), emit: log
 
   """
+  arr="${params.settings}"
+  if [[ \${arr} == *"use_inter_dbl_rate"* ]];
+  then
+    use_inter_dbl_rate=${params.settings.use_inter_dbl_rate}
+  else
+    echo "'use_inter_dbl_rate' parameter not found, defaulting to true"
+    use_inter_dbl_rate="true"
+  fi
+
   echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
   echo "[running FIND_DOUBLETS]"
   echo " using container ${params.container.rsinglecell}"
-  echo " Rscript ${projectDir}/bin/find_doublets.R ${raw_h5} ${fmx_clusters} ${library} ${ncells_loaded} ${params.settings.minfeature} ${params.settings.mincell} ${params.settings.randomseed} ${projectDir}"
+  echo " Rscript ${projectDir}/bin/find_doublets.R ${raw_h5} ${fmx_clusters} ${library} ${ncells_loaded} ${params.settings.minfeature} ${params.settings.mincell} ${params.settings.randomseed} \${use_inter_dbl_rate} ${projectDir}"
   echo "-----------"
   
-  Rscript ${projectDir}/bin/find_doublets.R ${raw_h5} ${fmx_clusters} ${library} ${ncells_loaded} ${params.settings.minfeature} ${params.settings.mincell} ${params.settings.randomseed} ${projectDir}
+  Rscript ${projectDir}/bin/find_doublets.R ${raw_h5} ${fmx_clusters} ${library} ${ncells_loaded} ${params.settings.minfeature} ${params.settings.mincell} ${params.settings.randomseed} \${use_inter_dbl_rate} ${projectDir}
   
   """
 }

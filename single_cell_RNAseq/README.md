@@ -60,6 +60,8 @@ The pipeline is designed to be run in either of 2 ways, and both involve an inte
 - Path 1 is the "standard" method, run with (1) step as `pre_qc`, (2) setting of cutoffs, then (3) step as `post_qc`.
 - Path 2 allows for QC filtering to be performed before freemuxlet/demuxlet which can be useful for tissue data, and is used with: (1) step as `pre_fmx_qc`, (2) setting of cutoffs, then (3) step as `post_fmx_qc`.
 
+(Note: we have also added a `df_auto` step to run doubletfinder and automating processing only. This is designed to be run only in special circumstances where the user decides to re-run only these steps. If you have run the pre_fmx path and reviewed cutoffs, it will complete. Otherwise, it will fail at the cutoff reviewing stage and you will need to complete with `post_qc`.)
+
 ### After run cleanup
 By default, the nextflow working directory will be:
 `/c4/scratch/<user>/nextflow/<original_job_id>`

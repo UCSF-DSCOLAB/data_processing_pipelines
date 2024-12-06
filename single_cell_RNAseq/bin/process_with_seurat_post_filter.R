@@ -78,14 +78,30 @@ merge = ggarrange(plotlist=plot_list, ncol=4,nrow=num_rows)
 ggsave(sprintf("%s_doublet_plot_reviewed.png",LIBRARY),  width=30, height=7*num_rows, bg="white", dpi=72)
 
 sobj = filter_cells(sobj, params, adt.present)
+
 if (KEEP_FMX_SNG){
-  sobj = subset(sobj, DROPLET.TYPE=="SNG")
+  tbl = table(sobj@meta.data$DROPLET.TYPE)
+  if (!"SNG" %in% names(tbl)){
+    print("Error there are no singlets, not filtering on droplet type")
+  } else {
+    sobj = subset(sobj, DROPLET.TYPE=="SNG")
+  }
 }
 if (KEEP_ONLY_SNG){
   if ("DROPLET.TYPE.FINAL" %in% colnames(sobj@meta.data)){
-    sobj = subset(sobj, DROPLET.TYPE.FINAL=="SNG")
+    tbl = table(sobj@meta.data$DROPLET.TYPE.FINAL)
+    if (!"SNG" %in% names(tbl)){
+      print("Error there are no singlets, not filtering on droplet type")
+    } else {
+      sobj = subset(sobj, DROPLET.TYPE.FINAL=="SNG")
+    }
   } else {
-    sobj = subset(sobj, DROPLET.TYPE=="SNG")
+    tbl = table(sobj@meta.data$DROPLET.TYPE)
+    if (!"SNG" %in% names(tbl)){
+      print("Error there are no singlets, not filtering on droplet type")
+    } else {
+      sobj = subset(sobj, DROPLET.TYPE=="SNG")
+    }
   }
 }
 print(sprintf("Following filtering there are %s cells remaining", ncol(sobj)))

@@ -65,10 +65,18 @@ print(sprintf("Before filtering there are %s cells", ncol(sobj)))
 
 
 # Filter out the low-quality cells.
-sobj = filter_cells(sobj, params, adt.present)
-make_doublet_plot(sobj, adt.present)
-ggsave(sprintf("%s_doublet_plot.png",LIBRARY), height=5, width=12, bg="white", dpi=100)
+if ("DROPLET.TYPE.FINAL" %in% colnames(sobj@meta.data)){
+  no_nas = subset(sobj, DROPLET.TYPE.FINAL %in% c("AMB", "Intra.DBL", "Inter.DBL", "SNG"))
+  plot_list = suppressWarnings(make_plots(no_nas, params, adt.present, group="DROPLET.TYPE.FINAL"))
+} else {
+  no_nas = subset(sobj, DROPLET.TYPE %in% c("AMB", "DBL", "SNG"))
+  plot_list = suppressWarnings(make_plots(no_nas, params, adt.present, group="DROPLET.TYPE"))
+}
+num_rows = ifelse(adt.present, 5, 3)
+merge = ggarrange(plotlist=plot_list, ncol=4,nrow=num_rows)
+ggsave(sprintf("%s_doublet_plot_reviewed.png",LIBRARY),  width=30, height=7*num_rows, bg="white", dpi=72)
 
+sobj = filter_cells(sobj, params, adt.present)
 if (KEEP_FMX_SNG){
   sobj = subset(sobj, DROPLET.TYPE=="SNG")
 }
@@ -162,6 +170,10 @@ if (adt.present){
      adt_norm[adt_norm < 0] = 0
    }
    sobj@assays$ADT@data = adt_norm
+
+   # additional ADT diagnostic plots
+   adt_plot(sobj)
+   ggsave(sprintf("%s_normalized_ADT_dist.png", LIBRARY), height=30, width=30)
 }
 
 sobj = sobj %>%

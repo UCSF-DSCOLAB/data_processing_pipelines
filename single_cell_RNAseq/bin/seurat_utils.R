@@ -60,6 +60,18 @@ background_plot <- function(gex_data, ab_data, params){
   return(ggExtra::ggMarginal(p, type = "histogram", bins=50))
 }
 
+adt_plot <- function(sobj){
+  adt_dat = sobj@assays$ADT@data %>% as_tibble(rownames="adt")
+  adt_dat %>% 
+    pivot_longer(-adt, names_to="cell", values_to="val") %>%
+    ggplot(aes(x=val))+
+    geom_histogram()+
+    theme_classic()+
+    theme(axis.title.x=element_blank())+
+    ylab("number of cells")+
+    facet_wrap(~adt, scales="free")
+}
+
 scatterhist <- function(x, y, sobj, params, add_stats=T, log.scale.x=F, log.scale.y=F, group_col=NULL, legend_only=F) {
 
   if (!is.null(group_col)){
@@ -68,8 +80,15 @@ scatterhist <- function(x, y, sobj, params, add_stats=T, log.scale.x=F, log.scal
       geom_point(size=0.01)+
       scale_color_manual(values=dittoColors())
 
+    if (str_detect(group_col, "DROPLET.TYPE")){
+      doublet_colors = c("gray", dittoColors()[c(3,2,1,4)])
+      names(doublet_colors)= c("AMB", "Intra.DBL", "Inter.DBL", "SNG", "DBL")
+      p = p+scale_color_manual(values=doublet_colors)
+    }
+
   } else {
     p = ggplot(sobj@meta.data, aes(x=!!sym(x)+0.1, y=!!sym(y)+0.1)) +
+      geom_point(size=0.1,alpha=0.1) +
       geom_hex(bins=100)+
       scale_fill_distiller(palette = "RdYlBu") 
   }
@@ -309,52 +328,30 @@ TriPlot <- function(sobj, features, reduction.use="umap", group.by="seurat_clust
 }
 
 
-make_plots = function(sobj, params, adt.present=F, add_stats=T) {
+make_plots = function(sobj, params, adt.present=F, add_stats=T, group=NULL) {
   plot_list = list()
-  plot_list[[length(plot_list)+1]] = scatterhist("percent.ribo","percent.mt",sobj,params, add_stats)
-  plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","percent.mt",sobj,params, add_stats, log.scale.x=F)
-  plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","percent.mt",sobj,params, add_stats, log.scale.x=T)
-  plot_list[[length(plot_list)+1]] = scatterhist("nFeature_RNA","percent.mt",sobj,params, add_stats, log.scale.x=T)
-  plot_list[[length(plot_list)+1]] = scatterhist("nFeature_RNA","percent.mt",sobj,params, add_stats, log.scale.x=F)
-  plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","percent.ribo",sobj,params, add_stats, log.scale.x=T)
-  plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","percent.ribo",sobj,params, add_stats, log.scale.x=F)
-  plot_list[[length(plot_list)+1]] = scatterhist("nFeature_RNA","percent.ribo",sobj,params, add_stats, log.scale.x=T)
-  plot_list[[length(plot_list)+1]] = scatterhist("nFeature_RNA","percent.ribo",sobj,params, add_stats, log.scale.x=F)
-  plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","nFeature_RNA",sobj,params, add_stats, log.scale.x=T, log.scale.y=T)
-  plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","nFeature_RNA",sobj,params, add_stats, log.scale.x=F, log.scale.y=F)
+  plot_list[[length(plot_list)+1]] = scatterhist("percent.ribo","percent.mt",sobj,params, add_stats, group_col=group)
+  plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","percent.mt",sobj,params, add_stats, log.scale.x=F,  group_col=group)
+  plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","percent.mt",sobj,params, add_stats, log.scale.x=T, group_col=group)
+  plot_list[[length(plot_list)+1]] = scatterhist("nFeature_RNA","percent.mt",sobj,params, add_stats, log.scale.x=T,  group_col=group)
+  plot_list[[length(plot_list)+1]] = scatterhist("nFeature_RNA","percent.mt",sobj,params, add_stats, log.scale.x=F,  group_col=group)
+  plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","percent.ribo",sobj,params, add_stats, log.scale.x=T,  group_col=group)
+  plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","percent.ribo",sobj,params, add_stats, log.scale.x=F,  group_col=group)
+  plot_list[[length(plot_list)+1]] = scatterhist("nFeature_RNA","percent.ribo",sobj,params, add_stats, log.scale.x=T,  group_col=group)
+  plot_list[[length(plot_list)+1]] = scatterhist("nFeature_RNA","percent.ribo",sobj,params, add_stats, log.scale.x=F,  group_col=group)
+  plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","nFeature_RNA",sobj,params, add_stats, log.scale.x=T, log.scale.y=T,  group_col=group)
+  plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","nFeature_RNA",sobj,params, add_stats, log.scale.x=F, log.scale.y=F,  group_col=group)
   if (adt.present){
-    plot_list[[length(plot_list)+1]] = scatterhist("nCount_ADT","percent.mt",sobj,params, add_stats, log.scale.x=T)
-    plot_list[[length(plot_list)+1]] = scatterhist("nCount_ADT","percent.mt",sobj,params, add_stats, log.scale.x=F)
-    plot_list[[length(plot_list)+1]] = scatterhist("nCount_ADT","percent.ribo",sobj,params, add_stats, log.scale.x=T)
-    plot_list[[length(plot_list)+1]] = scatterhist("nCount_ADT","percent.ribo",sobj,params, add_stats, log.scale.x=F)
-    plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","nCount_ADT",sobj,params, add_stats, log.scale.x=T,log.scale.y=T)
-    plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","nCount_ADT",sobj,params, add_stats, log.scale.x=F,log.scale.y=F)
+    plot_list[[length(plot_list)+1]] = scatterhist("nCount_ADT","percent.mt",sobj,params, add_stats, log.scale.x=T,  group_col=group)
+    plot_list[[length(plot_list)+1]] = scatterhist("nCount_ADT","percent.mt",sobj,params, add_stats, log.scale.x=F,  group_col=group)
+    plot_list[[length(plot_list)+1]] = scatterhist("nCount_ADT","percent.ribo",sobj,params, add_stats, log.scale.x=T,  group_col=group)
+    plot_list[[length(plot_list)+1]] = scatterhist("nCount_ADT","percent.ribo",sobj,params, add_stats, log.scale.x=F,  group_col=group)
+    plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","nCount_ADT",sobj,params, add_stats, log.scale.x=T,log.scale.y=T, group_col=group)
+    plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","nCount_ADT",sobj,params, add_stats, log.scale.x=F,log.scale.y=F,  group_col=group)
   }
-  return(plot_list)
-}
-
-make_cr_plots = function(sobj, params, adt.present=F, add_stats=T) {
-  plot_list = list()
-  plot_list[[length(plot_list)+1]] = scatterhist("percent.ribo","percent.mt",sobj,params, add_stats, group_col="cellranger_cell")
-  plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","percent.mt",sobj,params, add_stats, log.scale.x=F, group_col="cellranger_cell")
-  plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","percent.mt",sobj,params, add_stats, log.scale.x=T, group_col="cellranger_cell")
-  plot_list[[length(plot_list)+1]] = scatterhist("nFeature_RNA","percent.mt",sobj,params, add_stats, log.scale.x=T, group_col="cellranger_cell")
-  plot_list[[length(plot_list)+1]] = scatterhist("nFeature_RNA","percent.mt",sobj,params, add_stats, log.scale.x=F, group_col="cellranger_cell")
-  plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","percent.ribo",sobj,params, add_stats, log.scale.x=T, group_col="cellranger_cell")
-  plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","percent.ribo",sobj,params, add_stats, log.scale.x=F, group_col="cellranger_cell")
-  plot_list[[length(plot_list)+1]] = scatterhist("nFeature_RNA","percent.ribo",sobj,params, add_stats, log.scale.x=T, group_col="cellranger_cell")
-  plot_list[[length(plot_list)+1]] = scatterhist("nFeature_RNA","percent.ribo",sobj,params, add_stats, log.scale.x=F, group_col="cellranger_cell")
-  plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","nFeature_RNA",sobj,params, add_stats, log.scale.x=T, log.scale.y=T, group_col="cellranger_cell")
-  plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","nFeature_RNA",sobj,params, add_stats, log.scale.x=F, log.scale.y=F, group_col="cellranger_cell")
-  if (adt.present){
-    plot_list[[length(plot_list)+1]] = scatterhist("nCount_ADT","percent.mt",sobj,params, add_stats, log.scale.x=T, group_col="cellranger_cell")
-    plot_list[[length(plot_list)+1]] = scatterhist("nCount_ADT","percent.mt",sobj,params, add_stats, log.scale.x=F, group_col="cellranger_cell")
-    plot_list[[length(plot_list)+1]] = scatterhist("nCount_ADT","percent.ribo",sobj,params, add_stats, log.scale.x=T, group_col="cellranger_cell")
-    plot_list[[length(plot_list)+1]] = scatterhist("nCount_ADT","percent.ribo",sobj,params, add_stats, log.scale.x=F, group_col="cellranger_cell")
-    plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","nCount_ADT",sobj,params, add_stats, log.scale.x=T,log.scale.y=T, group_col="cellranger_cell")
-    plot_list[[length(plot_list)+1]] = scatterhist("nCount_RNA","nCount_ADT",sobj,params, add_stats, log.scale.x=F,log.scale.y=F, group_col="cellranger_cell")
+  if (!is.null(group)){
+    plot_list[[length(plot_list)+1]] = scatterhist("percent.ribo","percent.mt",sobj,params, group_col=group, legend_only=T)
   }
   # add a legend
-  plot_list[[length(plot_list)+1]] = scatterhist("percent.ribo","percent.mt",sobj,params, group_col="cellranger_cell", legend_only=T)
   return(plot_list)
 }

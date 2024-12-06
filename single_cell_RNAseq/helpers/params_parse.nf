@@ -2,6 +2,10 @@ def get_c4_h5(library){
   return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/cellranger/raw_feature_bc_matrix.h5", checkIfExists: true)
 }
 
+def get_c4_cr_filt_bc(library){
+  return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/cellranger/filtered_feature_bc_matrix/barcodes.tsv.gz", checkIfExists: true)
+}
+
 def get_c4_bam(library){
   return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/cellranger/possorted_genome_bam.bam", checkIfExists: true)
 }
@@ -30,6 +34,15 @@ def get_c4_h5_bam(){
            }
     }
 }
+
+def get_c4_h5_bam_bc(){
+    return params.pools.collectMany {
+           pool -> pool.libraries.collect {
+               library -> [library.name, get_c4_bam(library.name), get_c4_h5(library.name), get_c4_cr_filt_bc(library.name)]
+           }
+    }
+}
+
 def get_vdj_name(library, data_type){
   return library.replace("SCG", "SC" + data_type.substring(0, 1))
 }

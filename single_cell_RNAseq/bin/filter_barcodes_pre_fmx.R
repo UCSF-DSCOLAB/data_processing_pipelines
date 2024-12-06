@@ -57,6 +57,13 @@ num_rows = ifelse(adt.present, 5, 3)
 merge = ggarrange(plotlist=plot_list, ncol=4,nrow=num_rows)
 ggsave(merge, file=sprintf("%s_diagnostic_plots_reviewed.png", LIBRARY) , width=30, height=7*num_rows, bg="white", dpi=72)
 
+if ("cellranger_cell" %in% colnames(sobj@meta.data)){
+  plot_list = suppressWarnings(make_plots(sobj, params, adt.present, group="cellranger_cell"))
+  num_rows = ifelse(adt.present, 5, 3)
+  merge = ggarrange(plotlist=plot_list, ncol=4,nrow=num_rows)
+  ggsave(merge, file=sprintf("%s_cr_diagnostic_plots_reviewed.png", LIBRARY) , width=30, height=7*num_rows, bg="white", dpi=72)
+}
+
 
 
 # Adding Seurat parameters to the misc slot of the Seurat object.

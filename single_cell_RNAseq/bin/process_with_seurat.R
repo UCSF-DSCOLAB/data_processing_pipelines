@@ -3,6 +3,7 @@ library(tidyverse)
 library(ggpubr)
 library(dsb)
 library(ggExtra)
+library(dittoSeq)
 
 args = commandArgs(trailingOnly=TRUE)
 LIBRARY = args[1]
@@ -13,6 +14,7 @@ source(sprintf("%s/bin/seurat_utils.R", BASE_DIR))
 
 QCCUTOFFS = args[5] # default QC cutoffs
 CELLR_H5_PATH=args[6] # used for processing ADT
+CR_FILT_BC=args[7] # used for plotting cellranger barcodes
 
 # Input arguments:
 # 1. LIBRARY (e.g. SICCA1-POOL-GN1-SCG1)
@@ -37,8 +39,9 @@ print_message(sprintf(
     BASE_DIR=%s
     QCCUTOFFS=%s
     CELLR_H5_PATH=%s
+    CR_FILT_BC=%s
   -----------
-  ", LIBRARY, MAIN_DATA_TYPE, SOBJ, BASE_DIR, QCCUTOFFS, CELLR_H5_PATH)
+  ", LIBRARY, MAIN_DATA_TYPE, SOBJ, BASE_DIR, QCCUTOFFS, CELLR_H5_PATH, CR_FILT_BC)
 )
 
 
@@ -123,7 +126,6 @@ if (adt.present){
 }
 
 saveRDS(sobj, file=sprintf("%s_raw.rds", LIBRARY))
-
 # Generate various diagnostic plots
 
 
@@ -131,9 +133,37 @@ saveRDS(sobj, file=sprintf("%s_raw.rds", LIBRARY))
 df = quantile_frac_table(sobj, adt.present)
 write.table(df, sprintf("%s_quantiles_pre.tsv", LIBRARY), sep="\t")
 
+print("quantiles created and saved")
 
 plot_list = suppressWarnings(make_plots(sobj, params, adt.present))
 num_rows = ifelse(adt.present, 5, 3)
 merge = ggarrange(plotlist=plot_list, ncol=4,nrow=num_rows)
 ggsave(merge, file=sprintf("%s_diagnostic_plots_default.png", LIBRARY) , width=30, height=7*num_rows, bg="white", dpi=72)
 
+
+
+cellranger_bc = read_tsv(CR_FILT_BC, col_names=F) %>% pull(X1)
+sobj@meta.data$cellranger_cell = sobj@meta.data %>% 
+    as_tibble(rownames="cell_id") %>%
+    mutate(cellranger_cell=(cell_id %in% cellranger_bc)) %>%
+    pull(cellranger_cell)
+  
+
+plot_list = suppressWarnings(make_plots(sobj, params, adt.present, group="cellranger_cell"))
+num_rows = ifelse(adt.present, 5, 3)
+merge = ggarrange(plotlist=plot_list, ncol=4,nrow=num_rows)
+ggsave(merge, file=sprintf("%s_cr_diagnostic_plots_default.png", LIBRARY) , width=30, height=7*num_rows, bg="white", dpi=72)
+
+# if doublet info present, then plot it
+if ("DROPLET.TYPE" %in% colnames(sobj@meta.data)){
+  if ("DROPLET.TYPE.FINAL" %in% colnames(sobj@meta.data)){
+    no_nas = subset(sobj, DROPLET.TYPE.FINAL %in% c("AMB", "Intra.DBL", "Inter.DBL", "SNG"))
+    plot_list = suppressWarnings(make_plots(no_nas, params, adt.present, group="DROPLET.TYPE.FINAL"))
+  } else {
+    no_nas = subset(sobj, DROPLET.TYPE %in% c("AMB", "DBL", "SNG"))
+    plot_list = suppressWarnings(make_plots(no_nas, params, adt.present, group="DROPLET.TYPE"))
+  }
+  num_rows = ifelse(adt.present, 5, 3)
+  merge = ggarrange(plotlist=plot_list, ncol=4,nrow=num_rows)
+  ggsave(sprintf("%s_doublet_plot_default.png",LIBRARY),  width=30, height=7*num_rows, bg="white", dpi=72)
+}

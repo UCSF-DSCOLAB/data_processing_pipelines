@@ -5,6 +5,7 @@ library(dsb)
 library(ggExtra)
 library(gridExtra)
 library(cowplot)
+library(dittoSeq)
 
 args = commandArgs(trailingOnly=T)
 

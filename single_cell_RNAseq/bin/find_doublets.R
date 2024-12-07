@@ -19,6 +19,9 @@ RANDOMSEED =args[7]
 BASE_DIR=args[8]
 source(sprintf("%s/bin/seurat_utils.R", BASE_DIR))
 
+options(future.globals.maxSize= (2400*1024^2))
+
+
 set.seed(RANDOMSEED)
 NPCS_DOUBLETFINDER=30
 

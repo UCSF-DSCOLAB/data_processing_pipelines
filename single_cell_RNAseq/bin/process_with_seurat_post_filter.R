@@ -4,7 +4,8 @@ library(ggpubr)
 library(dsb)
 library(ggExtra)
 library(gridExtra)
-#? TODO droplet filtering / dualscatter?
+library(cowplot)
+library(dittoSeq)
 
 args = commandArgs(trailingOnly=T)
 
@@ -50,11 +51,11 @@ adt.present = ("ADT" %in% names(sobj@assays))
 # plots with final reviewed params
 params = load_params(params_df)
 
-plot_list = make_plots(sobj, params)
-num_rows = ifelse(adt.present, 3, 2)
-pdf( sprintf("%s_diagnostic_plots_post.pdf", LIBRARY) , width=25, height=7*num_rows)
-ggarrange(plotlist=plot_list, ncol=3,nrow=num_rows)
-dev.off()
+plot_list = suppressWarnings(make_plots(sobj, params, adt.present))
+num_rows = ifelse(adt.present, 5, 3)
+merge = ggarrange(plotlist=plot_list, ncol=4,nrow=num_rows)
+ggsave(merge, file=sprintf("%s_diagnostic_plots_reviewed.png", LIBRARY) , width=30, height=7*num_rows, bg="white", dpi=72)
+
 
 # Adding Seurat parameters to the misc slot of the Seurat object.
 
@@ -65,15 +66,42 @@ print(sprintf("Before filtering there are %s cells", ncol(sobj)))
 
 
 # Filter out the low-quality cells.
+if ("DROPLET.TYPE.FINAL" %in% colnames(sobj@meta.data)){
+  no_nas = subset(sobj, DROPLET.TYPE.FINAL %in% c("AMB", "Intra.DBL", "Inter.DBL", "SNG"))
+  plot_list = suppressWarnings(make_plots(no_nas, params, adt.present, group="DROPLET.TYPE.FINAL"))
+} else {
+  no_nas = subset(sobj, DROPLET.TYPE %in% c("AMB", "DBL", "SNG"))
+  plot_list = suppressWarnings(make_plots(no_nas, params, adt.present, group="DROPLET.TYPE"))
+}
+num_rows = ifelse(adt.present, 5, 3)
+merge = ggarrange(plotlist=plot_list, ncol=4,nrow=num_rows)
+ggsave(sprintf("%s_doublet_plot_reviewed.png",LIBRARY),  width=30, height=7*num_rows, bg="white", dpi=72)
+
 sobj = filter_cells(sobj, params, adt.present)
+
 if (KEEP_FMX_SNG){
-  sobj = subset(sobj, DROPLET.TYPE=="SNG")
+  tbl = table(sobj@meta.data$DROPLET.TYPE)
+  if (!"SNG" %in% names(tbl)){
+    print("Error there are no singlets, not filtering on droplet type")
+  } else {
+    sobj = subset(sobj, DROPLET.TYPE=="SNG")
+  }
 }
 if (KEEP_ONLY_SNG){
   if ("DROPLET.TYPE.FINAL" %in% colnames(sobj@meta.data)){
-    sobj = subset(sobj, DROPLET.TYPE.FINAL=="SNG")
+    tbl = table(sobj@meta.data$DROPLET.TYPE.FINAL)
+    if (!"SNG" %in% names(tbl)){
+      print("Error there are no singlets, not filtering on droplet type")
+    } else {
+      sobj = subset(sobj, DROPLET.TYPE.FINAL=="SNG")
+    }
   } else {
-    sobj = subset(sobj, DROPLET.TYPE=="SNG")
+    tbl = table(sobj@meta.data$DROPLET.TYPE)
+    if (!"SNG" %in% names(tbl)){
+      print("Error there are no singlets, not filtering on droplet type")
+    } else {
+      sobj = subset(sobj, DROPLET.TYPE=="SNG")
+    }
   }
 }
 print(sprintf("Following filtering there are %s cells remaining", ncol(sobj)))
@@ -81,6 +109,12 @@ print(sprintf("Following filtering there are %s cells remaining", ncol(sobj)))
 
 df = quantile_frac_table(sobj, adt.present)
 write.table(df, sprintf("%s_quantiles_post.tsv", LIBRARY), sep="\t")
+
+# final plots 
+plot_list = suppressWarnings(make_plots(sobj, params, adt.present, add_stats=F))
+num_rows = ifelse(adt.present, 5, 3)
+merge = ggarrange(plotlist=plot_list, ncol=4,nrow=num_rows)
+ggsave(merge, file=sprintf("%s_diagnostic_plots_filtered.png", LIBRARY) , width=30, height=7*num_rows, bg="white", dpi=72)
 
 
 # Adding cell count to misc slot after filtering low-quality cells.
@@ -129,12 +163,19 @@ if (adt.present){
     rna.size = log10(colSums(raw$`Gene Expression`)) # -Inf from 0 ones
    )   
    md = md[md$rna.size > 0 & md$prot.size > 0, ]
-
-   background_drops = rownames(
-    md[ md$prot.size > 1.5 & 
-      md$prot.size < 3 & 
-      md$rna.size < 2.5, ]
-   ) 
+   if (!any(str_detect(rownames(params), "background"))){
+    background_drops = rownames(
+      md[ md$prot.size > 1.5 & 
+      md$rna.size < max(2.5, log10(params['nFeature_RNA.lower',]+0.1)), ]
+    )
+   } else {
+    background_drops = rownames(
+      md[ md$prot.size > log10(params['background_ADT.lower',]) & 
+        md$prot.size < log10(params['background_ADT.upper',]) &
+      md$rna.size < log10(params['background_RNA.upper',]), ]
+    )
+   }
+    
    print(sprintf("FILTER background with %s empty drops",
                   length(background_drops)))
    
@@ -146,6 +187,10 @@ if (adt.present){
      adt_norm[adt_norm < 0] = 0
    }
    sobj@assays$ADT@data = adt_norm
+
+   # additional ADT diagnostic plots
+   adt_plot(sobj)
+   ggsave(sprintf("%s_normalized_ADT_dist.png", LIBRARY), height=30, width=30)
 }
 
 sobj = sobj %>%

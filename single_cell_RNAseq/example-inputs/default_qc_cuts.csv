@@ -12,4 +12,7 @@ nFeature_ADT.upper,NA
 nCount_ADT.lower,0
 nCount_ADT.upper,5000
 ADT_isotype_ctl.upper,50
+background_ADT.lower,30
+background_ADT.upper,5000
+background_RNA.upper,300
 reviewed,FALSE

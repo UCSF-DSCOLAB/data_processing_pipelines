@@ -54,7 +54,7 @@ process CELLRANGER {
   tuple val(library), val(data_type)
   
   output:
-  tuple val(library), path("cellranger/possorted_genome_bam.bam"), path("cellranger/raw_feature_bc_matrix.h5"), emit: bam_h5
+  tuple val(library), path("cellranger/possorted_genome_bam.bam"), path("cellranger/raw_feature_bc_matrix.h5"),  path("cellranger/filtered_feature_bc_matrix/barcodes.tsv.gz"), emit: bam_h5_bc
   path("cellranger/*"), emit: cr_out_files
   path(".command.log"), emit: log
   """
@@ -196,12 +196,12 @@ process SEURAT_PRE_FMX_QC {
   containerOptions "-B ${params.settings.default_qc_cuts_dir}"
   
   input:
-  tuple val(library), val(data_type), path(raw_h5)
+  tuple val(library), val(data_type), path(raw_h5), path(cr_filt_bc)
 
   output:
   tuple val(library), path("${library}_raw.rds"), emit: qc_output
   tuple val(library), path("${library}_cutoffs.csv"), emit: cutoffs_file
-  path("${library}_diagnostic_plots_pre.pdf"), emit: diagnostic_plots
+  path("${library}*"), emit: outfiles
   path("${library}_quantiles_pre.tsv"), emit: quantiles
   path(".command.log"), emit: log
 
@@ -210,11 +210,11 @@ process SEURAT_PRE_FMX_QC {
   echo "[running SEURAT_PRE_FMX_QC]"
   echo " using container ${params.container.rsinglecell}"
   echo " Rscript ${projectDir}/bin/load_sobj.R ${raw_h5} "null" ${library} ${params.settings.minfeature} ${params.settings.mincell} ${projectDir}"
-  echo " Rscript ${projectDir}/bin/process_with_seurat.R ${library} ${data_type} ${library}_initial_raw.rds ${projectDir} ${params.settings.default_qc_cuts_dir}/${params.settings.default_qc_cuts_file} ${raw_h5}"
+  echo " Rscript ${projectDir}/bin/process_with_seurat.R ${library} ${data_type} ${library}_initial_raw.rds ${projectDir} ${params.settings.default_qc_cuts_dir}/${params.settings.default_qc_cuts_file} ${raw_h5} ${cr_filt_bc}"
   echo "-----------"
 
   Rscript ${projectDir}/bin/load_sobj.R ${raw_h5} "null" ${library} ${params.settings.minfeature} ${params.settings.mincell} ${projectDir}
-  Rscript ${projectDir}/bin/process_with_seurat.R ${library} ${data_type} ${library}_initial_raw.rds ${projectDir} ${params.settings.default_qc_cuts_dir}/${params.settings.default_qc_cuts_file} ${raw_h5}
+  Rscript ${projectDir}/bin/process_with_seurat.R ${library} ${data_type} ${library}_initial_raw.rds ${projectDir} ${params.settings.default_qc_cuts_dir}/${params.settings.default_qc_cuts_file} ${raw_h5} ${cr_filt_bc}
   
   """
 }
@@ -819,12 +819,12 @@ process SEURAT_QC {
   containerOptions "-B ${params.settings.default_qc_cuts_dir}"
 
   input:
-  tuple val(library), val(main_dt), path(doublet_finder_sobj), path(raw_h5)
+  tuple val(library), val(main_dt), path(doublet_finder_sobj), path(raw_h5), path(cr_filt_bc)
   
   output:
   tuple val(library), path("${library}_raw.rds"), emit: qc_output
   tuple val(library),path("${library}_cutoffs.csv"), emit: cutoffs_file
-  path("${library}_diagnostic_plots_pre.pdf"), emit: diagnostic_plots
+  path("${library}*"), emit: outfiles
   path("${library}_quantiles_pre.tsv"), emit: quantiles
   path(".command.log"), emit: log
 
@@ -832,10 +832,10 @@ process SEURAT_QC {
   echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
   echo "[running SEURAT_QC]"
   echo " using container ${params.container.rsinglecell}"
-  echo " Rscript ${projectDir}/bin/process_with_seurat.R ${library} ${main_dt} ${doublet_finder_sobj} ${projectDir} ${params.settings.default_qc_cuts_dir}/${params.settings.default_qc_cuts_file} ${raw_h5}"
+  echo " Rscript ${projectDir}/bin/process_with_seurat.R ${library} ${main_dt} ${doublet_finder_sobj} ${projectDir} ${params.settings.default_qc_cuts_dir}/${params.settings.default_qc_cuts_file} ${raw_h5} ${cr_filt_bc}"
   echo "-----------"
 
-  Rscript ${projectDir}/bin/process_with_seurat.R ${library} ${main_dt} ${doublet_finder_sobj} ${projectDir} ${params.settings.default_qc_cuts_dir}/${params.settings.default_qc_cuts_file} ${raw_h5}
+  Rscript ${projectDir}/bin/process_with_seurat.R ${library} ${main_dt} ${doublet_finder_sobj} ${projectDir} ${params.settings.default_qc_cuts_dir}/${params.settings.default_qc_cuts_file} ${raw_h5} ${cr_filt_bc}
   """
 }
 
@@ -863,7 +863,7 @@ process SEURAT_LOAD_POST_QC {
   container "${params.container.rsinglecell}"
 
   input:
-  tuple val(library), val(main_dt), path(doublet_finder_sobj), path(raw_h5), path(cutoffs)
+  tuple val(library), val(main_dt), path(doublet_finder_sobj), path(raw_h5), path(cr_filt_bc), path(cutoffs)
   
   output:
   tuple val(library), path("${library}_raw.rds"), emit: qc_output
@@ -871,8 +871,8 @@ process SEURAT_LOAD_POST_QC {
   path(".command.log"), emit: log
 
   """
-  echo "Rscript ${projectDir}/bin/process_with_seurat.R ${library} ${main_dt} ${doublet_finder_sobj} ${projectDir} ${params.settings.default_qc_cuts_dir}/${params.settings.default_qc_cuts_file} ${raw_h5}"
-  Rscript ${projectDir}/bin/process_with_seurat.R ${library} ${main_dt} ${doublet_finder_sobj} ${projectDir} ${params.settings.default_qc_cuts_dir}/${params.settings.default_qc_cuts_file} ${raw_h5}
+  echo "Rscript ${projectDir}/bin/process_with_seurat.R ${library} ${main_dt} ${doublet_finder_sobj} ${projectDir} ${params.settings.default_qc_cuts_dir}/${params.settings.default_qc_cuts_file} ${raw_h5} ${cr_filt_bc}"
+  Rscript ${projectDir}/bin/process_with_seurat.R ${library} ${main_dt} ${doublet_finder_sobj} ${projectDir} ${params.settings.default_qc_cuts_dir}/${params.settings.default_qc_cuts_file} ${raw_h5} ${cr_filt_bc}
   """
 }
 

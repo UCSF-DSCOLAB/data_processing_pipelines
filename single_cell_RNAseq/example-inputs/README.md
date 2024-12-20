@@ -67,3 +67,39 @@ Note that comments cannot be included in json used for a run.
   ]
 }
 ```
+### QC Cutoffs explained
+
+The QC cutoffs file is a csv containing cutoffs for a variety of values.
+The user specifies a default file for initial cutoffs. This is copied into the `cell_filter` or `automated_processing directories` 
+for each library, and then the user needs to update this based on the QC visualization, and change the "reviewed" boolean at 
+the end of this .csv to `TRUE` prior to running the next pipeline step.
+For most metrics (percent.mt, percent.ribo, nFeature_RNA, nCount_RNA, nFeature_ADT, nCount_ADT), there is a field for both
+the upper and lower bounds. An upper bound of NA indicates there is no bound.
+In addition to the standard QC parameters, we also have a few additional parameters for ADT that are used exclusively in DSB normalization:
+- `ADT_isotype_ctl.upper` refers to the maximum expression allowed for an isotype control. Cells with an isotype control above this are removed.
+Typically, this is a very small number of cells. This is used because isotype controls with extremely high expression can lead to highly negative
+expression of other ADTs following DSB normalization.
+- The `background` parameters refer to the RNA upper and ADT upper and lower bounds for the ADT background used in DSB. There is no RNA lower bound 
+for the background. The goal of the background is to select "non-cells" with sufficient ambient ADT signal, while excluding antibody aggregates. 
+It often makes sense to set this to the same value as nCount_ADT.upper, which is also used to remove aggregates. 
+
+```
+parameter,value
+percent.mt.upper,15
+percent.mt.lower,0
+percent.ribo.upper,60
+percent.ribo.lower,0
+nFeature_RNA.upper,NA # NA means no bound
+nFeature_RNA.lower,250
+nCount_RNA.upper,NA
+nCount_RNA.lower,0
+nFeature_ADT.lower,70
+nFeature_ADT.upper,NA
+nCount_ADT.lower,0
+nCount_ADT.upper,5000
+ADT_isotype_ctl.upper,50
+background_ADT.lower,30
+background_ADT.upper,5000
+background_RNA.upper,300
+reviewed,FALSE # change to TRUE after reviewing
+```

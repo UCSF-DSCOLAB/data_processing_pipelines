@@ -37,7 +37,8 @@ Note that comments cannot be included in json used for a run.
     "default_qc_cuts_file": "default_qc_cuts.csv", # default qc cuts file, see notes above about this
     "randomseed" : 21212, # random seed for reproducibility
     "remove_demux_DBL": true, # whether to remove free/demux doublets
-    "remove_all_DBL": true	# whether to remove all doublets (free/demux + doubletfinder)
+    "remove_all_DBL": true,	# whether to remove all doublets (free/demux + doubletfinder)
+    "user_inter_dbl_rate" : true # whether to use the DMX/FMX inter-individual doublet rate to estimate DBL for doublet finder, if false uses recovered number of cells
   },
   "pools" : [
     { "name" : "DM1", # name of the pool

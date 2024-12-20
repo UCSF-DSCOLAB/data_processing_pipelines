@@ -662,7 +662,9 @@ process FIND_DOUBLETS {
   publishDir( 
     path: { params.settings.demux_method.equals("demuxlet") ? 
             "${params.project_dir}/data/single_cell_GEX/processed/${library}/finding_doublets_dmx" : 
-            "${params.project_dir}/data/single_cell_GEX/processed/${library}/finding_doublets" }, 
+              params.settings.use_cellbender ? 
+              "${params.project_dir}/data/single_cell_GEX/processed/${library}/finding_doublets_cb" :
+              "${params.project_dir}/data/single_cell_GEX/processed/${library}/finding_doublets" }, 
             mode: 'copy', pattern: "${library}*"
   )
   container "${params.container.rsinglecell}" 
@@ -845,20 +847,16 @@ process SEURAT_QC {
 process SEURAT_LOAD_POST_QC {
   publishDir ("${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", 
     saveAs: { filename -> params.settings.demux_method.equals("demuxlet") ? "seurat_qc_dmx_${date}.log" : "seurat_qc_${date}.log" })
+
   publishDir( 
-    path: { params.settings.demux_method.equals("demuxlet") ? 
+    path: { params.settings.demux_method.equals("demuxlet") ?     
             "${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing_dmx" : 
-            "${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing" }, 
+              params.settings.use_cellbender ? 
+              "${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing_cb" :
+              "${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing" }, 
             mode: 'copy', pattern: "${library}*"
   )
 
-  // For testing
-  publishDir( 
-    path: { params.settings.demux_method.equals("demuxlet") ? 
-            "${workDir}/data/single_cell_GEX/processed/${library}/automated_processing_dmx" : 
-            "${workDir}/data/single_cell_GEX/processed/${library}/automated_processing" }, 
-            mode: 'copy', pattern: "${library}*"
-  )
 
   container "${params.container.rsinglecell}"
 
@@ -881,12 +879,16 @@ process SEURAT_LOAD_POST_QC {
  * Step 5b. Run Post filter
  */
 process SEURAT_POST_FILTER {
-  publishDir (
-    path: { params.settings.demux_method.equals("demuxlet") ? 
+
+  publishDir( 
+    path: { params.settings.demux_method.equals("demuxlet") ?     
             "${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing_dmx" : 
-            "${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing" },  
+              params.settings.use_cellbender ? 
+              "${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing_cb" :
+              "${params.project_dir}/data/single_cell_GEX/processed/${library}/automated_processing" }, 
             mode: 'copy', pattern: "${library}*"
   )
+
   publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", 
     saveAs: { filename -> params.settings.demux_method.equals("demuxlet") ? "post_filter_dmx_${date}.log" : "post_filter_${date}.log" }
     

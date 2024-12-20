@@ -25,7 +25,7 @@ SEURAT_POST_FILTER
 include {
 get_c4_h5; get_library_ncells; get_libraries_data_type_tuples;
 get_vdj_tuple; get_vdj_name; get_clonotypes; get_contigs; get_pre_fmx_qc_outputs;
-get_pre_fmx_cutoffs; get_cutoffs; get_sample_map; get_sample_maps; get_c4_h5s
+get_pre_fmx_cutoffs; get_cutoffs; get_sample_map; get_sample_maps; get_c4_cb_h5s
 } from  './helpers/params_parse.nf'
 
 
@@ -37,9 +37,12 @@ extractFileName
 
 workflow {
 
+    if (params.settings.use_cellbender){
+      ch_all_h5 = Channel.fromList(get_c4_cb_h5s())
+    } else {
+      ch_all_h5 = Channel.fromList(get_c4_h5s())
+    }
 
-    ch_all_h5 = Channel.fromList(get_c4_h5s())
- 
     ch_sample_map = Channel.fromList(get_sample_maps())
 
       /*

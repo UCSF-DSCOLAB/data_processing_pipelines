@@ -25,6 +25,7 @@ Note that comments cannot be included in json used for a run.
     "add_tcr" : false, # ignore this, functionality not yet implemented
     "add_bcr" : false, # ignore this, functionality not yet implemented
     "skip_cellranger": false, # whether or not to skip cellranger -- set this to true if you have already aligned the data to avoid re-running a computationally intensive step. if you set this to true, the processed cellranger output must be located in `data/single_cell_<data_type>/processed/<library>/cellranger/` for the subsequent steps to work
+    "use_cellbender" : false, # whether to use cellbender h5s for the RNA analysis, these must be run and in `data/single_cell_<data_type>/processed/<library>/cellbender/` for the subsequent steps to work. this is only an option with the `df_auto` pipeline for now!
     "merge_for_demux" : true, # whether to merge across libraries in pool prior to running free/demuxlet. this should improve the demultiplexing by providing additional data to the algorithm
     "merge_demux_dir" : "freemuxlet_data/", # where to put the merged data for free/demuxlet. these data will be unmerged and stored in the appropriate `processed/<library>` directory, but it can be helpful to keep the merged data for future re-runs
     "demux_method" : "freemuxlet", # this can be one of freemuxlet or demuxlet

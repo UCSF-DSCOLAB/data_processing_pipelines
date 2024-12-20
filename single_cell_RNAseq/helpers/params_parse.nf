@@ -2,6 +2,11 @@ def get_c4_h5(library){
   return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/cellranger/raw_feature_bc_matrix.h5", checkIfExists: true)
 }
 
+def get_c4_cb_h5(library){
+  return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/cellbender/${library}_seurat.h5", checkIfExists: true)
+}
+
+
 def get_c4_cr_filt_bc(library){
   return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/cellranger/filtered_feature_bc_matrix/barcodes.tsv.gz", checkIfExists: true)
 }
@@ -47,6 +52,15 @@ def get_c4_h5s(){
     } 
   }
 }
+
+def get_c4_cb_h5s(){
+    return params.pools.collectMany {
+           pool -> pool.libraries.collect {
+               library -> [library.name, get_c4_cb_h5(library.name)]
+    } 
+  }
+}
+
 
 def get_c4_h5_bam_bc(){
     return params.pools.collectMany {

@@ -76,7 +76,7 @@ if (adt.present){
     adt_assay = subset(adt_assay, cells=colnames(sobj))
     stopifnot(all(colnames(sobj)==colnames(adt_assay)))
     sobj[["ADT"]] = adt_assay
-    rm(ab_data, adt_assay)
+    #rm(ab_data, adt_assay)
     adt.present=TRUE
   }
 } else {

@@ -1,7 +1,7 @@
 process STAR_ALIGN {
     tag "$meta.id"
     clusterOptions = '-S /bin/bash'
-    label 'star_align'
+    label 'star_align', 'per_sample'
     memory {
         if (meta.single_end) {
           // File size in GB

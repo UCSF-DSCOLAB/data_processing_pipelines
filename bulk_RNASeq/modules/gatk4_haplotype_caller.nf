@@ -1,7 +1,7 @@
 process GATK4_HAPLOTYPECALLER {
     tag "$meta.id"
     clusterOptions = '-S /bin/bash'
-    label 'gatk4_haplotypecaller'
+    label 'gatk4_haplotypecaller', 'per_sample'
     publishDir "${params.results_directory}/snps", mode: 'copy'
     memory {
         // File size in GB

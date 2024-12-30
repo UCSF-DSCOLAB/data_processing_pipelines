@@ -2,7 +2,7 @@
 process CAT_FASTQ {
     tag "$meta.id"
     clusterOptions = '-S /bin/bash'
-    label 'cat_fastq'
+    label 'cat_fastq', 'per_sample'
 
     input:
     tuple val(meta), path(reads, stageAs: "input*/*")

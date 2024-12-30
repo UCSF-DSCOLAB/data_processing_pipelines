@@ -1,5 +1,5 @@
 process BCFTOOLS_MERGE_VCF {
-    tag "$meta.id"
+    tag "Merge VCFs"
     clusterOptions = '-S /bin/bash'
     label 'bcftools_merge_vcf'
     publishDir "${params.results_directory}/merged_results", mode: 'copy'
@@ -10,7 +10,7 @@ process BCFTOOLS_MERGE_VCF {
     }
 
     input:
-    val meta 
+    val meta
     path vcfs
     path tbis
 
@@ -22,11 +22,10 @@ process BCFTOOLS_MERGE_VCF {
 
     script:
     def args = task.ext.args ?: ''
-    def prefix = task.ext.prefix ?: "${meta.id}"
+    def prefix = task.ext.prefix ?: "${meta[0].id}"
 
     if (vcfs.toList().size() > 1) {
         """
-        # Create a comma-separated list of VCF file names
         bcftools merge \\
         --threads $task.cpus \\
         --output-type b \\
@@ -41,6 +40,4 @@ process BCFTOOLS_MERGE_VCF {
         ${vcfs.join(' ')}
         """
     }
-
-    
 }

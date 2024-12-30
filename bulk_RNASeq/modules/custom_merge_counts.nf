@@ -1,22 +1,19 @@
 process CUSTOM_MERGE_COUNTS {
-    tag "$samplesheet"
+    tag "merge_counts"
     clusterOptions = '-S /bin/bash'
     label 'custom_merge_counts'
     publishDir "${params.results_directory}/merged_results", mode: 'copy'
 
     input:
-    path counts
+    path counts_files
 
     output:
-    path 'merged_counts.tsv'       , emit: merged_counts
+    path 'merged_counts.tsv', emit: merged_counts
 
-    when:
-    task.ext.when == null || task.ext.when
-
-    script: // This script is bundled with the pipeline, in nf-core/rnavar/bin/
+    script:
     """
     merge_kallisto_counts.py \\
-        ${counts.join(',')} \\
+        ${counts_files.join(' ')} \\
         merged_counts.tsv
     """
 }

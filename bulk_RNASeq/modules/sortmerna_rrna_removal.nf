@@ -1,7 +1,7 @@
 process SORTMERNA_RIBOSOMAL_RNA_REMOVAL {
     tag "$meta.id"
     clusterOptions = '-S /bin/bash'
-    label 'sortmerna_ribosomal_rna_removal'
+    label 'sortmerna_ribosomal_rna_removal', 'per_sample'
     memory {
         if (meta.single_end) {
           // File size in GB
@@ -13,7 +13,7 @@ process SORTMERNA_RIBOSOMAL_RNA_REMOVAL {
         if (fileSize > 3) {
             fileSize = 3
         }
-        return 20.GB * (1 + (fileSize * 0.2))
+        return 15.GB * (1 + (fileSize * 0.1))
     }
 
     input:

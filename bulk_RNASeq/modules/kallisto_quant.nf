@@ -1,7 +1,7 @@
 process KALLISTO_QUANT {
     tag "$meta.id"
     clusterOptions = '-S /bin/bash'
-    label 'kallisto_quant'
+    label 'kallisto_quant', 'per_sample'
     memory {
         if (meta.single_end) {
           // File size in GB

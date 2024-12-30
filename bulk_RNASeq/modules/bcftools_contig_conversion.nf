@@ -1,7 +1,7 @@
 process BCFTOOLS_CONTIG_CONVERSION {
     tag "$meta.id"
     clusterOptions = '-S /bin/bash'
-    label 'bcftools_contig_conversion'
+    label 'bcftools_contig_conversion', 'per_sample'
     publishDir "${params.results_directory}/snps", mode: 'copy'
     memory {
         // File size in GB

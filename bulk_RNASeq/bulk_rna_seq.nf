@@ -117,7 +117,7 @@ workflow {
         )
         ch_trimmed_reads = SORTMERNA_RIBOSOMAL_RNA_REMOVAL.out.reads
         ch_sortmerna_multiqc = SORTMERNA_RIBOSOMAL_RNA_REMOVAL.out.log
-        ch_reports = ch_reports.mix(SORTMERNA_RIBOSOMAL_RNA_REMOVAL.out.log.collect{it[1]}.ifEmpty([]))
+        ch_reports = ch_reports.mix(SORTMERNA_RIBOSOMAL_RNA_REMOVAL.out.log.map{it[1]}.ifEmpty([]))
     }
     //
     // MODULE: Quantify transcriptome abundance using Kallisto
@@ -130,14 +130,21 @@ workflow {
     )
     ch_kallisto_counts = KALLISTO_QUANT.out.abundance_tsv
     ch_kallisto_multiqc = KALLISTO_QUANT.out.log
-    ch_reports = ch_reports.mix(KALLISTO_QUANT.out.log.collect{it[1]}.ifEmpty([]))
+    ch_reports = ch_reports.mix(KALLISTO_QUANT.out.log.map{it[1]}.ifEmpty([]))
     //
     // MODULE: Merge all transcriptome quantification into a single file
     //
-    counts = ch_kallisto_counts.map { tuple -> tuple[1]}.collect()
-    CUSTOM_MERGE_COUNTS (
-        counts
+    // counts = ch_kallisto_counts
+    //     .filter { it[1]?.exists() }
+    //     .map { tuple -> tuple[1] }
+
+    CUSTOM_MERGE_COUNTS(
+        ch_kallisto_counts.map { tuple -> tuple[1] }
     )
+    // counts = ch_kallisto_counts.map { tuple -> tuple[1]}.collect()
+    // CUSTOM_MERGE_COUNTS (
+    //     counts
+    // )
     //
     // SUBWORKFLOW: Align FastQ reads; sort, and index BAM files
     //
@@ -160,7 +167,7 @@ workflow {
     ch_star_flagstat = ALIGN_READS.out.flagstat
     ch_star_idxstats = ALIGN_READS.out.idxstats
     ch_star_multiqc  = ALIGN_READS.out.log_final
-    ch_reports = ch_reports.mix(ALIGN_READS.out.log_final.collect{it[1]}.ifEmpty([]))
+    ch_reports = ch_reports.mix(ALIGN_READS.out.log_final.map{it[1]}.ifEmpty([]))
     ch_star_bam_bai = ch_star_bam.join(ch_star_bai, by: [0])
     //
     // SUBWORKFLOW: Mark duplicate reads
@@ -182,8 +189,8 @@ workflow {
     ch_samtools_flagstat      = BAM_MARKDUPLICATES_PICARD.out.flagstat
     ch_samtools_idxstats      = BAM_MARKDUPLICATES_PICARD.out.idxstats
     ch_markduplicates_multiqc = BAM_MARKDUPLICATES_PICARD.out.metrics
-    ch_reports = ch_reports.mix(BAM_MARKDUPLICATES_PICARD.out.stats.collect{it[1]}.ifEmpty([]))
-    ch_reports = ch_reports.mix(BAM_MARKDUPLICATES_PICARD.out.metrics.collect{it[1]}.ifEmpty([]))
+    ch_reports = ch_reports.mix(BAM_MARKDUPLICATES_PICARD.out.stats.map{it[1]}.ifEmpty([]))
+    ch_reports = ch_reports.mix(BAM_MARKDUPLICATES_PICARD.out.metrics.map{it[1]}.ifEmpty([]))
     ch_genome_bam_bai = ch_genome_bam.join(ch_genome_bai, by: [0])
     //
     // MODULE: SplitNCigarReads and reassign mapping qualities
@@ -288,26 +295,79 @@ workflow {
     ch_vcf_index = BCFTOOLS_INDEX_VCF.out.vcf_index
     ch_vcf = ch_sorted_vcf.join(ch_vcf_index, by: [0])
     // Collect all VCFs and index files from upstream process
+    // meta = ch_vcf
+    // .map { tuple -> tuple[0]}
+    // .collect()
+    // vcfs = ch_vcf
+    // .map { tuple -> tuple[1]}
+    // .collect()
+    // tbis = ch_vcf
+    // .map { tuple -> tuple[2]}
+    // .collect()
+    // //
+    // // MODULE: Merge VCFs
+    // //
+    // BCFTOOLS_MERGE_VCF (
+    //     meta, 
+    //     vcfs, 
+    //     tbis
+    // )
+    // Collect VCFs and TBIs, filtering out any nulls or missing files
+    // Filter ch_vcf to samples with both VCF and TBI files
+    // ch_vcf_success = ch_vcf.filter { meta, vcf, tbi -> vcf && tbi }
+
+    // // Collect the VCF files into a list within a channel
+    // ch_vcf_lists = ch_vcf_success
+    //     .collect()
+    //     .map { vcf_tuples ->
+    //         def metaList = vcf_tuples.collect { it[0] }
+    //         def vcfList = vcf_tuples.collect { it[1] }
+    //         def tbiList = vcf_tuples.collect { it[2] }
+    //         return [ metaList, vcfList, tbiList ]
+    //     }
+    // Split the combined channel into three separate channels
     meta = ch_vcf
-    .map { tuple -> tuple[0]}
-    .collect()
+        .map { tuple -> tuple[0]}
+        .collect()
     vcfs = ch_vcf
-    .map { tuple -> tuple[1]}
-    .collect()
+        .map { tuple -> tuple[1]}
+        .collect()
     tbis = ch_vcf
-    .map { tuple -> tuple[2]}
-    .collect()
-    //
-    // MODULE: Merge VCFs
-    //
-    BCFTOOLS_MERGE_VCF (
+        .map { tuple -> tuple[2]}
+        .collect()
+    // Now, invoke the process outside of any closure
+    BCFTOOLS_MERGE_VCF( 
         meta, 
         vcfs, 
-        tbis
-    )
+        tbis 
+        )
+    // // Filter ch_vcf to samples with both VCF and TBI files
+    // ch_vcf_success = ch_vcf.filter { meta, vcf, tbi -> vcf && tbi }
+
+    // // Collect the VCF files into a list
+    // vcf_list = ch_vcf_success
+    //     .map { meta, vcf, tbi -> vcf }
+    //     .collect()
+
+    // // Subscribe to the vcf_list when it's ready
+    // vcf_list.subscribe { list ->
+    //     if (!list.isEmpty()) {
+    //         BCFTOOLS_MERGE_VCF(list)
+    //     } else {
+    //         println "No VCF files to merge."
+    //     }
+    // }
     //
     // MODULE: Generate QC reports using MULTIQC
     //
+    // After correcting all instances, you can now filter and use ch_reports
+    // ch_multiqc_files = ch_reports.filter { it.exists() }
+    // MULTIQC(ch_reports)
+    // multiqc_report = MULTIQC.out.report.toList()
+    // ch_multiqc_files = ch_reports
+    //     .filter { it.exists() }
+    // MULTIQC (ch_multiqc_files.collect())
+    // multiqc_report = MULTIQC.out.report.toList()
     ch_multiqc_files = Channel
                             .empty()
                             .mix(ch_reports.collect())

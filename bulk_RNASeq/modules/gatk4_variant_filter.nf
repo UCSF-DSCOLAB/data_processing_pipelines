@@ -1,6 +1,6 @@
 process GATK4_VARIANTFILTRATION {
     tag "$meta.id"
-    clusterOptions = '-S /bin/bash'
+    // clusterOptions = '-S /bin/bash'
     label 'gatk4_variantfiltration', 'per_sample'
     publishDir "${params.results_directory}/snps", mode: 'copy'
     memory {

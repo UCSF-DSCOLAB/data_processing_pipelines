@@ -1,6 +1,6 @@
 process SORTMERNA_RIBOSOMAL_RNA_REMOVAL {
     tag "$meta.id"
-    clusterOptions = '-S /bin/bash'
+    // clusterOptions = '-S /bin/bash'
     label 'sortmerna_ribosomal_rna_removal', 'per_sample'
     memory {
         if (meta.single_end) {

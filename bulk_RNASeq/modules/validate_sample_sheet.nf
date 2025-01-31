@@ -1,7 +1,7 @@
 process VALIDATE_SAMPLE_SHEET {
     tag "${samplsheet}"
     label 'validate_sample_sheet'
-    clusterOptions = "-S /bin/bash"
+    // clusterOptions = "-S /bin/bash"
     memory {
         // File size in GB
         fileSize = samplesheet.size() / (1024 * 1024 * 1024)

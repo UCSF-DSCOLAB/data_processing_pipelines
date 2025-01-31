@@ -1,6 +1,6 @@
 process CUSTOM_MERGE_COUNTS {
     tag "merge_counts"
-    clusterOptions = '-S /bin/bash'
+    // clusterOptions = '-S /bin/bash'
     label 'custom_merge_counts'
     publishDir "${params.results_directory}/merged_results", mode: 'copy'
 

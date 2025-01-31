@@ -1,6 +1,6 @@
 process UMITOOLS_PREPARE_FOR_SALMON {
     tag "$meta.id"
-    clusterOptions = '-S /bin/bash'
+    // clusterOptions = '-S /bin/bash'
     cpus 2
     memory '31 GB'    
     conda '/c4/home/alaa/miniconda3/envs/umi'

@@ -1,7 +1,7 @@
 process FASTP_TRIM_ADAPTERS {
     tag "$meta.id"
     label 'fastp_trim_adapters', 'per_sample'
-    clusterOptions = "-S /bin/bash"
+    // clusterOptions = "-S /bin/bash"
     memory {
         if (meta.single_end) {
           // File size in GB

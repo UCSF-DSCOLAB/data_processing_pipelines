@@ -1,6 +1,6 @@
 process SAMTOOLS_BAM_TO_CRAM {
     tag "$meta.id"
-    clusterOptions = '-S /bin/bash'
+    // clusterOptions = '-S /bin/bash'
     label 'samtools_bam_to_cram'
     publishDir "${params.results_directory}/star", mode: 'copy'
     memory {

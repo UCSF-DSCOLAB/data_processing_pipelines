@@ -1,7 +1,7 @@
 process MULTIQC {
     tag "MultiQC"
     publishDir "${params.results_directory}/multiqc", mode: 'copy'
-    clusterOptions = '-S /bin/bash'
+    // clusterOptions = '-S /bin/bash'
     label 'multiqc'
 
     input:

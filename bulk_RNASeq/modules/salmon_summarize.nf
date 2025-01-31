@@ -1,6 +1,6 @@
 process SALMON_SUMMARIZE_EXPERIMENT {
     tag "$tx2gene"
-    clusterOptions = '-S /bin/bash'
+    // clusterOptions = '-S /bin/bash'
     publishDir "${params.results_directory}/salmon", mode: 'copy'
 
     input:

@@ -1,6 +1,6 @@
 process BCFTOOLS_SORT_VCF {
     tag "$meta.id"
-    clusterOptions = '-S /bin/bash'
+    // clusterOptions = '-S /bin/bash'
     label 'bcftools_sort_vcf', 'per_sample'
     publishDir "${params.results_directory}/snps", mode: 'copy'
     memory {

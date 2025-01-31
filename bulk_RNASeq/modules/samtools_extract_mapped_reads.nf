@@ -1,6 +1,6 @@
 process SAMTOOLS_EXTRACT_MAPPED_READS {
     tag "$meta.id"
-    clusterOptions = '-S /bin/bash'
+    // clusterOptions = '-S /bin/bash'
     label 'samtools_extract_mapped_reads', 'per_sample'
     publishDir "${params.results_directory}/star", mode: 'copy'
     memory {

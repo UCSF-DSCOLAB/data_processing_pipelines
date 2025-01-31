@@ -1,6 +1,6 @@
 process SAMTOOLS_IDXSTATS {
     tag "$meta.id"
-    clusterOptions = '-S /bin/bash'
+    // clusterOptions = '-S /bin/bash'
     label 'samtools_idxstats', 'per_sample'
     memory {
         // File size in GB

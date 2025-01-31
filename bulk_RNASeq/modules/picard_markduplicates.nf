@@ -1,6 +1,6 @@
 process PICARD_MARKDUPLICATES {
     tag "$meta.id"
-    clusterOptions = '-S /bin/bash'
+    // clusterOptions = '-S /bin/bash'
     label 'picard_markduplicates', 'per_sample'
     memory {
         // File size in GB

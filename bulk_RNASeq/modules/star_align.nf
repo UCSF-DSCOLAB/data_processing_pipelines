@@ -10,7 +10,7 @@ process STAR_ALIGN {
           // File size in GB
           fileSize = reads[0].size() / (1024 * 1024 * 1024)
         }
-	return 20.GB * (1 + (fileSize*0.1))
+	return 25.GB * (2 + (fileSize*0.1))
     }
     publishDir "${params.results_directory}/star", mode: 'copy', pattern: "${prefix}ReadsPerGene.out.tab"
     publishDir "${params.results_directory}/star", mode: 'copy', pattern: "${prefix}Log.final.out"
@@ -41,7 +41,7 @@ process STAR_ALIGN {
         --outSAMtype BAM SortedByCoordinate \
         --quantMode TranscriptomeSAM GeneCounts \
         --outReadsUnmapped None \
-	    --outSAMunmapped Within KeepPairs \
+	      --outSAMunmapped Within KeepPairs \
         --outSAMattrRGline ID:$prefix SM:$prefix LB:library PL:illumina \
         --outFileNamePrefix $prefix 
         $args

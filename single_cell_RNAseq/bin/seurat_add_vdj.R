@@ -20,8 +20,9 @@ print_message(sprintf(
     SOBJ=%s
     DATA_TYPE=%s
     BASE_DIR=%s
+    CONTIG_PATH=%s
   -----------
-  ", LIBRARY, SOBJ, DATA_TYPE, BASE_DIR)
+  ", LIBRARY, SOBJ, DATA_TYPE, BASE_DIR, CONTIG_PATH)
 )
 
 

@@ -115,6 +115,9 @@ process CELLRANGER_VDJ {
   path(".command.log"), emit: log
   
   """
+  echo "Debug: library=${library}"
+  echo "Debug: data_type=${data_type}"
+  echo "Debug: vdj_library=${vdj_library}"
 
   echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
   echo "[running CELLRANGER_VDJ]"
@@ -134,14 +137,14 @@ process CELLRANGER_VDJ {
   
 
   echo " Using container ${params.container.cellranger}"
-  echo " cellranger vdj --id="\${vdj_library}"  \
+  echo " cellranger vdj --id="${vdj_library}"  \
     --fastqs=\${vdj_path} \
     --reference=${params.ref.vdj_ref} \
     --chain=\${chain_type} "
   echo "-----------"
 
 
-  cellranger vdj --id="\${vdj_library}"  \
+  cellranger vdj --id="${vdj_library}"  \
     --fastqs=\${vdj_path} \
     --reference=${params.ref.vdj_ref} \
     --chain=\${chain_type} \

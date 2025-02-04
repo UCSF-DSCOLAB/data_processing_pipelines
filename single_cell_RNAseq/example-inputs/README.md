@@ -16,7 +16,7 @@ This full workflow test case was created from the a dataset of 50:50 jurkat-293t
 
 ### Parameter file fields explained
 
-Below is the json for `param_2.json`, with comments added to describe what each line does.
+Below is some of the json for `param_2.json`, with comments added to describe what each line does.
 Note that comments cannot be included in json used for a run.
 
 ```
@@ -29,7 +29,6 @@ Note that comments cannot be included in json used for a run.
     "merge_demux_dir" : "freemuxlet_data/", # where to put the merged data for free/demuxlet. these data will be unmerged and stored in the appropriate `processed/<library>` directory, but it can be helpful to keep the merged data for future re-runs
     "demux_method" : "freemuxlet", # this can be one of freemuxlet or demuxlet
     "fmx_assign_to_gt": false, # whether to assign to genotypes
-    "ref_vcf_dir": "ref_dir", # directory where reference vcf is located
     "ref_vcf_type": "bulk", # can be "bulk" or "array", the source of the vcf for gtcheck
     "run_doubletfinder" : true, # whether to run doubletfinder to ID intra-individual doublets. the number of intra-individual doublets will be based on the number of inter-individual doublets identified by free/demuxlet
     "mincell" : 3, # parameter for load into seurat -- minimum number of cells required to keep a gene
@@ -38,16 +37,17 @@ Note that comments cannot be included in json used for a run.
     "default_qc_cuts_file": "default_qc_cuts.csv", # default qc cuts file, see notes above about this
     "randomseed" : 21212, # random seed for reproducibility
     "remove_demux_DBL": true, # whether to remove free/demux doublets
-    "remove_all_DBL": true	# whether to remove all doublets (free/demux + doubletfinder)
+    "remove_all_DBL": true,	# whether to remove all doublets (free/demux + doubletfinder)
+    "user_inter_dbl_rate" : true # whether to use the DMX/FMX inter-individual doublet rate to estimate DBL for doublet finder, if false uses recovered number of cells
   },
   "pools" : [
     { "name" : "DM1", # name of the pool
       "nsamples" : "2", # number of samples in the pool, needed for freemuxlet
-      "vcf": "jurkat_293t_exons_only_w_chr_hg38.vcf ", # vcf containing just the individuals in the pool, needed for demuxlet or fmx_assign_to_gt, can be left blank otherwise
+      "vcf": "/krummellab/data1/pipeline_test_data/assays/scRNA_seq/modality/gex/downsampled_jurkat_tcell/inputs/variants/jurkat_293t_exons_only_w_chr_hg38.vcf ", # vcf containing just the individuals in the pool, needed for demuxlet or fmx_assign_to_gt, can be left blank otherwise
       "libraries": [
         { "name": "TEST-POOL-DM1-SCG1",  # name of the library
           "ncells_loaded": 200, # number of cells loaded, helpful for checking counts and relative doublets
-          "data_types": ["GEX"]  # should be a list [], must contain one of GEX or CITE (cannot contain both), and then additional modalities such as TCR or BCR
+          "data_types": ["GEX"]  # must be one but not both of GEX or CITE, can also include TCR, or BCR for other data types
         },
         {"name" : "TEST-POOL-DM1-SCG2",
           "ncells_loaded": 200,
@@ -67,4 +67,40 @@ Note that comments cannot be included in json used for a run.
     }
   ]
 }
+```
+### QC Cutoffs explained
+
+The QC cutoffs file is a csv containing cutoffs for a variety of values.
+The user specifies a default file for initial cutoffs. This is copied into the `cell_filter` or `automated_processing directories` 
+for each library, and then the user needs to update this based on the QC visualization, and change the "reviewed" boolean at 
+the end of this .csv to `TRUE` prior to running the next pipeline step.
+For most metrics (percent.mt, percent.ribo, nFeature_RNA, nCount_RNA, nFeature_ADT, nCount_ADT), there is a field for both
+the upper and lower bounds. An upper bound of NA indicates there is no bound.
+In addition to the standard QC parameters, we also have a few additional parameters for ADT that are used exclusively in DSB normalization:
+- `ADT_isotype_ctl.upper` refers to the maximum expression allowed for an isotype control. Cells with an isotype control above this are removed.
+Typically, this is a very small number of cells. This is used because isotype controls with extremely high expression can lead to highly negative
+expression of other ADTs following DSB normalization.
+- The `background` parameters refer to the RNA upper and ADT upper and lower bounds for the ADT background used in DSB. There is no RNA lower bound 
+for the background. The goal of the background is to select "non-cells" with sufficient ambient ADT signal, while excluding antibody aggregates. 
+It often makes sense to set this to the same value as nCount_ADT.upper, which is also used to remove aggregates. 
+
+```
+parameter,value
+percent.mt.upper,15
+percent.mt.lower,0
+percent.ribo.upper,60
+percent.ribo.lower,0
+nFeature_RNA.upper,NA # NA means no bound
+nFeature_RNA.lower,250
+nCount_RNA.upper,NA
+nCount_RNA.lower,0
+nFeature_ADT.lower,70
+nFeature_ADT.upper,NA
+nCount_ADT.lower,0
+nCount_ADT.upper,5000
+ADT_isotype_ctl.upper,50
+background_ADT.lower,30
+background_ADT.upper,5000
+background_RNA.upper,300
+reviewed,FALSE # change to TRUE after reviewing
 ```

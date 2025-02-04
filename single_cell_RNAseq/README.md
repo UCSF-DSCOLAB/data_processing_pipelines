@@ -7,12 +7,15 @@ and active development are to be carried out in this repository.
 
 This pipeline is a nextflow implementation of the `sicca_sc-seq_pipeline` written by Kim Taylor and Ravi Patel, with the following modifications: (1) addition of a freemuxlet merge step to combine across pools and (2) addition of an option to filter based on QC pre-freemuxlet. Future efforts will make this more flexible for different inputs.
 
+For non-tissue data, Steps 1-3 are performed with `pre_qc` and step 5 is performed with `post_qc`
+
 The pipeline performs the following steps:
 1. Alignment with cellranger (optional - you can start with aligned data)
 2. Freemuxlet or Demuxlet: Deconvolute sample identities and finds interindividual doublets (unsupervised vs. supervised) 
-3. DoubletFinder: Used to identify intraindividual doublets (optional)
+3. DoubletFinder: Used to identify intraindividual doublets (optional). This is determined by the number of inter-individual doublets from freemuxlet/demuxlet.
 4. Filtering: Manually set qc filters (Note: this can be performed before step 2 with `pre_fmx_qc` and `post_fmx_qc` step path, which is recommended for tissue data with high ambient RNA. Further details below.)
 5. Seurat: Normalize and scale RNA data, perform dimensionality reduction, and generate initial clusterings and visualizations of the data. (ADT data will be DSB-normalized)
+
 
 ## How to run on the c4 cluster
 
@@ -30,8 +33,8 @@ export PATH=$PATH:"/krummellab/data1/software/nextflow/22.10.4_build_5836/"
 
 ### Before running
 First, you will need to create a config file that is adjusted for your target data.
-- See[example-inputs/param_1.json](example-inputs/param_1.json), [example-inputs/param_2.json](example-inputs/param_2.json) for an example config file for running with step as 'pre_qc', 'post_qc.
-- See [example-inputs/fmx_param_1.json](example-inputs/param_2.json) for an example config file for running with step as pre_fmx_qc', or 'post_fmx_qc'.
+For example config files, see [example-inputs/param_1.json](example-inputs/param_1.json) and [example-inputs/param_2.json](example-inputs/param_2.json). Additional documentation is provided in [example-inputs/README.md](example-inputs/README.md).
+
 
 Within these files, you will need to update certain parameters in order to specify:
 1. "project_dir" should point to the /krummellab/data1/immunox/<project_name> directory for your project. Standard DSCoLab structure for the contents of this directory are expected: Fastqs are expected to come from within 'data/<modality>/raw' folders within here, and outputs will be created within 'data/single_cell_GEX/processed/<pool_names>' here as well.
@@ -57,6 +60,8 @@ The pipeline is designed to be run in either of 2 ways, and both involve an inte
 - Path 1 is the "standard" method, run with (1) step as `pre_qc`, (2) setting of cutoffs, then (3) step as `post_qc`.
 - Path 2 allows for QC filtering to be performed before freemuxlet/demuxlet which can be useful for tissue data, and is used with: (1) step as `pre_fmx_qc`, (2) setting of cutoffs, then (3) step as `post_fmx_qc`.
 
+(Note: we have also added a `df_auto` step to run doubletfinder and automating processing only. This is designed to be run only in special circumstances where the user decides to re-run only these steps. If you have run the pre_fmx path and reviewed cutoffs, it will complete. Otherwise, it will fail at the cutoff reviewing stage and you will need to complete with `post_qc`.)
+
 ### After run cleanup
 By default, the nextflow working directory will be:
 `/c4/scratch/<user>/nextflow/<original_job_id>`
@@ -77,6 +82,7 @@ However, if the pipeline fails, the directory is left in place. Please deleted t
 5. Open the run's config file and edit the first two directiories to point to `${TOY_PROJECT_DIR}`, and `${TOY_PROJECT_DIR}/freemuxlet_data/` respectively. The third should point to the directory this repository is in, specifically the subdirectory: `${DATA_PROCESSING_PIPELINE_REPO}/single_cell_RNAseq/example-inputs/`
 6. Submit the run. Note we are using `-profile test` for these test data because they are much smaller. Be sure to remove this flag for any real run as it scales down the resources requested for each task to levels that are not viable for real data. Note that a test run will use the freecycle partition (see more on partitions in additional details).
 `sbatch run.sh example-inputs/my_toy_config.json pre_qc -profile test`
+7. Once complete, manually examine the diagnostic plots and set cutoffs. Then, run the final step: `sbatch run.sh example-inputs/my_toy_config.json post_qc -profile test`
 
 ## Additional Details
 

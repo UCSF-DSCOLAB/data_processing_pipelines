@@ -55,7 +55,7 @@ workflow  {
       ch_gex_cite_bam_h5 = Channel.empty()
 
       if (params.settings.skip_cellranger){
-            ch_gex_cite_bam_h5 =  Channel.from(get_c4_h5_bam()) // [[library, cell_ranger_bam, raw_h5]
+            ch_gex_cite_bam_h5 =  Channel.from(get_c4_h5_bam_bc()) // [[library, cell_ranger_bam, raw_h5, bc]
             
       } else {
             ch_library_info = Channel.from(get_libraries_data_type_tuples()).transpose()
@@ -69,7 +69,7 @@ workflow  {
 
             // Run cellranger for GEX and CITE data types
             CELLRANGER(ch_gzip_out.gex_cite)
-            ch_gex_cite_bam_h5 = CELLRANGER.out.bam_h5 // --> [[library, cell_ranger_bam, raw_h5]]
+            ch_gex_cite_bam_h5 = CELLRANGER.out.bam_h5_bc // --> [[library, cell_ranger_bam, raw_h5, bc]]
 
             // Run cellranger for BCR and TCR data types
             if (params.settings.add_tcr || params.settings.add_bcr ){
@@ -83,11 +83,12 @@ workflow  {
       }
 
         ch_all_h5 = ch_gex_cite_bam_h5.map { it -> [it[0], it[2]] } // [[library, raw_h5 ]]
+        ch_all_bc = ch_gex_cite_bam_h5.map { it -> [it[0], it[3]] } // [[library, bc ]]
 
         ch_main_dt = Channel.from(get_libraries_data_type_tuples()).transpose()
             .filter(it -> it[1] in ["GEX", "CITE"])
 
-        ch_prefilt_in = ch_main_dt.join(ch_all_h5, by:0) // [library, data_type, h5]
+        ch_prefilt_in = ch_main_dt.join(ch_all_h5, by:0).join(ch_all_bc, by:0) // [library, data_type, h5]
 
         SEURAT_PRE_FMX_QC(ch_prefilt_in) 
 

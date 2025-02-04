@@ -39,7 +39,7 @@ SEURAT_QC
 // Helper functions
 
 include {
-get_c4_h5; get_c4_bam; get_c4_h5_bam; get_pool_library_meta; get_libraries_data_type_tuples;
+get_c4_h5; get_c4_bam; get_c4_h5_bam_bc; get_pool_library_meta; get_libraries_data_type_tuples;
 get_pool_by_sample_count; get_library_by_sample_count; get_single_library_by_pool;
 get_multi_pool_by_library ; get_library_by_pool; get_multi_library_by_pool; get_pool_vcf ; get_library_ncells;
 get_vdj_tuple; get_vdj_name ; get_contigs
@@ -66,7 +66,7 @@ workflow {
       ch_vdj_libs = Channel.empty()
 
       if (params.settings.skip_cellranger){
-            ch_gex_cite_bam_h5 =  Channel.from(get_c4_h5_bam()) // [[library, cell_ranger_bam, raw_h5]
+            ch_gex_cite_bam_h5 =  Channel.from(get_c4_h5_bam_bc()) // [[library, cell_ranger_bam, raw_h5, bc]
 
              ch_library_bcr_tcr = Channel.from(get_libraries_data_type_tuples()).transpose().filter { it[1] in ["BCR", "TCR"] }
                 
@@ -91,7 +91,7 @@ workflow {
 
             // Run cellranger for GEX and CITE data types
             CELLRANGER(ch_gzip_out.gex_cite)
-            ch_gex_cite_bam_h5 = CELLRANGER.out.bam_h5 // --> [[library, cell_ranger_bam, raw_h5]]
+            ch_gex_cite_bam_h5 = CELLRANGER.out.bam_h5_bc // --> [[library, cell_ranger_bam, raw_h5, bc]]
 
             // Run cellranger for BCR and TCR data types
             if (params.settings.add_tcr || params.settings.add_bcr ){
@@ -113,6 +113,7 @@ workflow {
     // Extract all bam and h5 files
     ch_all_bam = ch_gex_cite_bam_h5.map { it -> [it[0], it[1]] } // [[library, cell_ranger_bam]]
     ch_all_h5 = ch_gex_cite_bam_h5.map { it -> [it[0], it[2]] } // [[library, raw_h5 ]]
+    ch_all_bc = ch_gex_cite_bam_h5.map { it -> [it[0], it[3]] } // [[library, bc ]]
 
     /*
     --------------------------------------------------------
@@ -318,7 +319,7 @@ workflow {
      --------------------------------------------------------
      */
      ch_library_info = Channel.from(get_libraries_data_type_tuples()).transpose() // -> [[library_dir, data_type]]
-     ch_seurat_input = ch_library_info.join(ch_bcr_out).join(ch_all_h5)
+     ch_seurat_input = ch_library_info.join(ch_bcr_out).join(ch_all_h5).join(ch_all_bc)
      SEURAT_QC(ch_seurat_input)
 
 }

@@ -8,7 +8,6 @@
     "demux_method" : "freemuxlet",
     "fmx_assign_to_gt": true,
     "ref_vcf_type": "bulk",
-    "ref_vcf_dir": "/krummellab/data1/pipeline_test_data/assays/scRNA_seq/modality/gex/downsampled_jurkat_tcell/inputs/variants/",
     "run_doubletfinder" : true,
     "mincell" : 3,
     "minfeature" : 100,
@@ -16,13 +15,14 @@
     "default_qc_cuts_file": "default_qc_cuts.csv",
     "randomseed" : 21212,
     "remove_demux_DBL": true,
-    "remove_all_DBL": true
+    "remove_all_DBL": true,
+    "use_inter_dbl_rate": true
   },
   "pools" : [
     {
       "name": "DM1",
       "nsamples" : "2",
-      "vcf": "jurkat_293t_exons_only_w_chr_hg38.vcf",
+      "vcf": "/krummellab/data1/pipeline_test_data/assays/scRNA_seq/modality/gex/downsampled_jurkat_tcell/inputs/variants/jurkat_293t_exons_only_w_chr_hg38.vcf",
       "libraries": [
         {
           "name": "TEST-POOL-DM1-SCG1",
@@ -38,7 +38,7 @@
     },
     {
       "nsamples": "2",
-      "vcf": "jurkat_293t_exons_only_w_chr_hg38.vcf",
+      "vcf": "/krummellab/data1/pipeline_test_data/assays/scRNA_seq/modality/gex/downsampled_jurkat_tcell/inputs/variants/jurkat_293t_exons_only_w_chr_hg38.vcf",
       "name": "DM2",
       "libraries": [
         {

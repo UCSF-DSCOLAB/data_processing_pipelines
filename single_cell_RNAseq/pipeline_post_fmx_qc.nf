@@ -36,7 +36,7 @@ SEURAT_POST_FILTER
 
 
 include {
-get_c4_h5; get_c4_bam; get_c4_h5_bam; get_pool_library_meta; get_libraries_data_type_tuples;
+get_c4_h5; get_c4_bam; get_c4_cr_filt_bc; get_c4_h5_bam; get_pool_library_meta; get_libraries_data_type_tuples;
 get_pool_by_sample_count; get_library_by_sample_count; get_single_library_by_pool;
 get_multi_pool_by_library ; get_library_by_pool; get_multi_library_by_pool; get_pool_vcf ; get_library_ncells;
 get_vdj_tuple; get_vdj_name ; get_contigs; get_pre_fmx_qc_outputs;
@@ -272,7 +272,7 @@ workflow {
      */
      ch_library_info = Channel.from(get_libraries_data_type_tuples()).transpose() // -> [[library_dir, data_type]]
      ch_seurat_input = ch_library_info.join(ch_bcr_out) // -> [library, data_type, ]
-      .map{it -> [it[0], it[1], it[2], get_c4_h5(it[0]), get_pre_fmx_cutoffs(it[0])] }
+      .map{it -> [it[0], it[1], it[2], get_c4_h5(it[0]), get_c4_cr_filt_bc(it[0]), get_pre_fmx_cutoffs(it[0])] }
      SEURAT_LOAD_POST_QC(ch_seurat_input)
 
       // use cutoffs listed prior

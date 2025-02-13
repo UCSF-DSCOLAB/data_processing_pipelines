@@ -1,9 +1,10 @@
 process RSEM_PREPAREREFERENCE {
+    label 'rsem_prepare_reference'
     publishDir "${params.reference_directory}", mode: 'copy'
     tag "$fasta"
-    cpus 32
+    // cpus 32
     memory '64 GB'
-    conda "$baseDir/envs/rsem.yml"
+    // conda "$baseDir/envs/rsem.yml"
 
     input:
     path fasta, stageAs: "rsem_index/*"

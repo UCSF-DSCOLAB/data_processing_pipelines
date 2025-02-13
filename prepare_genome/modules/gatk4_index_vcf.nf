@@ -1,8 +1,8 @@
 process GATK4_INDEX_VCF {
+    label "gatk_index_vcf"
     publishDir "${params.reference_directory}/", mode: 'copy'
-    cpus 1
     memory '256 GB'
-    conda "$baseDir/envs/gatk.yml"
+    // conda "$baseDir/envs/gatk.yml"
 
     input:
     path  vcf

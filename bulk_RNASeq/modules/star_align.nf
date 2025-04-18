@@ -43,7 +43,12 @@ process STAR_ALIGN {
         --outReadsUnmapped None \
 	      --outSAMunmapped Within KeepPairs \
         --outSAMattrRGline ID:$prefix SM:$prefix LB:library PL:illumina \
-        --outFileNamePrefix $prefix 
+        --outFileNamePrefix $prefix \\
+        --outFilterMismatchNoverLmax ${params.star_outfilter_mismatch_n_over_lmax} \\
+        --alignSJoverhangMin ${params.star_align_sjoverhang_min} \\
+        --outFilterMultimapNmax ${params.star_outfilter_multimap_nmax} \\
+        --seedSearchStartLmax ${params.star_seed_search_start_lmax} \\
+        ${params.star_additional ?: ''} \\
         $args
     """
 }

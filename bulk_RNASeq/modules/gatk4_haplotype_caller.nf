@@ -19,6 +19,8 @@ process GATK4_HAPLOTYPECALLER {
     output:
     tuple val(meta), path("*.vcf.gz"), emit: vcf
     tuple val(meta), path("*.tbi")   , optional:true, emit: tbi
+    tuple val(meta), path("*.variant_calling_detail_metrics"), emit: detail_metrics
+    tuple val(meta), path("*.variant_calling_summary_metrics"), emit: summary_metrics
 
     when:
     task.ext.when == null || task.ext.when
@@ -36,5 +38,11 @@ process GATK4_HAPLOTYPECALLER {
         $dbsnp_command \\
         --tmp-dir \$PWD \\
         $args
+
+    gatk --java-options "-Xmx${task.memory.toGiga()}G" \\
+        CollectVariantCallingMetrics \\
+        --DBSNP $known_sites \\
+        --INPUT ${prefix}.vcf.gz \\
+        --OUTPUT ${prefix}
     """
 }

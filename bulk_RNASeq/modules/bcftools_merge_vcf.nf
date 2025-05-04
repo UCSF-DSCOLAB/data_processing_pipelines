@@ -39,7 +39,5 @@ process BCFTOOLS_MERGE_VCF {
         --output merged_snps.bcf \\
         ${vcfs.join(' ')}
         """
-    }
-
-    
+    }    
 }

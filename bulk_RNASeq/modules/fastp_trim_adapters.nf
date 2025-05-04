@@ -20,7 +20,7 @@ process FASTP_TRIM_ADAPTERS {
 
     output:
     tuple val(meta), path("*.fastp.fastq.gz") , emit: trimmed_reads
-    path("*.fastp.json")                      , emit: json_report
+    tuple val(meta), path("*.fastp.json")     , emit: json_report
     path("*.fastp.html")                      , emit: html_report
 
     when:

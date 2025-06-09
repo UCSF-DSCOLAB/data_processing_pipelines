@@ -1,6 +1,7 @@
 process STAR_ALIGN {
     tag "$meta.id"
-    label 'star_align'
+    // clusterOptions = '-S /bin/bash'
+    label 'star_align', 'per_sample'
     memory {
         if (meta.single_end) {
           // File size in GB
@@ -9,7 +10,7 @@ process STAR_ALIGN {
           // File size in GB
           fileSize = reads[0].size() / (1024 * 1024 * 1024)
         }
-	return 37.GB * (1 + (fileSize * 4 / 37))
+	return 25.GB * (2 + (fileSize*0.1))
     }
     publishDir "${params.results_directory}/star", mode: 'copy', pattern: "${prefix}ReadsPerGene.out.tab"
     publishDir "${params.results_directory}/star", mode: 'copy', pattern: "${prefix}Log.final.out"
@@ -40,9 +41,14 @@ process STAR_ALIGN {
         --outSAMtype BAM SortedByCoordinate \
         --quantMode TranscriptomeSAM GeneCounts \
         --outReadsUnmapped None \
-	    --outSAMunmapped Within KeepPairs \
+	      --outSAMunmapped Within KeepPairs \
         --outSAMattrRGline ID:$prefix SM:$prefix LB:library PL:illumina \
-        --outFileNamePrefix $prefix 
+        --outFileNamePrefix $prefix \\
+        --outFilterMismatchNoverLmax ${params.star_outfilter_mismatch_n_over_lmax} \\
+        --alignSJoverhangMin ${params.star_align_sjoverhang_min} \\
+        --outFilterMultimapNmax ${params.star_outfilter_multimap_nmax} \\
+        --seedSearchStartLmax ${params.star_seed_search_start_lmax} \\
+        ${params.star_additional ?: ''} \\
         $args
     """
 }

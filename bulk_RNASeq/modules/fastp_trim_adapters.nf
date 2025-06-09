@@ -1,6 +1,7 @@
 process FASTP_TRIM_ADAPTERS {
     tag "$meta.id"
-    label 'fastp_trim_adapters'
+    label 'fastp_trim_adapters', 'per_sample'
+    // clusterOptions = "-S /bin/bash"
     memory {
         if (meta.single_end) {
           // File size in GB
@@ -12,7 +13,7 @@ process FASTP_TRIM_ADAPTERS {
 	if (fileSize > 5){
 	   fileSize = 5
 	}
-        return 32.GB * (1 + (fileSize * 4))
+        return 10.GB * (1 + (fileSize * 2))
     }
 
     input:

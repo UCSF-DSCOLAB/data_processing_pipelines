@@ -1,6 +1,7 @@
 process SAMTOOLS_STATS {
     tag "$meta.id"
-    label 'samtools_stats'
+    // clusterOptions = '-S /bin/bash'
+    label 'samtools_stats', 'per_sample'
     memory {
         // File size in GB
         fileSize = input.size() / (1024 * 1024 * 1024)

@@ -1,6 +1,7 @@
 process GATK4_BASE_RECALIBRATOR {
     tag "$meta.id"
-    label 'gatk4_recalibrator'
+    // clusterOptions = '-S /bin/bash'
+    label 'gatk4_recalibrator', 'per_sample'
     memory {
         // File size in GB
         fileSize = input.size() / (1024 * 1024 * 1024)

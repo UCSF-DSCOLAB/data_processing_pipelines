@@ -1,6 +1,7 @@
 process BCFTOOLS_INDEX_VCF {
     tag "$meta.id"
-    label 'bcftools_index_vcf'
+    // clusterOptions = '-S /bin/bash'
+    label 'bcftools_index_vcf', 'per_sample'
     publishDir "${params.results_directory}/snps", mode: 'copy'
     memory {
         // File size in GB

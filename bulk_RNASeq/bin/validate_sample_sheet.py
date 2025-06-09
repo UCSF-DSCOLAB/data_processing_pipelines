@@ -24,7 +24,6 @@ class RowChecker:
     Attributes:
         modified (list): A list of dicts, where each dict corresponds to a previously
             validated and transformed row. The order of rows is maintained.
-
     """
 
     VALID_FORMATS = (

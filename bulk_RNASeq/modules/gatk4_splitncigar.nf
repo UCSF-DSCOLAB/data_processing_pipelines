@@ -1,6 +1,7 @@
 process GATK4_SPLITNCIGARREADS {
     tag "$meta.id"
-    label 'gatk4_splitncigarreads'
+    // clusterOptions = '-S /bin/bash'
+    label 'gatk4_splitncigarreads', 'per_sample'
     memory {
         // File size in GB
         fileSize = bam.size() / (1024 * 1024 * 1024)

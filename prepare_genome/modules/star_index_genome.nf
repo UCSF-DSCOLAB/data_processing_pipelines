@@ -1,8 +1,8 @@
 process STAR_INDEX_GENOME {
+    label 'star_index_genome'
     publishDir "${params.reference_directory}", mode: 'copy'
-    cpus 64
     memory '256 GB'
-    conda "$baseDir/envs/star.yml"
+    // conda "$baseDir/envs/star.yml"
 
     input:
     path  genome
@@ -18,6 +18,9 @@ process STAR_INDEX_GENOME {
     def memory   = task.memory ? "--limitGenomeGenerateRAM ${task.memory.toBytes() - 100000000}" : ''
     def args = task.ext.args ?: ''
     """
+    rm -rf "${params.tmp_dir}/star_index"
+    mkdir "${params.tmp_dir}"
+
     STAR --runMode genomeGenerate \
          --genomeDir star_index \
          --genomeFastaFiles $genome \\

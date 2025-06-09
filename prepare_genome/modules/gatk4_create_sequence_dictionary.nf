@@ -1,8 +1,8 @@
 process GATK4_GENERATE_SEQUENCE_DICTIONARY {
+    label 'gatk_generate_sequence_dictionary'
     publishDir "${params.reference_directory}/", mode: 'copy'
-    cpus 1
     memory '256 GB'
-    conda "$baseDir/envs/gatk.yml"
+    // conda "$baseDir/envs/gatk.yml"
 
     input:
     path  genome

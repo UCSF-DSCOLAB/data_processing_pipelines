@@ -1,6 +1,7 @@
 process KALLISTO_QUANT {
     tag "$meta.id"
-    label 'kallisto_quant'
+    // clusterOptions = '-S /bin/bash'
+    label 'kallisto_quant', 'per_sample'
     memory {
         if (meta.single_end) {
           // File size in GB
@@ -9,7 +10,7 @@ process KALLISTO_QUANT {
           // File size in GB
           fileSize = reads[0].size() / (1024 * 1024 * 1024)
         }
-	return 7.GB * (1 + (fileSize * 4))
+	return 7.GB * (1 + (fileSize*0.25))
     }
     publishDir "${params.results_directory}/kallisto", mode: 'copy'
 

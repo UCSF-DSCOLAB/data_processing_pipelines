@@ -1,7 +1,8 @@
 // Merge fastq files, if needed
 process CAT_FASTQ {
     tag "$meta.id"
-    label 'cat_fastq'
+    // clusterOptions = '-S /bin/bash'
+    label 'cat_fastq', 'per_sample'
 
     input:
     tuple val(meta), path(reads, stageAs: "input*/*")

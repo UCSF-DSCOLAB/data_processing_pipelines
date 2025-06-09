@@ -1,6 +1,7 @@
 process GATK4_APPLY_BQSR {
     tag "$meta.id"
-    label 'gatk4_apply_bqsr'
+    // clusterOptions = '-S /bin/bash'
+    label 'gatk4_apply_bqsr', 'per_sample'
     memory {
         // File size in GB
         fileSize = input.size() / (1024 * 1024 * 1024)

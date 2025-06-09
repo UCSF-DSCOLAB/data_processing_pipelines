@@ -1,6 +1,7 @@
 process SAMTOOLS_INDEX {
     tag "$meta.id"
-    label 'samtools_index'
+    // clusterOptions = '-S /bin/bash'
+    label 'samtools_index', 'per_sample'
     memory {
         // File size in GB
         fileSize = input.size() / (1024 * 1024 * 1024)

@@ -1,9 +1,9 @@
 process KALLISTO_INDEX {
     publishDir "${params.reference_directory}", mode: 'copy'
     tag "$fasta"
-    cpus 2
+    label 'kallisto_index'
     memory '64 GB'
-    conda "$baseDir/envs/kallisto.yml"
+    // conda "$baseDir/envs/kallisto.yml"
 
     input:
     path transcriptome

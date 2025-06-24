@@ -3,25 +3,38 @@ def date = new Date().format("yyyy-MM-dd")
 
 
 process TEST_GZIP_INTEGRITY {
-    publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log",
-       saveAs: { filename -> "gzip_test_${date}.log" }
+
+  publishDir(
+    path: { "${data_type}" == "ATAC" ? 
+            "${params.project_dir}/data/single_nuclear_ATAC/logs/${library}/" : 
+            "${params.project_dir}/data/single_cell_GEX/logs/${library}/" }, 
+            mode: 'copy', pattern: ".command.log",
+       saveAs: { filename -> "gzip_test_${date}.log" })
 
     input:
     tuple val(library), val(data_type)
 
     output:
-    tuple val(library), val(data_type) 
+    tuple val(library), val(data_type)
 
     """
     echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
     echo "[running TEST_GZIP_INTEGRITY]"
 
-    gex_library=${library}
-    dt=${data_type}
-    lib_to_use=\${gex_library/"SCG"/"SC\${dt:0:1}"}
+    if [[ "${data_type}"  == "ATAC" ]];
+    then
+      lib_to_use=${library}
+      dir_use=single_nuclear_${data_type}
+    else
+      library_str=${library}
+      dt=${data_type}
+      lib_to_use=\${library_str}/"SCG"/"SC\${dt:0:1}"}
+      dir_use=single_cell_${data_type}
+    fi 
 
-    echo " gzip --test ${params.project_dir}/data/single_cell_${data_type}/raw/\${lib_to_use}/\${lib_to_use}*.fastq.gz"
-    gzip --test ${params.project_dir}/data/single_cell_${data_type}/raw/\${lib_to_use}/\${lib_to_use}*.fastq.gz
+
+    echo " gzip --test ${params.project_dir}/data/${dir_use}/raw/\${lib_to_use}/\${lib_to_use}*.fastq.gz"
+    gzip --test ${params.project_dir}/data/${dir_use}/raw/\${lib_to_use}/\${lib_to_use}*.fastq.gz
     
     if [[ "${data_type}" == "CITE" ]]
     then
@@ -54,7 +67,7 @@ process CELLRANGER {
   tuple val(library), val(data_type)
   
   output:
-  tuple val(library), path("cellranger/possorted_genome_bam.bam"), path("cellranger/raw_feature_bc_matrix.h5"),  path("cellranger/filtered_feature_bc_matrix/barcodes.tsv.gz"), emit: bam_h5_bc
+  tuple val(library), val(data_type), path("cellranger/possorted_genome_bam.bam"), path("cellranger/raw_feature_bc_matrix.h5"),  path("cellranger/filtered_feature_bc_matrix/barcodes.tsv.gz"), emit: bam_h5_bc
   path("cellranger/*"), emit: cr_out_files
   path(".command.log"), emit: log
   """
@@ -153,6 +166,89 @@ process CELLRANGER_VDJ {
   """
 }
 
+process CELLRANGER_ATAC{
+  publishDir "${params.project_dir}/10X_library_csvs/", mode: 'copy', pattern: "${library}_libraries.csv"
+  publishDir "${params.project_dir}/data/single_nuclear_ATAC/processed/${library}/", pattern: "cellranger/*", mode: 'copy'
+  publishDir "${params.project_dir}/data/single_nuclear_ATAC/logs/${library}/", mode: 'copy', pattern: ".command.log",
+   saveAs: { filename -> "cellranger_${date}.log" }
+
+
+  container "${params.container.cellranger_atac}"
+  containerOptions "-B ${params.ref.dir} -B ${params.project_dir} -B /scratch/"
+  
+  input:
+  tuple val(library), val(data_type)
+  
+  output:
+  tuple val(library), val(data_type), path("cellranger/possorted_bam.bam"), path("cellranger/fragments.tsv.gz"),  path("cellranger/singlecell.csv"), emit: bam_frag_bc
+  tuple val(library), path("cellranger/peaks.bed"), emit: peaks
+  path("cellranger/*"), emit: cr_out_files
+  path(".command.log"), emit: log
+  """
+
+  echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
+  echo "[running CELLRANGER]"
+
+  fastq_dir=${params.project_dir}/data/single_nuclear_ATAC/raw/${library}
+  # create the config
+  echo "fastqs,sample,library_type
+    \${fastq_dir},${library},ATAC Seq" > ${library}_libraries.csv
+  
+  echo " Using container ${params.container.cellranger_atac}"
+  echo "  cellranger-atac-${params.ref.cr_atac_version} count \
+      --id=${library} \
+      --fastqs=\${fastq_dir} \
+      --sample=${library} \
+      --reference=${params.ref.atac_ref} \
+      --localcores=${task.cpus - 1} \
+      --localmem=${task.memory.toGiga() - 2} "
+  echo "-----------"
+
+  cellranger-atac-${params.ref.cr_atac_version} count \
+      --id=${library} \
+      --fastqs=\${fastq_dir} \
+      --sample=${library} \
+      --reference=${params.ref.atac_ref} \
+      --localcores=${task.cpus - 1} \
+      --localmem=${task.memory.toGiga() - 2}
+
+  mv ${library}/outs cellranger
+  """
+}
+
+
+process FILTER_REF_VCF_ATAC{
+  publishDir "${params.settings.merge_demux_dir}/${pool}", mode: 'copy', pattern: "peaks*"
+  publishDir "${params.project_dir}/data/single_nuclear_ATAC/logs/${pool}/", mode: 'copy', pattern: ".command.log",
+   saveAs: { filename -> "filter_atac_vcf_${date}.log" }
+
+  container "${params.container.bed_bcftools}"
+  containerOptions "-B ${params.ref.dir}" 
+
+  input:
+    tuple val(pool), val(peak_files)
+  output:
+    tuple val(pool), path("peaks.vcf.gz"), emit: filt_vcf
+    tuple val(pool), path("peaks.all.bed"), emit: merged_peaks
+    path(".command.log"), emit: log
+
+  """
+  echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
+  echo "[running FILTER_REF_VCF_ATAC]"
+  echo " using container ${params.container.bed_bcftools}"
+
+  touch peaks.all.bed
+
+  for f in "${peak_files[@]}"; do
+      bedtools sort -i ${f} | \
+      bedtools merge -i - | cut -f 1,2,3 >> peaks.all.bed
+  done
+
+  bcftools view -R peaks.all.bed -O z -o peaks.vcf.gz ${params.ref.snp_ref}
+
+  """
+}
+
 
 /*
  * Step 2a. Create barcode list
@@ -162,10 +258,23 @@ process FILTER_BARCODES{
   publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', 
     pattern: ".command.log", saveAs: { filename -> "filter_bc_${date}.log" }
   
+  publishDir(
+    path: { "${data_type}" == "ATAC" ? 
+            "${params.project_dir}/data/single_nuclear_ATAC/logs/${library}/" : 
+            "${params.project_dir}/data/single_cell_GEX/logs/${library}/" }, 
+            mode: 'copy', pattern: "barcodes_of_interest.filt.list" )
+
+  publishDir(
+    path: { "${data_type}" == "ATAC" ? 
+            "${params.project_dir}/data/single_nuclear_ATAC/logs/${library}/" : 
+            "${params.project_dir}/data/single_cell_GEX/logs/${library}/" }, 
+            mode: 'copy', pattern: ".command.log",
+       saveAs: { filename -> "filter_bc_${date}.log" })
+
   container "${params.container.rsinglecell}"
   
   input:
-  tuple val(library), path(raw_h5) 
+  tuple val(library), val(data_type), path(raw_h5), path(bc) 
   
   output:
   tuple val(library), path("barcodes_of_interest.filt.list"), emit: bc_list
@@ -174,13 +283,47 @@ process FILTER_BARCODES{
   echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
   echo "[running FILTER_BARCODES]"
   echo " using container ${params.container.rsinglecell}"
-  echo " Rscript ${projectDir}/bin/make_valid_barcodelist.R ${raw_h5} ${params.settings.minfeature} ${params.settings.mincell}"  
-  echo "-----------"
 
-  Rscript ${projectDir}/bin/make_valid_barcodelist.R ${raw_h5} ${params.settings.minfeature} ${params.settings.mincell}
+  if [ "${data_type}"== "ATAC" ];
+  then
+    echo " Rscript ${projectDir}/bin/make_valid_barcodelist_atac.R ${bc} ${params.settings.minfeature}"  
+    echo "-----------"
+    Rscript ${projectDir}/bin/make_valid_barcodelist_atac.R ${bc} ${params.settings.minfeature}
+  else
+    echo " Rscript ${projectDir}/bin/make_valid_barcodelist.R ${raw_h5} ${params.settings.minfeature} ${params.settings.mincell}"  
+    echo "-----------"
+    Rscript ${projectDir}/bin/make_valid_barcodelist.R ${raw_h5} ${params.settings.minfeature} ${params.settings.mincell}
+  fi
+
   
   """
 }
+
+process AMULET_ATAC {
+  publishDir "${params.project_dir}/data/single_nuclear_ATAC/logs/${library}/", mode: 'copy', pattern: ".command.log",
+   saveAs: { filename -> "amulet_${date}.log" }
+  publishDir "${params.project_dir}/data/single_nuclear_ATAC/processed/${library}/", mode: 'copy', pattern: "amulet/*"
+ 
+  container "${params.container.amulet}"
+  containerOptions "-B ${params.ref.dir}" 
+
+  input:
+  tuple val(library), path(bc), path(bam)
+
+  output:
+  tuple val(library), path("post_amulet_barcodes_of_interest.filt.list"), emit: filt_bc
+  path(".command.log"), emit: log
+
+  """
+
+  ${SOFTWARE_DIR}/AMULET/AMULET.sh --forcesorted --bcidx 0 --cellidx 0 --iscellidx 9 ${bam} ${bc} ${params.ref.chr_list} \
+    ${params.ref.atac_blacklist} amulet ${SOFTWARE_DIR}/AMULET/
+
+  Rscript filter_barcodes_amulet.R ${bc} 
+
+  """
+}
+
 
 
 
@@ -266,14 +409,18 @@ process FILTER_BAM {
   container "${params.container.popscle}"
   containerOptions "-B ${params.ref.fmx_dir}"
 
-  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', 
-    pattern: ".command.log", saveAs: { filename -> "filter_bam_${date}.log" }
+  publishDir(
+    path: { "${data_type}" == "ATAC" ? 
+            "${params.project_dir}/data/single_nuclear_ATAC/logs/${library}/" : 
+            "${params.project_dir}/data/single_cell_GEX/logs/${library}/" }, 
+            mode: 'copy', pattern: ".command.log",
+       saveAs: { filename -> "filter_bam_${date}.log" })
 
   input:
-  tuple val(library), path(cr_bam), path(barcodes) 
+  tuple val(library), val(data_type), path(cr_bam), path(barcodes), path(ref_vcf) 
 
   output:
-  tuple val(library), path("${library}_filtered.bam"), emit: bam_file
+  tuple val(library), val(data_type), path("${library}_filtered.bam"), emit: bam_file
   path(".command.log"), emit: log
   
   """
@@ -283,14 +430,14 @@ process FILTER_BAM {
   echo " bash filter_bam_for_dsc_pileup.sh \
     ${cr_bam} \
     ${barcodes} \
-    ${params.ref.one_k_genome_vcf} \
+    ${ref_vcf} \
     ${library}_filtered.bam"
   echo "-----------"
 
   bash filter_bam_for_dsc_pileup.sh \
     ${cr_bam} \
     ${barcodes} \
-    ${params.ref.one_k_genome_vcf} \
+    ${ref_vcf} \
     ${library}_filtered.bam
   
   """
@@ -302,15 +449,24 @@ process FILTER_BAM {
 process DSC_PILEUP{
   container "${params.container.popscle}"
   containerOptions "-B ${params.ref.fmx_dir}"
-  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", 
-    saveAs: { filename -> "dsc_pileup_${date}.log" }
-  publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/freemuxlet/", mode: 'copy', pattern: "${library}*.gz"
+
+  publishDir(
+    path: { "${data_type}" == "ATAC" ? 
+            "${params.project_dir}/data/single_nuclear_ATAC/logs/${library}/" : 
+            "${params.project_dir}/data/single_cell_GEX/logs/${library}/" }, 
+            mode: 'copy', pattern: ".command.log",
+       saveAs: { filename -> "dsc_pileup_${date}.log" })
+  publishDir(
+    path: { "${data_type}" == "ATAC" ? 
+            "${params.project_dir}/data/single_nuclear_ATAC/processed/${library}/freemuxlet" : 
+            "${params.project_dir}/data/single_cell_GEX/processed/${library}/freemuxlet" }, 
+            mode: 'copy', pattern: "${library}*.gz")
 
   input:
-  tuple val(library), path(barcodes), path(filtered_bam)
+  tuple val(library), val(data_type), path(filtered_bam), path(barcodes), path(snp_ref)
 
   output:
-  tuple val(library), path("${library}*.gz"), emit: plp_files
+  tuple val(library), val(data_type), path("${library}*.gz"), emit: plp_files
   path(".command.log"), emit: log
 
   """
@@ -320,7 +476,7 @@ process DSC_PILEUP{
   echo " popscle dsc-pileup --sam ${filtered_bam} \
                    --tag-group CB \
                    --tag-UMI UB \
-                   --vcf ${params.ref.one_k_genome_vcf} \
+                   --vcf ${snp_ref} \
                    --group-list ${barcodes} \
                    --out ${library}"
   echo "-----------"
@@ -329,7 +485,7 @@ process DSC_PILEUP{
   popscle dsc-pileup --sam ${filtered_bam} \
                    --tag-group CB \
                    --tag-UMI UB \
-                   --vcf ${params.ref.one_k_genome_vcf} \
+                   --vcf ${snp_ref} \
                    --group-list ${barcodes} \
                    --out ${library}
   """
@@ -342,17 +498,22 @@ process DSC_PILEUP{
 process MERGE_DSC { 
   publishDir "${params.settings.merge_demux_dir}/${pool}/", mode: 'copy', pattern: "${pool}.tsv"
   publishDir "${params.settings.merge_demux_dir}/${pool}", mode: 'copy', pattern: "${pool}*.gz"
-  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${pool}/", mode: 'copy', 
-    pattern: ".command.log", saveAs: { filename -> "merge_fmx_${date}.log" }
+
+  publishDir(
+    path: { "${data_type}" == "ATAC" ? 
+            "${params.project_dir}/data/single_nuclear_ATAC/logs/${pool}/" : 
+            "${params.project_dir}/data/single_cell_GEX/logs/${pool}/" }, 
+            mode: 'copy', pattern: ".command.log",
+       saveAs: { filename -> "merged_fmx_${date}.log" })
 
   container "${params.container.python}"
 
   input:
   // TODO: expand out what these path files are...
-  tuple val(pool), path(pool_files)
+  tuple val(pool), val(data_type), path(pool_files)
   
   output:
-  tuple val(pool), path("${pool}.tsv"), path("merged.plp.gz"), path("merged.var.gz"), path("merged.cel.gz"), path("${pool}.barcodes.gz"), emit: merged_files
+  tuple val(pool), val(data_type), path("${pool}.tsv"), path("merged.plp.gz"), path("merged.var.gz"), path("merged.cel.gz"), path("${pool}.barcodes.gz"), emit: merged_files
   path(".command.log"), emit: log
 
   """
@@ -388,18 +549,21 @@ process FREEMUXLET_POOL {
     pattern: "merged*", 
     saveAs : { filename -> "${pool}_${filename}" }
 
-  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${pool}/", mode: 'copy', 
-    pattern: ".command.log", 
-    saveAs: { filename -> "freemuxlet_${date}.log" }
+  publishDir(
+    path: { "${data_type}" == "ATAC" ? 
+            "${params.project_dir}/data/single_nuclear_ATAC/logs/${pool}/" : 
+            "${params.project_dir}/data/single_cell_GEX/logs/${pool}/" }, 
+            mode: 'copy', pattern: ".command.log",
+       saveAs: { filename -> "freemuxlet_${date}.log" })
 
   container "${params.container.popscle}"
 
   input:
-  tuple val(pool), val(nsamples), path(merged_plp), path(merged_var), path(merged_cel), path(merged_barcodes)
+  tuple val(pool), val(data_type), val(nsamples), path(merged_plp), path(merged_var), path(merged_cel), path(merged_barcodes)
   
   output:
-  tuple val(pool), path("merged.clust1.samples.gz"), path("merged.lmix"), path('merged.clust1.vcf.gz'), emit: merged_files
-  tuple val(pool), path("merged.clust1.vcf.gz"), emit: vcf
+  tuple val(pool), val(data_type), path("merged.clust1.samples.gz"), path("merged.lmix"), path('merged.clust1.vcf.gz'), emit: merged_files
+  tuple val(pool), val(data_type), path("merged.clust1.vcf.gz"), emit: vcf
   path(".command.log"), emit: log
 
   """
@@ -428,20 +592,29 @@ process FREEMUXLET_POOL {
 /*
  * Step 2e. Run Freemuxlet for a library
  */ 
-process FREEMUXLET_LIBRARY {
-  publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/freemuxlet", mode: 'copy', pattern: "${library}*"
-  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', 
-    pattern: ".command.log", saveAs: { filename -> "freemuxlet_${date}.log" }
+process FREEMUXLET_LIBRARY {  
+  publishDir(
+    path: { "${data_type}" == "ATAC" ? 
+            "${params.project_dir}/data/single_nuclear_ATAC/logs/${library}/" : 
+            "${params.project_dir}/data/single_cell_GEX/logs/${library}/" }, 
+            mode: 'copy', pattern: ".command.log",
+       saveAs: { filename -> "freemuxlet_${date}.log" })
+
+  publishDir(
+    path: { "${data_type}" == "ATAC" ? 
+            "${params.project_dir}/data/single_nuclear_ATAC/processed/${library}/" : 
+            "${params.project_dir}/data/single_cell_GEX/processed/${library}/" }, 
+            mode: 'copy', pattern: "${library}*")
 
   container "${params.container.popscle}"
 
   input:
-  tuple val(library), val(nsamples), path(plp_files)
+  tuple val(library), val(data_type), val(nsamples), path(plp_files)
   
   output:
-  tuple val(library), path("${library}*"), emit: fmx_files
-  tuple val(library), path("${library}.clust1.samples.reduced.tsv"), emit: sample_map
-  tuple val(library), path("${library}.clust1.vcf.gz"), emit: vcf
+  tuple val(library), val(data_type), path("${library}*"), emit: fmx_files
+  tuple val(library), val(data_type), path("${library}.clust1.samples.reduced.tsv"), emit: sample_map
+  tuple val(library), val(data_type), path("${library}.clust1.vcf.gz"), emit: vcf
   path(".command.log"), emit: log
 
   """
@@ -474,16 +647,20 @@ process FREEMUXLET_LIBRARY {
  */
 process FMX_ASSIGN_TO_GT {
   publishDir "${params.project_dir}/fmx_assign_to_gt/${pool}/", mode: 'copy', pattern: "${pool}_gtcheck*"
-  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${pool}/", mode: 'copy', pattern: ".command.log", saveAs: { filename -> "fmx_assign_to_gt.log" }
+  publishDir ( path: { "${data_type}" == "ATAC" ? 
+            "${params.project_dir}/data/single_nuclear_ATAC/logs/${library}/" : 
+            "${params.project_dir}/data/single_cell_GEX/logs/${library}/" }, 
+            mode: 'copy', pattern: ".command.log",
+       saveAs: { filename -> "fmx_assign_to_gt_${date}.log" })
 
   container "${params.container.rplus_bcftools}"
   containerOptions "-B ${params.project_dir} -B ${params.settings.ref_vcf_dir}"
 
   input:
-  tuple val(pool), val(ref_vcf), path(fmx_vcf) 
+  tuple val(pool), val(data_type), val(ref_vcf), path(fmx_vcf) 
 
   output:
-  tuple val(pool), path("${pool}*"), emit: outfiles
+  tuple val(pool), val(data_type), path("${pool}*"), emit: outfiles
   path(".command.log"), emit: log
 
 
@@ -499,16 +676,23 @@ process FMX_ASSIGN_TO_GT {
  * Run demuxlet for a library
  */
 process DEMUXLET_LIBRARY {
-  publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/demuxlet", mode: 'copy', pattern: "${library}*"
-  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', 
-    pattern: ".command.log", saveAs: { filename -> "demuxlet_${date}.log" }
+  publishDir ( path: { "${data_type}" == "ATAC" ? 
+            "${params.project_dir}/data/single_nuclear_ATAC/processed/${library}/demuxlet" : 
+            "${params.project_dir}/data/single_cell_GEX/processed/${library}/demuxlet" }, 
+            mode: 'copy', pattern: "${library}*")
+
+  publishDir ( path: { "${data_type}" == "ATAC" ? 
+            "${params.project_dir}/data/single_nuclear_ATAC/logs/${library}/" : 
+            "${params.project_dir}/data/single_cell_GEX/logs/${library}/" }, 
+            mode: 'copy', pattern: ".command.log",
+       saveAs: { filename -> "demuxlet_${date}.log" })
   container "${params.container.popscle}"
   
   input:
-  tuple val(library), path(vcf), path(plp_files)
+  tuple val(library), val(data_type), path(vcf), path(plp_files)
 
   output:
-  tuple val(library), path("${library}.clust1.samples.reduced.tsv"), emit: sample_map
+  tuple val(library), val(data_type), path("${library}.clust1.samples.reduced.tsv"), emit: sample_map
   path("${library}*"), emit: dmx_files
   path(".command.log"), emit: log
   """
@@ -537,15 +721,18 @@ process DEMUXLET_POOL {
     pattern: "merged*", 
     saveAs : { filename -> "${pool}_${filename}" }
 
-  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${pool}/", mode: 'copy', pattern: ".command.log", 
-    saveAs: { filename -> "demuxlet_${date}.log" }
+  publishDir ( path: { "${data_type}" == "ATAC" ? 
+            "${params.project_dir}/data/single_nuclear_ATAC/logs/${library}/" : 
+            "${params.project_dir}/data/single_cell_GEX/logs/${library}/" }, 
+            mode: 'copy', pattern: ".command.log",
+       saveAs: { filename -> "demuxlet_${date}.log" })
   container "${params.container.popscle}"
   
   input:
-  tuple val(pool), path(vcf), path(merged_plp), path(merged_var), path(merged_cel), path(merged_barcodes)
+  tuple val(pool), val(data_type), path(vcf), path(merged_plp), path(merged_var), path(merged_cel), path(merged_barcodes)
 
   output:
-  tuple val(pool), path("merged.best"), emit: merged_best
+  tuple val(pool), val(data_type), path("merged.best"), emit: merged_best
   path(".command.log"), emit: log
 
   """
@@ -567,15 +754,23 @@ process DEMUXLET_POOL {
 }
 
 process SEPARATE_DMX {
-   publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/demuxlet", mode: 'copy', pattern: "${library}*"
-   publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', pattern: ".command.log", 
-    saveAs: { filename -> "separate_dmx_${date}.log" }
+
+  publishDir ( path: { "${data_type}" == "ATAC" ? 
+            "${params.project_dir}/data/single_nuclear_ATAC/processed/${library}/demuxlet" : 
+            "${params.project_dir}/data/single_cell_GEX/processed/${library}/demuxlet" }, 
+            mode: 'copy', pattern: "${library}*")
+
+  publishDir ( path: { "${data_type}" == "ATAC" ? 
+            "${params.project_dir}/data/single_nuclear_ATAC/logs/${library}/" : 
+            "${params.project_dir}/data/single_cell_GEX/logs/${library}/" }, 
+            mode: 'copy', pattern: ".command.log",
+       saveAs: { filename -> "separate_dmx_${date}.log" })
 
 
   input: 
-   tuple val(library), path(merged_best)
+   tuple val(library), val(data_type), path(merged_best)
   output:
-   tuple val(library), path("${library}.clust1.samples.reduced.tsv"), emit: sample_map
+   tuple val(library), val(data_type), path("${library}.clust1.samples.reduced.tsv"), emit: sample_map
    path("${library}.clust1.samples.gz"), emit: full_sample_file
    path(".command.log"), emit: log
 
@@ -599,14 +794,16 @@ process SEPARATE_DMX {
 
 
 process UNMERGE_FMX {
-  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${pool}/", mode: 'copy', 
-    pattern: ".command.log", 
-    saveAs: { filename -> "unmerge_fmx_${date}.log" }
+  publishDir ( path: { "${data_type}" == "ATAC" ? 
+            "${params.project_dir}/data/single_nuclear_ATAC/logs/${library}/" : 
+            "${params.project_dir}/data/single_cell_GEX/logs/${library}/" }, 
+            mode: 'copy', pattern: ".command.log",
+       saveAs: { filename -> "unmerge_fmx_${date}.log" })
 
   container "${params.container.python}"
 
   input:
-  tuple val(pool), path(fmx_tsv), path(merged_samples), path(merged_lmix), path(merged_vcf)
+  tuple val(pool), val(data_type), path(fmx_tsv), path(merged_samples), path(merged_lmix), path(merged_vcf)
   
   output:
   tuple path("*vcf.gz"), path("*samples.gz"), path("*.lmix"), emit: samples_file
@@ -626,15 +823,20 @@ process UNMERGE_FMX {
 }
 
 process SEPARATE_FMX {
-   publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/freemuxlet", mode: 'copy', pattern: "${library}*"
-   publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', 
-    pattern: ".command.log", 
-    saveAs: { filename -> "separate_fmx_${date}.log" }
+  publishDir ( path: { "${data_type}" == "ATAC" ? 
+            "${params.project_dir}/data/single_nuclear_ATAC/processed/${library}/freemuxlet" : 
+            "${params.project_dir}/data/single_cell_GEX/processed/${library}/freemuxlet" }, 
+            mode: 'copy', pattern: "${library}*")  
+  publishDir ( path: { "${data_type}" == "ATAC" ? 
+            "${params.project_dir}/data/single_nuclear_ATAC/logs/${library}/" : 
+            "${params.project_dir}/data/single_cell_GEX/logs/${library}/" }, 
+            mode: 'copy', pattern: ".command.log",
+       saveAs: { filename -> "separate_fmx_${date}.log" })
   input:
-   tuple val(library), path(vcf_file), path(sample_file), path(lmix_file)
+   tuple val(library), val(data_type), path(vcf_file), path(sample_file), path(lmix_file)
   output:
-   tuple val(library), path("${library}.clust1.samples.gz"), path("${library}.clust1.vcf.gz"), path("${library}.lmix"), emit: fmx_files
-   tuple val(library), path("${library}.clust1.samples.reduced.tsv"), emit: sample_map
+   tuple val(library), val(data_type), path("${library}.clust1.samples.gz"), path("${library}.clust1.vcf.gz"), path("${library}.lmix"), emit: fmx_files
+   tuple val(library), val(data_type), path("${library}.clust1.samples.reduced.tsv"), emit: sample_map
    path(".command.log"), emit: log
 
   """
@@ -912,3 +1114,53 @@ process SEURAT_POST_FILTER {
   """
 }
 
+process ARCHR_LOAD_QC {
+  publishDir "${params.project_dir}/data/single_nuclear_ATAC/processed/${library}/", pattern: "archR/*", mode: 'copy'
+
+  publishDir "${params.project_dir}/data/single_nuclear_ATAC/logs/${library}/", mode: 'copy', 
+    pattern: ".command.log", 
+    saveAs: { filename -> "archR_load_qc${date}.log" }
+
+  container "${params.container.rsinglecell}"
+
+
+  input:
+  tuple val(library), path(fragments), path(amulet_bc), path(sample_map)
+
+  output:
+  tuple val(library), path(project_rdata), emit: rdata
+  path("archR*"), emit: outfiles
+  path(".command.log"), emit: log
+
+  """
+
+  Rscript archR_load_qc.R ${library} ${fragments} ${amulet_bc} ${sample_map}
+
+  """
+}
+
+process ARCHR_POST_QC {
+  publishDir "${params.project_dir}/data/single_nuclear_ATAC/processed/${library}/", pattern: "archR/*", mode: 'copy'
+
+  publishDir "${params.project_dir}/data/single_nuclear_ATAC/logs/${library}/", mode: 'copy', 
+    pattern: ".command.log", 
+    saveAs: { filename -> "archR_post_qc_${date}.log" }
+
+  container "${params.container.rsinglecell}"
+
+
+  input:
+  tuple val(library), path(project_rdata)
+
+  output:
+  tuple val(library), path(project_rdata), path("${library}_cutoffs.csv"), emit: rdata_cuts
+  path("archR*"), emit: outfiles
+
+  path(".command.log"), emit: log
+
+  """
+
+  Rscript archR_post_qc.R ${library} ${project_rdata}
+
+  """
+}

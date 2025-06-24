@@ -16,7 +16,9 @@ include {
 TEST_GZIP_INTEGRITY;
 CELLRANGER;
 CELLRANGER_VDJ;
+CELLRANGER_ATAC;
 FILTER_BARCODES;
+FILTER_REF_VCF_ATAC;
 FILTER_BAM;
 DSC_PILEUP;
 MERGE_DSC;
@@ -32,14 +34,18 @@ FIND_DOUBLETS;
 LOAD_SOBJ;
 SEURAT_ADD_BCR;
 SEURAT_ADD_TCR;
-SEURAT_QC
+SEURAT_QC;
+AMULET_ATAC;
+ARCHR_LOAD_QC
 } from './modules/pipeline_tasks.nf'
 
 
 // Helper functions
 
 include {
-get_c4_h5; get_c4_bam; get_c4_h5_bam_bc; get_pool_library_meta; get_libraries_data_type_tuples;
+get_c4_h5; get_c4_bam; get_c4_h5_bam_bc; 
+get_c4_atac_fragments; get_c4_atac_bam; get_c4_atac_bc; get_c4_amulet_bc; get_c4_atac_peaks;
+get_pool_library_meta; get_libraries_data_type_tuples;
 get_pool_by_sample_count; get_library_by_sample_count; get_single_library_by_pool;
 get_multi_pool_by_library ; get_library_by_pool; get_multi_library_by_pool; get_pool_vcf ; get_library_ncells;
 get_vdj_tuple; get_vdj_name ; get_clonotypes; get_contigs
@@ -58,19 +64,28 @@ log.info """\
 
 
 workflow {
-
-
-
+  
       // TODO: perhaps just shove everything in a bam and h5 channel, and do not differentiate between data types
-      ch_gex_cite_bam_h5 = Channel.empty()
+      ch_gex_cite_cr = Channel.empty()
+      ch_atac_cr = Channel.empty()
       ch_vdj_libs = Channel.empty()
+      ch_atac_peaks = Channel.empty()
 
       if (params.settings.skip_cellranger){
-            ch_gex_cite_bam_h5 =  Channel.from(get_c4_h5_bam_bc()) // [[library, cell_ranger_bam, raw_h5, bc]
+            ch_library_info = Channel.from(get_libraries_data_type_tuples()).transpose()
+            ch_library_info.
+              branch{
+                gex_cite: it[1] in ["GEX", "CITE"]
+                bcr_tcr: it[1] in ["BCR", "TCR"]
+                atac: it[1] in ["ATAC"]
+            }
+            ch_gex_cite_cr = ch_library_info.gex_cite // [[library, data_type, cellranger_bam, raw_h5, bc]
+            .map{
+              it -> [it[0], it[1], get_c4_h5(it[0]), get_c4_bam(it[0]), get_c4_h5(it[0]), get_c4_cr_filt_bc(it[0])]
+            } 
 
-             ch_library_bcr_tcr = Channel.from(get_libraries_data_type_tuples()).transpose().filter { it[1] in ["BCR", "TCR"] }
-                
-              ch_vdj_libs = ch_library_bcr_tcr
+
+            ch_vdj_libs = ch_library_info.bcr_tcr
               .map{
                 it -> [it[0], it[1], get_clonotypes(it[0], it[1]), get_contigs(it[0], it[1])]
               }
@@ -78,7 +93,12 @@ workflow {
                         tcr: it[1].contains("TCR")
                         bcr: it[1].contains("BCR")
                     }  
-            
+            ch_atac_cr = ch_library_info.atac
+              .map{
+                it -> [it[0], it[1], get_c4_atac_fragments(it[0]), get_c4_atac_bam(it[0]), get_c4_atac_bc(it[0])]
+              }
+            ch_atac_peaks = ch_library_info.atac.map{ it -> [it[0], get_c4_atac_peaks(it[0])]}
+
       } else {
             ch_library_info = Channel.from(get_libraries_data_type_tuples()).transpose()
             TEST_GZIP_INTEGRITY(ch_library_info) // -> [[library_dir, data_type]]
@@ -87,12 +107,17 @@ workflow {
             .branch{
               gex_cite: it[1] in ["GEX", "CITE"]
               bcr_tcr: it[1] in ["BCR", "TCR"]
+              atac: it[1] in ["ATAC"]
             }
 
             // Run cellranger for GEX and CITE data types
             CELLRANGER(ch_gzip_out.gex_cite)
-            ch_gex_cite_bam_h5 = CELLRANGER.out.bam_h5_bc // --> [[library, cell_ranger_bam, raw_h5, bc]]
+            ch_gex_cite_cr = CELLRANGER.out.bam_h5_bc // --> [[library, data_type, cellranger_bam, raw_h5, bc]]
 
+            CELLRANGER_ATAC(ch_gzip_out.atac)
+            ch_atac_cr = CELLRANGER_ATAC.out.bam_frag_bc // --> [[library, data_type, cellranger_bam, fragments, bc]]
+            ch_atac_peaks = CELLRANGER_ATAC.out.peaks // --> [[library, peaks]]
+            
             // Run cellranger for BCR and TCR data types
             if (params.settings.add_tcr || params.settings.add_bcr ){
                 
@@ -111,36 +136,89 @@ workflow {
         }
 
     // Extract all bam and h5 files
-    ch_all_bam = ch_gex_cite_bam_h5.map { it -> [it[0], it[1]] } // [[library, cell_ranger_bam]]
-    ch_all_h5 = ch_gex_cite_bam_h5.map { it -> [it[0], it[2]] } // [[library, raw_h5 ]]
-    ch_all_bc = ch_gex_cite_bam_h5.map { it -> [it[0], it[3]] } // [[library, bc ]]
+    ch_all_cr_out = ch_gex_cite_cr.concat(ch_atac_cr)
+    ch_all_bam = ch_all_cr_out.map { it -> [it[0], it[1], it[2]] } // [[library, data_type, cellranger_bam]]
+    ch_all_dt_h5 = ch_all_cr_out.map { it -> [it[0], it[1], it[3]] } // [[library, data_type, raw_h5 or frag ]]
+    ch_all_bc = ch_all_cr_out.map { it -> [it[0], it[1], it[4]] } // [[library, data_type, bc ]]
+    ch_all_dt_h5_bc = ch_all_cr_out.map { it -> [it[0], it[1], it[3]], it[[4]] } // [[library, data_type, raw_h5 or frag, bc ]]
 
     /*
     --------------------------------------------------------
-    Filter barcode list for freemuxlet
+    Filter background reference vcf (if snATAC data)
+    --------------------------------------------------------
+    */
+    // TODO - make this step different if we tell it not to merge!
+    //if (params.settings.merge_for_demux) { 
+      ch_atac_lib_pool = Channel.from(get_multi_library_by_pool()) // [[library, pool], [library, pool]]
+
+      // Match libraries to pools, group by pools, and then group plp files by pools
+      ch_atac_peaks_transformed = ch_atac_peaks
+                                            .join(ch_atac_lib_pool)
+                                            .groupTuple(by: 2)
+                                            .map {it -> [it[2], it[1].flatten()]} // [pool [peak_files]]
+     
+      FILTER_REF_VCF_ATAC(ch_atac_peaks_transformed) // [pool, ref_vcf]
+
+      ch_atac_filt_vcf = ch_atac_lib_pool
+        .map{it -> [it[1], it[0]]}
+        .join(FILTER_REF_VCF_ATAC.out.filt_vcf) // [pool, library, ref_vcf]
+        .map{ it -> [it[1], it[2]]} // [library, ref_vcf]
+    //} 
+    
+    /*
+    --------------------------------------------------------
+    Filter barcode list for free/demuxlet
     --------------------------------------------------------
     */
 
-    FILTER_BARCODES(ch_all_h5) // [library, barcodes]
-    library_barcode = FILTER_BARCODES.out.bc_list
+    FILTER_BARCODES(ch_all_dt_h5_bc) // [library, data_type, h5, bc ]
+    ch_library_barcode = FILTER_BARCODES.out.bc_list
 
     /*
     --------------------------------------------------------
-    Setup bam, dsc files for freemuxlet
+    Run amulet on ATAC data
+    --------------------------------------------------------
+    */
+    ch_amulet_in = ch_all_bam
+      .join(ch_library_barcode) // [library, data_type, bam, bc]
+      .filter(it[1]=="ATAC")
+      .map{it -> [it[0], it[2], get_c4_amulet_bc(it[0])]} // [library, bam, bc]
+
+    AMULET_ATAC(ch_amulet_in)
+    ch_atac_filt_bc = AMULET_ATAC.out.filt_bc
+    
+    /*
+    --------------------------------------------------------
+    Setup bam, dsc files for free/demuxlet
     --------------------------------------------------------
     */
 
     // Combine bam files with barcodes
-     ch_library_bam_barcodes = ch_all_bam.join(library_barcode) // [library, cell_ranger_bam, barcodes]
+     ch_library_bam_barcodes = ch_all_bam
+     .join(ch_library_barcode) // [library, data_type, cellranger_bam, barcodes]
 
     // Filter the bam file in prep for freemux
-     FILTER_BAM(ch_library_bam_barcodes) // [library, filtered_bam]
+    FILTER_BAM(ch_library_bam_barcodes) // [library, data_type, filtered_bam]
 
     // Combine barcodes with filtered bam files
-     ch_library_barcodes_filtered_bam = library_barcode.join(FILTER_BAM.out.bam_file) // [library, barcodes, filtered_bam]
+    ch_library_barcodes_filtered_bam = FILTER_BAM.out.bam_file
+      .join(ch_library_barcode) // [library, data_type, filtered_bam, barcodes]
+      .branch{
+              gex_cite: it[1] in ["GEX", "CITE"]
+              atac: it[1] in ["ATAC"]
+            }
+    
+    // add snp_ref
+    ch_barcodes_bam_vcf = 
+      ch_library_barcodes_filtered_bam.gex_cite
+        .map{it -> [it[0], it[1], it[2], it[3], params.ref.snp_ref]}
+      .concat(
+        ch_library_barcodes_filtered_bam.atac
+        .join(ch_atac_filt_vcf)
+      )
 
      // Run dsc_pileup
-    DSC_PILEUP(ch_library_barcodes_filtered_bam) // [library, barcodes, filtered_bam]
+    DSC_PILEUP(ch_barcodes_bam_vcf) // [library, data_type, filtered_bam, snp_ref]
     ch_plp_files = DSC_PILEUP.out.plp_files
 
      /*
@@ -318,9 +396,23 @@ workflow {
      Set up seurat object
      --------------------------------------------------------
      */
-     ch_library_info = Channel.from(get_libraries_data_type_tuples()).transpose() // -> [[library_dir, data_type]]
+     ch_library_info = Channel.from(get_libraries_data_type_tuples()).transpose() // -> [[library, data_type]]
      ch_seurat_input = ch_library_info.join(ch_bcr_out).join(ch_all_h5).join(ch_all_bc)
      SEURAT_QC(ch_seurat_input)
+
+
+     /*
+     --------------------------------------------------------
+     Set up archR
+     --------------------------------------------------------
+     */
+     ch_archr_in = ch_all_dt_h5 // [library, dt, frag]
+     .filter(it[1]=="ATAC")
+     .join(ch_atac_filt_bc) 
+     .join(ch_sample_map)
+     
+     // [library, fragments, amulet_bc, demuxlet_out ]
+     ARCHR_LOAD_QC(ch_archr_in)
 
 }
 

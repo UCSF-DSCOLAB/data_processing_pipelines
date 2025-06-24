@@ -1,3 +1,25 @@
+
+def get_c4_atac_fragments(library){
+  return file("${params.project_dir}/data/single_nuclear_ATAC/processed/${library}/cellranger/fragments.tsv.gz", checkIfExists: true)
+}
+
+def get_c4_atac_bam(library){
+  return file("${params.project_dir}/data/single_nuclear_ATAC/processed/${library}/cellranger/possorted_bam.bam", checkIfExists: true)
+}
+
+def get_c4_atac_peaks(library){
+  return file("${params.project_dir}/data/single_nuclear_ATAC/processed/${library}/cellranger/peaks.bed", checkIfExists: true)
+}
+
+def get_c4_atac_bc(library){
+  return file("${params.project_dir}/data/single_nuclear_ATAC/processed/${library}/cellranger/singlecell.csv", checkIfExists: true)
+}
+
+def get_c4_amulet_bc(library){
+  return file("${params.project_dir}/data/single_nuclear_ATAC/processed/${library}/amulet/pre_amulet_barcodes_filt.csv", checkIfExists: true)
+}
+
+
 def get_c4_h5(library){
   return file("${params.project_dir}/data/single_cell_GEX/processed/${library}/cellranger/raw_feature_bc_matrix.h5", checkIfExists: true)
 }

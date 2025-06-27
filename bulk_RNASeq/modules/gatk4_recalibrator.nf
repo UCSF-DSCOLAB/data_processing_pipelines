@@ -7,6 +7,8 @@ process GATK4_BASE_RECALIBRATOR {
         fileSize = input.size() / (1024 * 1024 * 1024)
         return 5.GB + (1.GB * fileSize * 0.1)
     }
+    containerOptions "-B /scratch/"
+
 
     input:
     tuple val(meta), path(input)
@@ -34,7 +36,7 @@ process GATK4_BASE_RECALIBRATOR {
         --output ${prefix}.table \\
         --reference $fasta \\
         $sites_command \\
-        --tmp-dir \$PWD \\
+        --tmp-dir \$TMPDIR \\
         $args
     """
 }

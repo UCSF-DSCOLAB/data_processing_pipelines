@@ -9,6 +9,9 @@ process GATK4_HAPLOTYPECALLER {
         return 17.GB + (1.GB * fileSize * 3)
     }
 
+    containerOptions "-B /scratch/"
+
+
     input:
     tuple val(meta), path(input), path(input_index)
     path  fasta
@@ -41,7 +44,7 @@ process GATK4_HAPLOTYPECALLER {
         --output ${prefix}.vcf.gz \\
         $reference_command \\
         $dbsnp_command \\
-        --tmp-dir \$PWD \\
+        --tmp-dir \$TMPDIR \\
         $soft_clipped \\
         $min_conf \\
         $min_pruning \\

@@ -7,6 +7,7 @@ process GATK4_SPLITNCIGARREADS {
         fileSize = bam.size() / (1024 * 1024 * 1024)
         return 200.GB + (1.GB * fileSize * 5)
     }
+    containerOptions "-B /scratch/"
 
     input:
     tuple val(meta), path(bam), path(bai)
@@ -30,7 +31,7 @@ process GATK4_SPLITNCIGARREADS {
         --input $bam \\
         --output ${prefix}.bam \\
         --reference $genome \\
-        --tmp-dir \$PWD \\
+        --tmp-dir \$TMPDIR \\
         $args
     """
 }

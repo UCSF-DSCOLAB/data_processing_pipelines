@@ -16,6 +16,8 @@ process SORTMERNA_RIBOSOMAL_RNA_REMOVAL {
         return 15.GB * (1 + (fileSize * 0.1))
     }
 
+    containerOptions "-B /scratch/"
+
     input:
     tuple val(meta), path(reads)
     path  rrna_ref_fastas
@@ -37,7 +39,7 @@ process SORTMERNA_RIBOSOMAL_RNA_REMOVAL {
             --ref $refs \\
             --reads $reads \\
             --threads $task.cpus \\
-            --workdir . \\
+            --workdir \$TMPDIR/ \\
             --aligned rRNA_reads \\
             --fastx \\
             --other non_rRNA_reads \\
@@ -53,7 +55,7 @@ process SORTMERNA_RIBOSOMAL_RNA_REMOVAL {
             --reads ${reads[0]} \\
             --reads ${reads[1]} \\
             --threads $task.cpus \\
-            --workdir . \\
+            --workdir \$TMPDIR/ \\
             --aligned rRNA_reads \\
             --fastx \\
             --other non_rRNA_reads \\

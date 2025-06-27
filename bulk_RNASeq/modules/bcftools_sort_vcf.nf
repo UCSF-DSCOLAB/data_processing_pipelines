@@ -8,6 +8,7 @@ process BCFTOOLS_SORT_VCF {
         fileSize = vcf.size() / (1024 * 1024 * 1024)
         return 1.GB + (1.GB * fileSize * 0.01)
     }
+    containerOptions "-B /scratch/"
 
     input:
     tuple val(meta), path(vcf)
@@ -24,7 +25,7 @@ process BCFTOOLS_SORT_VCF {
     """
     bcftools sort \\
             --output ${prefix}.sorted.vcf.gz -Oz \\
-            --temp-dir \$PWD \\
+            --temp-dir \$TMPDIR/ \\
             $vcf
     """
 }

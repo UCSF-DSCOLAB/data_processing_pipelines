@@ -39,7 +39,7 @@ process SORTMERNA_RIBOSOMAL_RNA_REMOVAL {
             --ref $refs \\
             --reads $reads \\
             --threads $task.cpus \\
-            --workdir \$TMPDIR \\
+            --workdir \$TMPDIR/ \\
             --aligned rRNA_reads \\
             --fastx \\
             --other non_rRNA_reads \\
@@ -55,7 +55,7 @@ process SORTMERNA_RIBOSOMAL_RNA_REMOVAL {
             --reads ${reads[0]} \\
             --reads ${reads[1]} \\
             --threads $task.cpus \\
-            --workdir \$TMPDIR \\
+            --workdir \$TMPDIR/ \\
             --aligned rRNA_reads \\
             --fastx \\
             --other non_rRNA_reads \\

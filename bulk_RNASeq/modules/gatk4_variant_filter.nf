@@ -9,6 +9,8 @@ process GATK4_VARIANTFILTRATION {
         return 5.GB + (1.GB * fileSize)
     }
 
+    containerOptions "-B /scratch/"
+
     input:
     tuple val(meta), path(vcf), path(tbi)
     path  fasta
@@ -34,7 +36,7 @@ process GATK4_VARIANTFILTRATION {
         --reference $fasta \\
         --window $params.gatk_vf_window_size \\
         --output ${prefix}.filtered.vcf.gz \\
-        --tmp-dir \$PWD \\
+        --tmp-dir \$TMPDIR \\
         $args
     """
 }

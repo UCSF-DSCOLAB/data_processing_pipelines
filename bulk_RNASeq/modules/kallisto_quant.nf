@@ -10,7 +10,11 @@ process KALLISTO_QUANT {
           // File size in GB
           fileSize = reads[0].size() / (1024 * 1024 * 1024)
         }
-	return 7.GB * (1 + (fileSize*0.25))
+	if (fileSize < 15){
+	   return 10.GB
+	} else {
+           return 7.GB * (1 + (fileSize*0.25))
+	}
     }
     publishDir "${params.results_directory}/kallisto", mode: 'copy'
 

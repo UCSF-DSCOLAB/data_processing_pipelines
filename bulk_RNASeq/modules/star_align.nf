@@ -3,15 +3,17 @@ process STAR_ALIGN {
     // clusterOptions = '-S /bin/bash'
     label 'star_align', 'per_sample'
     memory {
-        if (meta.single_end) {
-          // File size in GB
-          fileSize = reads.size() / (1024 * 1024 * 1024)
-        } else {
-          // File size in GB
-          fileSize = reads[0].size() / (1024 * 1024 * 1024)
-        }
-	return 25.GB * (2 + (fileSize*0.1))
-    }
+      /* Size of the reads in GiB */
+      def fileSizeGB = meta.single_end
+                      ? (reads.size() / (1024 ** 3))
+                      : (reads[0].size()    / (1024 ** 3))
+
+      /* Formula-based requirement: 25 GB × ( 2 + 0.1 × size ) */
+      def required = 25.GB * ( 2 + (fileSizeGB * 0.1) )
+
+      /* Never ask for less than 8 GB */
+      return [required, 25.GB].max()          // equivalent to Math.max(required, 8.GB)
+}
     publishDir "${params.results_directory}/star", mode: 'copy', pattern: "${prefix}ReadsPerGene.out.tab"
     publishDir "${params.results_directory}/star", mode: 'copy', pattern: "${prefix}Log.final.out"
 

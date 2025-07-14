@@ -13,7 +13,8 @@ process STAR_ALIGN {
 
       /* Never ask for less than 8 GB */
       return [required, 25.GB].max()          // equivalent to Math.max(required, 8.GB)
-}
+    }
+    containerOptions "-B /scratch/"
     publishDir "${params.results_directory}/star", mode: 'copy', pattern: "${prefix}ReadsPerGene.out.tab"
     publishDir "${params.results_directory}/star", mode: 'copy', pattern: "${prefix}Log.final.out"
 
@@ -40,6 +41,7 @@ process STAR_ALIGN {
         --sjdbGTFfile $gtf \\
         --readFilesCommand zcat \
         --twopassMode Basic \
+        --outTmpDir \$TMPDIR \\
         --outSAMtype BAM SortedByCoordinate \
         --quantMode TranscriptomeSAM GeneCounts \
         --outReadsUnmapped None \

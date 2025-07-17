@@ -41,13 +41,13 @@ process STAR_ALIGN {
         --sjdbGTFfile $gtf \\
         --readFilesCommand zcat \
         --twopassMode Basic \
-        --outTmpDir \$TMPDIR \\
         --outSAMtype BAM SortedByCoordinate \
         --quantMode TranscriptomeSAM GeneCounts \
         --outReadsUnmapped None \
 	      --outSAMunmapped Within KeepPairs \
         --outSAMattrRGline ID:$prefix SM:$prefix LB:library PL:illumina \
         --outFileNamePrefix $prefix \\
+        --outTmpDir $task.scratch \\
         --outFilterMismatchNoverLmax ${params.star_outfilter_mismatch_n_over_lmax} \\
         --alignSJoverhangMin ${params.star_align_sjoverhang_min} \\
         --outFilterMultimapNmax ${params.star_outfilter_multimap_nmax} \\

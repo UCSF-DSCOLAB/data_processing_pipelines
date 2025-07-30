@@ -15,6 +15,7 @@ process SORTMERNA_RIBOSOMAL_RNA_REMOVAL {
         }
         return 15.GB * (1 + (fileSize * 0.1))
     }
+    publishDir "${params.results_directory}/trimmed_cleaned_reads", mode: 'copy'
 
     containerOptions "-B /scratch/"
 

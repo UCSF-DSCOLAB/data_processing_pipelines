@@ -4,7 +4,7 @@ library(ggExtra)
 library(ggplot2)
 set.seed(1)
 
-NTRHEADS=4
+NTHREADS=1
 DEFAULT_TSS_MIN=2
 DEFAULT_NFRAG_MIN=100
 
@@ -19,13 +19,13 @@ setwd("archR/")
 addArchRThreads(threads = NTHREADS) 
 addArchRGenome("hg38")
 
-cutoffs = tibble("params"=("tss.min", "nFrag.min", "reviewed"), 
+cutoffs = tibble("params"=c("tss.min", "nFrag.min", "reviewed"), 
   "vals"= c(DEFAULT_TSS_MIN, DEFAULT_NFRAG_MIN, "FALSE"))
 cutoffs %>% write_csv(sprintf("%s_cutoffs.csv", LIBRARY))
 
 
 ArrowFiles <- createArrowFiles(
-  inputFiles = FRAGMENTS,
+  inputFiles = sprintf("../%s", FRAGMENTS),
   sampleNames = LIBRARY,
   minTSS = DEFAULT_TSS_MIN,
   minFrags = DEFAULT_NFRAG_MIN, 
@@ -36,7 +36,7 @@ ArrowFiles <- createArrowFiles(
 proj <- ArchRProject(
   ArrowFiles = ArrowFiles, 
   outputDirectory = "results/",
-  copyArrows = TRUE 
+  copyArrows = FALSE 
 )
 saveArchRProject(proj)
 
@@ -67,12 +67,12 @@ dev.off()
 
 
 ## read in amulet & dmx data subset to the cells of interest and replot
-bc_keep = read_tsv(AMULET_BC, col_names=F) %>%
+bc_keep = read_tsv(sprintf("../%s", AMULET_BC), col_names=F) %>%
   mutate(X1=sprintf("%s#%s", LIBRARY, X1))
 
 proj = proj[proj$cellNames %in% bc_keep$X1,]
 
-dmx_data = read_tsv(DEMUX_OUT) %>%
+dmx_data = read_tsv(sprintf("../%s", DEMUX_OUT)) %>%
   filter(DROPLET.TYPE=="SNG") %>% 
   separate(BARCODE, into=c("LIBRARY", "cell_id"), sep="#", remove=F) %>%
   column_to_rownames("cell_id")

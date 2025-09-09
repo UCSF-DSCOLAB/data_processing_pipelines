@@ -223,26 +223,30 @@ process FILTER_REF_VCF_ATAC{
    saveAs: { filename -> "filter_atac_vcf_${date}.log" }
 
   container "${params.container.bed_bcftools}"
-  containerOptions "-B ${params.ref.dir}" 
+  containerOptions "-B ${params.ref.fmx_dir}" 
 
   input:
-    tuple val(pool), val(peak_files)
+    tuple val(pool), path(files, stageAs: "?/*")
   output:
     tuple val(pool), path("peaks.vcf.gz"), emit: filt_vcf
     tuple val(pool), path("peaks.all.bed"), emit: merged_peaks
     path(".command.log"), emit: log
 
+  shell:
+  def input_str = files instanceof List ? files.join(" ") : files
+
   """
   echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
   echo "[running FILTER_REF_VCF_ATAC]"
   echo " using container ${params.container.bed_bcftools}"
-
   touch peaks.all.bed
-
-  for f in "${peak_files[@]}"; do
-      bedtools sort -i ${f} | \
-      bedtools merge -i - | cut -f 1,2,3 >> peaks.all.bed
+  for f in `ls */peaks.bed`; 
+  do
+      echo \${f}
+      echo "bedtools sort -i \${f} | bedtools merge -i - | cut -f 1,2,3 >> peaks.all.bed"
+      bedtools sort -i \${f} | bedtools merge -i - | cut -f 1,2,3 >> peaks.all.bed
   done
+  
 
   bcftools view -R peaks.all.bed -O z -o peaks.vcf.gz ${params.ref.snp_ref}
 
@@ -253,16 +257,15 @@ process FILTER_REF_VCF_ATAC{
 /*
  * Step 2a. Create barcode list
  */ 
-process FILTER_BARCODES{
-  publishDir "${params.project_dir}/data/single_cell_GEX/processed/${library}/freemuxlet", mode: 'copy', pattern: "barcodes_of_interest.filt.list"
-  publishDir "${params.project_dir}/data/single_cell_GEX/logs/${library}/", mode: 'copy', 
-    pattern: ".command.log", saveAs: { filename -> "filter_bc_${date}.log" }
-  
+process FILTER_BARCODES{  
   publishDir(
     path: { "${data_type}" == "ATAC" ? 
-            "${params.project_dir}/data/single_nuclear_ATAC/logs/${library}/" : 
-            "${params.project_dir}/data/single_cell_GEX/logs/${library}/" }, 
+            "${params.project_dir}/data/single_nuclear_ATAC/processed/${library}/demuxlet/" : 
+            "${params.project_dir}/data/single_cell_GEX/${library}/" }, 
             mode: 'copy', pattern: "barcodes_of_interest.filt.list" )
+
+  publishDir "${params.project_dir}/data/single_nuclear_ATAC/processed/${library}/amulet/",
+            mode: 'copy', pattern: "pre_amulet_barcodes_filt.csv"
 
   publishDir(
     path: { "${data_type}" == "ATAC" ? 
@@ -278,13 +281,15 @@ process FILTER_BARCODES{
   
   output:
   tuple val(library), path("barcodes_of_interest.filt.list"), emit: bc_list
+  tuple val(library), path("pre_amulet_barcodes_filt.csv"), emit: amulet_bc_list, optional: true
+  
   path(".command.log"), emit: log
   """
   echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
   echo "[running FILTER_BARCODES]"
   echo " using container ${params.container.rsinglecell}"
 
-  if [ "${data_type}"== "ATAC" ];
+  if [[ "${data_type}" == "ATAC" ]];
   then
     echo " Rscript ${projectDir}/bin/make_valid_barcodelist_atac.R ${bc} ${params.settings.minfeature}"  
     echo "-----------"
@@ -305,21 +310,20 @@ process AMULET_ATAC {
   publishDir "${params.project_dir}/data/single_nuclear_ATAC/processed/${library}/", mode: 'copy', pattern: "amulet/*"
  
   container "${params.container.amulet}"
-  containerOptions "-B ${params.ref.dir}" 
+  containerOptions "-B ${params.ref.dir} -B ${params.ref.ef_ref}" 
 
   input:
-  tuple val(library), path(bc), path(bam)
+  tuple val(library), path(bam), path(bc)
 
   output:
-  tuple val(library), path("post_amulet_barcodes_of_interest.filt.list"), emit: filt_bc
+  tuple val(library), path("amulet/MultipletBarcodes_01.txt"), emit: filt_bc
   path(".command.log"), emit: log
 
   """
-
-  ${SOFTWARE_DIR}/AMULET/AMULET.sh --forcesorted --bcidx 0 --cellidx 0 --iscellidx 9 ${bam} ${bc} ${params.ref.chr_list} \
-    ${params.ref.atac_blacklist} amulet ${SOFTWARE_DIR}/AMULET/
-
-  Rscript filter_barcodes_amulet.R ${bc} 
+  export PATH=/opt/miniconda3/envs/amulet_conda_env/bin/:${PATH}
+  mkdir -p amulet
+  bash /opt/AMULET/AMULET.sh --forcesorted --bcidx 0 --cellidx 0 --iscellidx 9 ${bam} ${bc} ${params.ref.chr_list} \
+    ${params.ref.atac_blacklist} amulet /opt/AMULET/
 
   """
 }
@@ -1134,7 +1138,7 @@ process ARCHR_LOAD_QC {
 
   """
 
-  Rscript archR_load_qc.R ${library} ${fragments} ${amulet_bc} ${sample_map}
+  Rscript ${projectDir}/bin/archR_load_qc.R ${library} ${fragments} ${amulet_bc} ${sample_map}
 
   """
 }
@@ -1160,7 +1164,7 @@ process ARCHR_POST_QC {
 
   """
 
-  Rscript archR_post_qc.R ${library} ${project_rdata}
+  Rscript ${projectDir}/bin/archR_post_qc.R ${library} ${project_rdata}
 
   """
 }

@@ -4,7 +4,7 @@ library(ggExtra)
 library(ggplot2)
 set.seed(1)
 
-NTHREADS=1
+NTHREADS=4
 DEFAULT_TSS_MIN=2
 DEFAULT_NFRAG_MIN=100
 
@@ -67,17 +67,19 @@ dev.off()
 
 
 ## read in amulet & dmx data subset to the cells of interest and replot
-bc_keep = read_tsv(sprintf("../%s", AMULET_BC), col_names=F) %>%
+multiplet_bc = read_tsv(sprintf("../%s", AMULET_BC), col_names=F) %>%
   mutate(X1=sprintf("%s#%s", LIBRARY, X1))
 
-proj = proj[proj$cellNames %in% bc_keep$X1,]
+proj = proj[!proj$cellNames %in% multiplet_bc$X1,]
 
 dmx_data = read_tsv(sprintf("../%s", DEMUX_OUT)) %>%
   filter(DROPLET.TYPE=="SNG") %>% 
-  separate(BARCODE, into=c("LIBRARY", "cell_id"), sep="#", remove=F) %>%
-  column_to_rownames("cell_id")
+  mutate(BARCODE=sprintf("%s#%s", LIBRARY, BARCODE)) %>%
+  column_to_rownames("BARCODE")
 
-proj = subsetCells(proj, rownames(dmx_data))
+kept_cells = intersect(rownames(dmx_data), proj$cellNames)
+
+proj = proj[proj$cellNames %in% kept_cells,]
 
 proj = addCellColData(ArchRProj = proj, 
                       data = dmx_data$BEST.GUESS,
@@ -85,11 +87,11 @@ proj = addCellColData(ArchRProj = proj,
                       name='BEST.GUESS')
 saveArchRProject(proj)
 
+proj = proj[!is.na(proj@cellColData$TSSEnrichment),]
 df <- getCellColData(proj, select = c("log10(nFrags)", "TSSEnrichment"))
 
 df %>%
   as_tibble(rownames="BARCODE") %>%
-  separate(BARCODE, into=c("LIBRARY", "cell_id"), sep="#", remove=F) %>%
   write_csv("post_demux_cell_qc_meta.csv")
 
 p= ggPoint(

@@ -1132,7 +1132,6 @@ process ARCHR_LOAD_QC {
   tuple val(library), path(fragments), path(amulet_bc), path(sample_map)
 
   output:
-  tuple val(library), path(project_rdata), emit: rdata
   path("archR*"), emit: outfiles
   path(".command.log"), emit: log
 

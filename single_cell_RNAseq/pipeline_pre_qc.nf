@@ -140,15 +140,12 @@ workflow {
       ch_all_bc = ch_all_cr_out.map{ it -> [it[0], it[1], it[4]] } // [[library, data_type, bc ]]
       ch_all_dt_h5_bc = ch_all_cr_out.map{ it -> [it[0], it[1], it[3], it[4]] } // [[library, data_type, raw_h5 or frag, bc ]]
 
-      ch_atac_lib_pool = Channel.from(get_multi_library_by_pool()) // [[library, pool], [library, pool]]
-
+      ch_atac_lib_pool = Channel.from(get_library_by_pool()) // [[library, pool], [library, pool]]
       // Match libraries to pools, group by pools, and then group plp files by pools
       ch_atac_peaks_transformed = ch_atac_peaks
                                             .join(ch_atac_lib_pool)
                                             .groupTuple(by: 2)
                                             .map {it -> [it[2], it[1].flatten()]} // [pool [peak_files]]
-      
-      //ch_atac_lib_pool2 = Channel.from(get_multi_library_by_pool()) // [[library, pool], [library, pool]]
 
       FILTER_REF_VCF_ATAC(ch_atac_peaks_transformed) // [pool, ref_vcf]
       ch_atac_filt_vcf = ch_atac_lib_pool // [lib, pool]
@@ -168,7 +165,6 @@ workflow {
      ch_amulet_in = ch_bam_bc.atac // [library, data_type, bam, bc]
       .join(FILTER_BARCODES.out.amulet_bc_list, by: 0)
       .map{it -> [it[0], it[2], it[3]]} // [library, bam, bc]
-     ch_amulet_in.view()
      
      AMULET_ATAC(ch_amulet_in)
      ch_atac_filt_bc = AMULET_ATAC.out.filt_bc
@@ -252,9 +248,8 @@ workflow {
             // Run freemuxlet on remaining pools with single libraries
             // Attach the number of samples, and re-arrange input
             ch_single_lib_transformed  = ch_plp_files
-                                            .join(Channel.from(get_single_library_by_pool()))
                                             .join(Channel.from(get_library_by_sample_count()))
-                                            .map{it -> [it[0], it[1], it[4], it[2]]} // [lib, data_type, num_of_samples, plp_files]]
+                                            .map{it -> [it[0], it[1], it[3], it[2]]} // [lib, data_type, num_of_samples, plp_files]]
 
             FREEMUXLET_LIBRARY(ch_single_lib_transformed)
 
@@ -295,12 +290,14 @@ workflow {
 
                 // Run demuxlet on remaining single libraries
                 // Attach the number of samples, and re-arrange input
-                
-                ch_single_lib_transformed  = ch_plp_files // [pool, data_type, files]
-                                              .join(Channel.from(get_single_library_by_pool()))
-                                              .map{it -> [it[0], it[3], it[1], it[2]]} // [pool, lib, data_type, files]
+                ch_single_lib_transformed  = ch_plp_files
+                                              .join(Channel.from(get_single_library_by_pool())) // [library, data_type, files, pool]
+                                              .map{it -> [it[3], it[0], it[1], it[2]]} // [pool, lib, data_type, files]
                                               .join(Channel.from(get_pool_vcf()))
-                                              .map{it -> [it[1], it[2], it[4], it[3]]} // [lib, data_type, vcf, plp_files]]
+                                              .map{it -> [it[1], it[2], it[4], it[3]]} // [lib, data_type, vcf, plp_files]]	
+
+
+
                 DEMUXLET_LIBRARY(ch_single_lib_transformed)
                 // appended any merged libraries
                 ch_sample_map = SEPARATE_DMX.out.sample_map.mix(DEMUXLET_LIBRARY.out.sample_map)
@@ -308,14 +305,11 @@ workflow {
             } else {
                 // Run demuxlet on all libraries, regardless if there are many libraries per pool
                 // Attach the number of samples, and re-arrange input
-   		        ch_single_lib_transformed  = Channel.from(get_pool_vcf()) // [pool, vcf]
-                                                  .cross(
-                                                    ch_plp_files // [library, data_type, files]
-                                                    .join(Channel.from(get_library_by_pool())) // [library, data_type, files, pool]
-                                                    .map{it -> [it[3], it[0], it[1], it[2]]} // [pool, lib, data_type, files]
-                                                  ) // [[pool, vcf], [pool, lib, data_type, files]]
-                                                  .map{it -> [it[1][1], it[0][1], it[1][2], it[1][3]]} // [lib, vcf, data_type, plp_files]]
-	
+   		          ch_single_lib_transformed  = ch_plp_files
+                                              .join(Channel.from(get_library_by_pool())) // [library, data_type, files, pool]
+                                              .map{it -> [it[3], it[0], it[1], it[2]]} // [pool, lib, data_type, files]
+                                              .join(Channel.from(get_pool_vcf()))
+                                              .map{it -> [it[1], it[2], it[4], it[3]]} // [lib, data_type, vcf, plp_files]]	
 
                 DEMUXLET_LIBRARY(ch_single_lib_transformed)
                 ch_sample_map = DEMUXLET_LIBRARY.out.sample_map

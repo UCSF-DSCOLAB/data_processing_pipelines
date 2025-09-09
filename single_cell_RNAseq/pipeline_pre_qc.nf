@@ -43,7 +43,7 @@ ARCHR_LOAD_QC
 // Helper functions
 
 include {
-get_c4_h5; get_c4_bam; get_c4_h5_bam_bc; 
+get_c4_h5; get_c4_bam; get_c4_h5_bam_bc; get_c4_cr_filt_bc;
 get_c4_atac_fragments; get_c4_atac_bam; get_c4_atac_bc; get_c4_amulet_bc; get_c4_atac_peaks;
 get_pool_library_meta; get_libraries_data_type_tuples;
 get_pool_by_sample_count; get_library_by_sample_count; get_single_library_by_pool;
@@ -79,7 +79,7 @@ workflow {
             }
             ch_gex_cite_cr = ch_library_info.gex_cite // [[library, data_type, cellranger_bam, raw_h5, bc]
             .map{
-              it -> [it[0], it[1], get_c4_h5(it[0]), get_c4_bam(it[0]), get_c4_h5(it[0]), get_c4_cr_filt_bc(it[0])]
+              it -> [it[0], it[1],  get_c4_bam(it[0]), get_c4_h5(it[0]), get_c4_cr_filt_bc(it[0])]
             } 
 
 
@@ -341,11 +341,61 @@ workflow {
 
      ch_archr_in = ch_dt_h5_sep.atac // [library, dt, frag]
       .map{it -> [it[0], it[2]]}
-     .join(ch_atac_filt_bc) 
-     .join(ch_sample_map
-      .map{it -> [it[0], it[2]]}
-     )
+      .join(ch_atac_filt_bc) 
+      .join(ch_sample_map
+        .map{it -> [it[0], it[2]]}
+      )
      
      // [library, fragments, amulet_bc, demuxlet_out ]
      ARCHR_LOAD_QC(ch_archr_in)
+      /*
+      --------------------------------------------------------
+      Run doublet finder if specified
+      --------------------------------------------------------
+      */
+     ch_initial_sobj = Channel.empty()
+     if (params.settings.run_doubletfinder) {
+        ch_doublet_input = Channel.from(get_library_ncells())
+          .join(ch_dt_h5_sep.gex_cite) // [lib, ncells, dt, h5]
+          .map{it -> [it[0], it[1], it[3]]}
+          .join(ch_sample_map) // [lib, ncells, raw_h5, dt, fmx_cluster ]
+          .map{it -> [it[0], it[1], it[2], it[4]]}
+        FIND_DOUBLETS(ch_doublet_input) // --> [lib, doublet_finder_sobj]
+        ch_initial_sobj = FIND_DOUBLETS.out.sobj
+     } else {
+        ch_doublet_input = ch_dt_h5_sep.gex_cite
+          .join(ch_sample_map) // [lib, dt, raw_h5, fmx_cluster]
+          .map{it -> [it[0], it[2], it[3]]}
+        LOAD_SOBJ(ch_doublet_input)
+        ch_initial_sobj = LOAD_SOBJ.out.sobj
+     }
+     
+    
+     
+
+     if (params.settings.add_tcr){
+        SEURAT_ADD_TCR(ch_initial_sobj.join(ch_vdj_libs.tcr, by:0, remainder: true))
+        ch_tcr_out = SEURAT_ADD_TCR.out.sobj
+      } else {
+        ch_tcr_out = ch_initial_sobj
+      }
+
+      if (params.settings.add_bcr){
+        SEURAT_ADD_BCR(ch_tcr_out.join(ch_vdj_libs.bcr, by:0, remainder: true))
+        ch_bcr_out = SEURAT_ADD_BCR.out.sobj
+      } else {
+        ch_bcr_out = ch_tcr_out
+      } 
+
+     /*
+     --------------------------------------------------------
+     Set up seurat object
+     --------------------------------------------------------
+     */
+     ch_seurat_input = ch_dt_h5_sep.gex_cite // [lib, dt, h5]
+      .join(ch_bcr_out) // [lib, dt, h5, sobj]
+      .join(ch_all_bc) // [lib, dt, h5, sobj, dt, bc]
+      .map{ it -> [it[0], it[1], it[3], it[2], it[5]]}
+     SEURAT_QC(ch_seurat_input)
+
 }

@@ -195,7 +195,7 @@ process CELLRANGER_ATAC{
     \${fastq_dir},${library},ATAC Seq" > ${library}_libraries.csv
   
   echo " Using container ${params.container.cellranger_atac}"
-  echo "  cellranger-atac-${params.ref.cr_atac_version} count \
+  echo "  cellranger-atac count \
       --id=${library} \
       --fastqs=\${fastq_dir} \
       --sample=${library} \
@@ -204,7 +204,7 @@ process CELLRANGER_ATAC{
       --localmem=${task.memory.toGiga() - 2} "
   echo "-----------"
 
-  cellranger-atac-${params.ref.cr_atac_version} count \
+  cellranger-atac count \
       --id=${library} \
       --fastqs=\${fastq_dir} \
       --sample=${library} \

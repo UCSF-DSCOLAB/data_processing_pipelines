@@ -1119,6 +1119,7 @@ process SEURAT_POST_FILTER {
 }
 
 process ARCHR_LOAD_QC {
+
   publishDir "${params.project_dir}/data/single_nuclear_ATAC/processed/${library}/", pattern: "archR/*", mode: 'copy'
 
   publishDir "${params.project_dir}/data/single_nuclear_ATAC/logs/${library}/", mode: 'copy', 
@@ -1132,7 +1133,7 @@ process ARCHR_LOAD_QC {
   tuple val(library), path(fragments), path(amulet_bc), path(sample_map)
 
   output:
-  path("archR*"), emit: outfiles
+  path("archR/*"), emit: outfiles
   path(".command.log"), emit: log
 
   """
@@ -1157,7 +1158,7 @@ process ARCHR_POST_QC {
 
   output:
   tuple val(library), path(project_rdata), path("${library}_cutoffs.csv"), emit: rdata_cuts
-  path("archR*"), emit: outfiles
+  path("archR/*"), emit: outfiles
 
   path(".command.log"), emit: log
 

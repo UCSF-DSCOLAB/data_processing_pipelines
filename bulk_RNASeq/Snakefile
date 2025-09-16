@@ -1,17 +1,20 @@
-# Modular bulk RNA-seq Snakemake pipeline (refactored -- 2025-09-15)
+# Modular bulk RNA-seq Snakemake pipeline (Snakemake 7.32.4 compatible)
+# Robust config loading (supports both config/* and top-level files), env expansion,
+# exports helper functions for rules/, and includes only rules/*.
 
 import os
 import csv
+import sys
 from pathlib import Path
 
-# Try to use Snakemake's loader if available; otherwise fall back to YAML
+# Optional Snakemake loader (back-compatible)
 try:
     from snakemake.utils import load_configfile as _snk_load_configfile
 except Exception:
     _snk_load_configfile = None
 import yaml
 
-def _load_config(path):
+def _load_yaml(path):
     p = Path(path)
     if not p.exists():
         return {}
@@ -37,27 +40,56 @@ def env_expand(obj):
         return os.path.expandvars(obj)
     return obj
 
-# -------- Config layering (like Nextflow includeConfig) --------
-_cfg = {}
-if Path("config/parameters.yaml").exists():
-    deep_update(_cfg, _load_config("config/parameters.yaml"))
+def first_existing(paths):
+    for p in paths:
+        if Path(p).exists():
+            return p
+    return None
 
+# -------- Config layering with robust fallbacks --------
+_cfg = {}
+
+# parameters.yaml
+param_file = first_existing([
+    "config/parameters.yaml",
+    "parameters.yaml",
+])
+if param_file:
+    deep_update(_cfg, _load_yaml(param_file))
+
+# user.yaml
+user_file = first_existing([
+    "config/user.yaml",
+    "user.yaml",
+])
 user_cfg = {}
-if Path("config/user.yaml").exists():
-    user_cfg = _load_config("config/user.yaml")
+if user_file:
+    user_cfg = _load_yaml(user_file)
     deep_update(_cfg, user_cfg)
 
+# references profile
 ref_profile = user_cfg.get("reference_profile", "hg38_p13")
-ref_file = f"config/references/{ref_profile}.yaml"
-if Path(ref_file).exists():
-    deep_update(_cfg, _load_config(ref_file))
+ref_file = first_existing([
+    f"config/references/{ref_profile}.yaml",
+    f"config/{ref_profile}.yaml",
+    f"{ref_profile}.yaml",
+])
+if ref_file:
+    deep_update(_cfg, _load_yaml(ref_file))
 
 # Re-apply user overrides last
 if user_cfg:
     deep_update(_cfg, user_cfg)
 
-# Expand ${ENV_VARS} like ${USER}
 config = env_expand(_cfg)
+
+# Validate required config keys early with friendly messages
+required_keys = ["results_directory", "input_sample_sheet", "genome", "genome_idx", "genome_dict", "genome_dir", "gtf", "transcript_fasta", "transcript_index"]
+missing = [k for k in required_keys if k not in config or not config[k]]
+if missing:
+    print(f"ERROR: Missing required config keys: {', '.join(missing)}", file=sys.stderr)
+    print("Hint: set these in config/user.yaml (preferred) or in parameters.yaml / references yaml files.", file=sys.stderr)
+    sys.exit(1)
 
 RESULTS_DIR = config["results_directory"]
 TMP_DIR = config.get("tmp_dir", "/tmp")
@@ -76,7 +108,7 @@ DBSNP            = config.get("dbsnp", None)
 DBSNP_TBI        = config.get("dbsnp_tbi", None)
 RRNA_DB_FILE     = config.get("rrna_db_file", None)
 
-# STAR params
+# STAR params (defaults tuned for RNA-seq SNP sensitivity)
 STAR_PARAMS = {
     "outfilter_mismatch_n_over_lmax": config.get("star_outfilter_mismatch_n_over_lmax", 0.07),
     "align_sjoverhang_min":           config.get("star_align_sjoverhang_min", 8),
@@ -110,9 +142,13 @@ FRAG_STD  = config.get("fragment_length_std", 20)
 ADAPTER_1 = config.get("adapter_sequence_1", "")
 ADAPTER_2 = config.get("adapter_sequence_2", "")
 
-# Sample sheet parsing (grouping runs per sample)
+# -------- Sample sheet parsing --------
 def read_samplesheet(samplesheet):
-    with open(samplesheet, "r") as fh:
+    p = Path(samplesheet)
+    if not p.exists():
+        print(f"ERROR: input_sample_sheet not found: {samplesheet}", file=sys.stderr)
+        sys.exit(1)
+    with p.open("r") as fh:
         head = fh.read(2048)
         fh.seek(0)
         dialect = csv.Sniffer().sniff(head)
@@ -139,21 +175,21 @@ SAMPLES = sorted(SAMPLES_MAP.keys())
 SAMPLES_SE = sorted([s for s in SAMPLES if SAMPLES_MAP[s]["se"]])
 SAMPLES_PE = sorted([s for s in SAMPLES if not SAMPLES_MAP[s]["se"]])
 
-# Helper path functions (shared across rules)
+# -------- Helper path functions (exported to rules) --------
 def merged_fastq_se(sample):
     return f"{RESULTS_DIR}/merged_fastq/{sample}.merged.fastq.gz"
 
 def merged_fastq_pe(sample):
     return [
         f"{RESULTS_DIR}/merged_fastq/{sample}_R1.merged.fastq.gz",
-        f"{RESULTS_DIR}/merged_fastq/{sample}_R2.merged.fastq.gz"
+        f"{RESULTS_DIR}/merged_fastq/{sample}_R2.merged.fastq.gz",
     ]
 
 def fastp_outputs_se(sample):
     return [
         f"{RESULTS_DIR}/trimmed_reads/{sample}.fastp.fastq.gz",
         f"{RESULTS_DIR}/trimmed_reads/{sample}.fastp.json",
-        f"{RESULTS_DIR}/trimmed_reads/{sample}.fastp.html"
+        f"{RESULTS_DIR}/trimmed_reads/{sample}.fastp.html",
     ]
 
 def fastp_outputs_pe(sample):
@@ -161,7 +197,7 @@ def fastp_outputs_pe(sample):
         f"{RESULTS_DIR}/trimmed_reads/{sample}_R1.fastp.fastq.gz",
         f"{RESULTS_DIR}/trimmed_reads/{sample}_R2.fastp.fastq.gz",
         f"{RESULTS_DIR}/trimmed_reads/{sample}.fastp.json",
-        f"{RESULTS_DIR}/trimmed_reads/{sample}.fastp.html"
+        f"{RESULTS_DIR}/trimmed_reads/{sample}.fastp.html",
     ]
 
 def reads_for_downstream(sample):
@@ -171,7 +207,7 @@ def reads_for_downstream(sample):
         else:
             return [
                 f"{RESULTS_DIR}/trimmed_cleaned_reads/{sample}_R1.sortmerna.fastq.gz",
-                f"{RESULTS_DIR}/trimmed_cleaned_reads/{sample}_R2.sortmerna.fastq.gz"
+                f"{RESULTS_DIR}/trimmed_cleaned_reads/{sample}_R2.sortmerna.fastq.gz",
             ]
     else:
         if SAMPLES_MAP[sample]["se"]:
@@ -179,7 +215,7 @@ def reads_for_downstream(sample):
         else:
             return [
                 f"{RESULTS_DIR}/trimmed_reads/{sample}_R1.fastp.fastq.gz",
-                f"{RESULTS_DIR}/trimmed_reads/{sample}_R2.fastp.fastq.gz"
+                f"{RESULTS_DIR}/trimmed_reads/{sample}_R2.fastp.fastq.gz",
             ]
 
 def star_prefix(sample):
@@ -259,7 +295,7 @@ def kallisto_outputs(sample):
         "abundance_tsv": f"{RESULTS_DIR}/kallisto/{sample}.kallisto.abundance.tsv",
         "abundance_h5":  f"{RESULTS_DIR}/kallisto/{sample}.kallisto.abundance.h5",
         "run_info":      f"{RESULTS_DIR}/kallisto/{sample}.kallisto.run_info.json",
-        "log":           f"{RESULTS_DIR}/kallisto/{sample}.kallisto.log"
+        "log":           f"{RESULTS_DIR}/kallisto/{sample}.kallisto.log",
     }
 
 def rrna_ref_args():
@@ -282,9 +318,7 @@ def multiqc_inputs():
         files.append(fastp_outputs_pe(s)[2])
     # SortMeRNA logs
     if USE_RRNA_FILTER:
-        for s in SAMPLES_SE:
-            files.append(f"{RESULTS_DIR}/trimmed_cleaned_reads/{s}.sortmerna.log")
-        for s in SAMPLES_PE:
+        for s in SAMPLES:
             files.append(f"{RESULTS_DIR}/trimmed_cleaned_reads/{s}.sortmerna.log")
     # Kallisto logs
     for s in SAMPLES:
@@ -299,7 +333,7 @@ def multiqc_inputs():
         files.append(bqsr_table(s))
     return files
 
-# Export globals for includes
+# Export everything rules/ need
 globals().update({
     "SAMPLES": SAMPLES,
     "SAMPLES_SE": SAMPLES_SE,
@@ -307,7 +341,7 @@ globals().update({
     "SAMPLES_MAP": SAMPLES_MAP,
     "RESULTS_DIR": RESULTS_DIR,
     "TMP_DIR": TMP_DIR,
-    "SAMPLESHEET": SAMPLESHEET,  # added to ensure availability in included rules
+    "SAMPLESHEET": SAMPLESHEET,
     "USE_RRNA_FILTER": USE_RRNA_FILTER,
     "GENOME": GENOME,
     "GENOME_IDX": GENOME_IDX,
@@ -328,10 +362,41 @@ globals().update({
     "ADAPTER_1": ADAPTER_1,
     "ADAPTER_2": ADAPTER_2,
     # helpers
-    # (unchanged exports)
+    "merged_fastq_se": merged_fastq_se,
+    "merged_fastq_pe": merged_fastq_pe,
+    "fastp_outputs_se": fastp_outputs_se,
+    "fastp_outputs_pe": fastp_outputs_pe,
+    "reads_for_downstream": reads_for_downstream,
+    "star_prefix": star_prefix,
+    "star_sorted_bam": star_sorted_bam,
+    "star_transcriptome_bam": star_transcriptome_bam,
+    "star_gene_counts": star_gene_counts,
+    "star_log_final": star_log_final,
+    "mapped_bam": mapped_bam,
+    "mapped_transcriptome_bam": mapped_transcriptome_bam,
+    "sorted_bam": sorted_bam,
+    "sorted_bai": sorted_bai,
+    "picard_bam": picard_bam,
+    "picard_bai": picard_bai,
+    "picard_metrics": picard_metrics,
+    "split_bam": split_bam,
+    "split_bai": split_bai,
+    "bqsr_table": bqsr_table,
+    "bqsr_bam": bqsr_bam,
+    "bqsr_bai": bqsr_bai,
+    "haplotype_vcf": haplotype_vcf,
+    "haplotype_tbi": haplotype_tbi,
+    "filtered_vcf": filtered_vcf,
+    "filtered_tbi": filtered_tbi,
+    "formatted_vcf": formatted_vcf,
+    "sorted_vcf": sorted_vcf,
+    "sorted_tbi": sorted_tbi,
+    "kallisto_outputs": kallisto_outputs,
+    "rrna_ref_args": rrna_ref_args,
+    "multiqc_inputs": multiqc_inputs,
 })
 
-# Include modular rules
+# -------- Includes (use rules/*) --------
 include: "rules/validate.smk"
 include: "rules/fastq.smk"
 include: "rules/fastp.smk"

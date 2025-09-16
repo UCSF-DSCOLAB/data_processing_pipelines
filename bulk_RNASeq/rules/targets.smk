@@ -47,7 +47,5 @@ rule all:
         [kallisto_outputs(s)["abundance_h5"] for s in SAMPLES] +
         [kallisto_outputs(s)["run_info"] for s in SAMPLES] +
         [kallisto_outputs(s)["log"] for s in SAMPLES] +
-        # Merged results
-        MERGED_COUNTS,
-        MERGED_BCF,
-        MULTIQC_HTML
+        # Merged results (wrap in a list to avoid list + str TypeError)
+        [MERGED_COUNTS, MERGED_BCF, MULTIQC_HTML]

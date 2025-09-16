@@ -1,0 +1,351 @@
+# Modular bulk RNA-seq Snakemake pipeline (refactored -- 2025-09-15)
+
+import os
+import csv
+from pathlib import Path
+from snakemake.utils import load_configfile
+
+# Config layering
+def deep_update(d, u):
+    for k, v in u.items():
+        if isinstance(v, dict) and isinstance(d.get(k), dict):
+            deep_update(d[k], v)
+        else:
+            d[k] = v
+    return d
+
+# Load user.yaml first to discover reference_profile
+_cfg = {}
+if Path("config/parameters.yaml").exists():
+    deep_update(_cfg, load_configfile("config/parameters.yaml"))
+
+user_cfg = {}
+if Path("config/user.yaml").exists():
+    user_cfg = load_configfile("config/user.yaml")
+    deep_update(_cfg, user_cfg)
+
+ref_profile = user_cfg.get("reference_profile", "hg38_p13")
+ref_file = f"config/references/{ref_profile}.yaml"
+if Path(ref_file).exists():
+    deep_update(_cfg, load_configfile(ref_file))
+
+# Re-apply user overrides last
+if user_cfg:
+    deep_update(_cfg, user_cfg)
+
+config = _cfg
+
+RESULTS_DIR = config["results_directory"]
+TMP_DIR = config.get("tmp_dir", "/tmp")
+SAMPLESHEET = config["input_sample_sheet"]
+USE_RRNA_FILTER = bool(config.get("filter_rrna", True))
+
+# References
+GENOME           = config["genome"]
+GENOME_IDX       = config["genome_idx"]
+GENOME_DICT      = config["genome_dict"]
+GENOME_DIR       = config["genome_dir"]
+GTF              = config["gtf"]
+TRANSCRIPT_FASTA = config["transcript_fasta"]
+KALLISTO_INDEX   = config["transcript_index"]
+DBSNP            = config.get("dbsnp", None)
+DBSNP_TBI        = config.get("dbsnp_tbi", None)
+RRNA_DB_FILE     = config.get("rrna_db_file", None)
+
+# STAR params
+STAR_PARAMS = {
+    "outfilter_mismatch_n_over_lmax": config.get("star_outfilter_mismatch_n_over_lmax", 0.07),
+    "align_sjoverhang_min":           config.get("star_align_sjoverhang_min", 8),
+    "outfilter_multimap_nmax":        config.get("star_outfilter_multimap_nmax", 50),
+    "seed_search_start_lmax":         config.get("star_seed_search_start_lmax", 30),
+    "additional":                     config.get("star_additional", "--outSAMattributes NH HI AS nM XS")
+}
+
+# GATK params
+GATK_PARAMS = {
+    "dont_use_soft_clipped_bases":    bool(config.get("gatk_dont_use_soft_clipped_bases", True)),
+    "standard_min_conf":              config.get("gatk_standard_min_confidence", 10),
+    "min_pruning":                    config.get("gatk_min_pruning", 1),
+    "recover_all_dangling_branches":  bool(config.get("gatk_recover_all_dangling_branches", True)),
+    "allow_nonuniquekmer":            bool(config.get("gatk_allow_nonunique_kmer", True)),
+    "max_mnp_distance":               config.get("gatk_max_mnp_distance", 0),
+    "vf_fs_filter":                   float(config.get("gatk_vf_fs_filter", 60.0)),
+    "vf_qd_filter":                   float(config.get("gatk_vf_qd_filter", 1.0)),
+    "vf_cluster_size":                int(config.get("gatk_vf_cluster_size", 3)),
+    "vf_window_size":                 int(config.get("gatk_vf_window_size", 35))
+}
+
+FORMAT_CONTIGS = bool(config.get("format_contigs", False))
+CONTIG_FORMAT_MAP = config.get("contig_format_map", None)
+
+# Kallisto single-end params
+FRAG_MEAN = config.get("fragment_length_mean", 200)
+FRAG_STD  = config.get("fragment_length_std", 20)
+
+# fastp adapters
+ADAPTER_1 = config.get("adapter_sequence_1", "")
+ADAPTER_2 = config.get("adapter_sequence_2", "")
+
+# Sample sheet parsing (grouping runs per sample)
+def read_samplesheet(samplesheet):
+    with open(samplesheet, "r") as fh:
+        head = fh.read(2048)
+        fh.seek(0)
+        dialect = csv.Sniffer().sniff(head)
+        reader = csv.DictReader(fh, dialect=dialect)
+        required = {"sample", "fastq_1", "fastq_2"}
+        if not required.issubset(set(reader.fieldnames)):
+            raise ValueError("Samplesheet must contain headers: sample,fastq_1,fastq_2")
+        m = {}
+        for row in reader:
+            sample = row["sample"].replace(" ", "_")
+            f1 = row["fastq_1"]
+            f2 = row["fastq_2"]
+            se = (len(str(f2).strip()) == 0)
+            md = m.setdefault(sample, {"se": se, "r1": [], "r2": []})
+            md["r1"].append(f1)
+            if not se:
+                md["r2"].append(f2)
+            if "se" in md and md["se"] != se:
+                raise ValueError(f"Sample {sample} mixes SE and PE runs.")
+        return m
+
+SAMPLES_MAP = read_samplesheet(SAMPLESHEET)
+SAMPLES = sorted(SAMPLES_MAP.keys())
+SAMPLES_SE = sorted([s for s in SAMPLES if SAMPLES_MAP[s]["se"]])
+SAMPLES_PE = sorted([s for s in SAMPLES if not SAMPLES_MAP[s]["se"]])
+
+# Helper path functions (shared across rules)
+def merged_fastq_se(sample):
+    return f"{RESULTS_DIR}/merged_fastq/{sample}.merged.fastq.gz"
+
+def merged_fastq_pe(sample):
+    return [
+        f"{RESULTS_DIR}/merged_fastq/{sample}_R1.merged.fastq.gz",
+        f"{RESULTS_DIR}/merged_fastq/{sample}_R2.merged.fastq.gz"
+    ]
+
+def fastp_outputs_se(sample):
+    return [
+        f"{RESULTS_DIR}/trimmed_reads/{sample}.fastp.fastq.gz",
+        f"{RESULTS_DIR}/trimmed_reads/{sample}.fastp.json",
+        f"{RESULTS_DIR}/trimmed_reads/{sample}.fastp.html"
+    ]
+
+def fastp_outputs_pe(sample):
+    return [
+        f"{RESULTS_DIR}/trimmed_reads/{sample}_R1.fastp.fastq.gz",
+        f"{RESULTS_DIR}/trimmed_reads/{sample}_R2.fastp.fastq.gz",
+        f"{RESULTS_DIR}/trimmed_reads/{sample}.fastp.json",
+        f"{RESULTS_DIR}/trimmed_reads/{sample}.fastp.html"
+    ]
+
+def reads_for_downstream(sample):
+    if USE_RRNA_FILTER:
+        if SAMPLES_MAP[sample]["se"]:
+            return [f"{RESULTS_DIR}/trimmed_cleaned_reads/{sample}.sortmerna.fastq.gz"]
+        else:
+            return [
+                f"{RESULTS_DIR}/trimmed_cleaned_reads/{sample}_R1.sortmerna.fastq.gz",
+                f"{RESULTS_DIR}/trimmed_cleaned_reads/{sample}_R2.sortmerna.fastq.gz"
+            ]
+    else:
+        if SAMPLES_MAP[sample]["se"]:
+            return [f"{RESULTS_DIR}/trimmed_reads/{sample}.fastp.fastq.gz"]
+        else:
+            return [
+                f"{RESULTS_DIR}/trimmed_reads/{sample}_R1.fastp.fastq.gz",
+                f"{RESULTS_DIR}/trimmed_reads/{sample}_R2.fastp.fastq.gz"
+            ]
+
+def star_prefix(sample):
+    return f"{RESULTS_DIR}/star/{sample}."
+
+def star_sorted_bam(sample):
+    return f"{star_prefix(sample)}Aligned.sortedByCoord.out.bam"
+
+def star_transcriptome_bam(sample):
+    return f"{star_prefix(sample)}Aligned.toTranscriptome.out.bam"
+
+def star_gene_counts(sample):
+    return f"{star_prefix(sample)}ReadsPerGene.out.tab"
+
+def star_log_final(sample):
+    return f"{star_prefix(sample)}Log.final.out"
+
+def mapped_bam(sample):
+    return f"{RESULTS_DIR}/star/{sample}.mapped.bam"
+
+def mapped_transcriptome_bam(sample):
+    return f"{RESULTS_DIR}/star/{sample}.transcriptome.mapped.bam"
+
+def sorted_bam(sample):
+    return f"{RESULTS_DIR}/star/{sample}.bam"
+
+def sorted_bai(sample):
+    return f"{RESULTS_DIR}/star/{sample}.bai"
+
+def picard_bam(sample):
+    return f"{RESULTS_DIR}/star/{sample}.picard.bam"
+
+def picard_bai(sample):
+    return f"{RESULTS_DIR}/star/{sample}.picard.bai"
+
+def picard_metrics(sample):
+    return f"{RESULTS_DIR}/star/{sample}.MarkDuplicates.metrics.txt"
+
+def split_bam(sample):
+    return f"{RESULTS_DIR}/star/{sample}.bam"
+
+def split_bai(sample):
+    return f"{RESULTS_DIR}/star/{sample}.bam.bai"
+
+def bqsr_table(sample):
+    return f"{RESULTS_DIR}/snps/{sample}.table"
+
+def bqsr_bam(sample):
+    return f"{RESULTS_DIR}/snps/{sample}_bqsr.bam"
+
+def bqsr_bai(sample):
+    return f"{RESULTS_DIR}/snps/{sample}_bqsr.bam.bai"
+
+def haplotype_vcf(sample):
+    return f"{RESULTS_DIR}/snps/{sample}.vcf.gz"
+
+def haplotype_tbi(sample):
+    return f"{RESULTS_DIR}/snps/{sample}.vcf.gz.tbi"
+
+def filtered_vcf(sample):
+    return f"{RESULTS_DIR}/snps/{sample}.filtered.vcf.gz"
+
+def filtered_tbi(sample):
+    return f"{RESULTS_DIR}/snps/{sample}.filtered.vcf.gz.tbi"
+
+def formatted_vcf(sample):
+    return f"{RESULTS_DIR}/snps/{sample}.formatted.vcf.gz"
+
+def sorted_vcf(sample):
+    return f"{RESULTS_DIR}/snps/{sample}.sorted.vcf.gz"
+
+def sorted_tbi(sample):
+    return f"{RESULTS_DIR}/snps/{sample}.sorted.vcf.gz.tbi"
+
+def kallisto_outputs(sample):
+    return {
+        "abundance_tsv": f"{RESULTS_DIR}/kallisto/{sample}.kallisto.abundance.tsv",
+        "abundance_h5":  f"{RESULTS_DIR}/kallisto/{sample}.kallisto.abundance.h5",
+        "run_info":      f"{RESULTS_DIR}/kallisto/{sample}.kallisto.run_info.json",
+        "log":           f"{RESULTS_DIR}/kallisto/{sample}.kallisto.log"
+    }
+
+def rrna_ref_args():
+    if not RRNA_DB_FILE or not Path(RRNA_DB_FILE).is_file():
+        return ""
+    refs = []
+    with open(RRNA_DB_FILE, "r") as fh:
+        for line in fh:
+            fp = line.strip()
+            if fp:
+                refs.extend(["--ref", fp])
+    return " ".join(refs)
+
+def multiqc_inputs():
+    files = []
+    # fastp json
+    for s in SAMPLES_SE:
+        files.append(fastp_outputs_se(s)[1])
+    for s in SAMPLES_PE:
+        files.append(fastp_outputs_pe(s)[2])
+    # SortMeRNA logs
+    if USE_RRNA_FILTER:
+        for s in SAMPLES_SE:
+            files.append(f"{RESULTS_DIR}/trimmed_cleaned_reads/{s}.sortmerna.log")
+        for s in SAMPLES_PE:
+            files.append(f"{RESULTS_DIR}/trimmed_cleaned_reads/{s}.sortmerna.log")
+    # Kallisto logs
+    for s in SAMPLES:
+        files.append(kallisto_outputs(s)["log"])
+    # STAR log + metrics and stats
+    for s in SAMPLES:
+        files.append(star_log_final(s))
+        files.append(picard_metrics(s))
+        files.append(f"{RESULTS_DIR}/star/{s}.stats")
+        files.append(f"{RESULTS_DIR}/star/{s}.flagstat")
+        files.append(f"{RESULTS_DIR}/star/{s}.idxstats")
+        files.append(bqsr_table(s))
+    return files
+
+# Export globals for includes
+globals().update({
+    "SAMPLES": SAMPLES,
+    "SAMPLES_SE": SAMPLES_SE,
+    "SAMPLES_PE": SAMPLES_PE,
+    "SAMPLES_MAP": SAMPLES_MAP,
+    "RESULTS_DIR": RESULTS_DIR,
+    "TMP_DIR": TMP_DIR,
+    "USE_RRNA_FILTER": USE_RRNA_FILTER,
+    "GENOME": GENOME,
+    "GENOME_IDX": GENOME_IDX,
+    "GENOME_DICT": GENOME_DICT,
+    "GENOME_DIR": GENOME_DIR,
+    "GTF": GTF,
+    "TRANSCRIPT_FASTA": TRANSCRIPT_FASTA,
+    "KALLISTO_INDEX": KALLISTO_INDEX,
+    "DBSNP": DBSNP,
+    "DBSNP_TBI": DBSNP_TBI,
+    "RRNA_DB_FILE": RRNA_DB_FILE,
+    "STAR_PARAMS": STAR_PARAMS,
+    "GATK_PARAMS": GATK_PARAMS,
+    "FORMAT_CONTIGS": FORMAT_CONTIGS,
+    "CONTIG_FORMAT_MAP": CONTIG_FORMAT_MAP,
+    "FRAG_MEAN": FRAG_MEAN,
+    "FRAG_STD": FRAG_STD,
+    "ADAPTER_1": ADAPTER_1,
+    "ADAPTER_2": ADAPTER_2,
+    # helpers
+    "merged_fastq_se": merged_fastq_se,
+    "merged_fastq_pe": merged_fastq_pe,
+    "fastp_outputs_se": fastp_outputs_se,
+    "fastp_outputs_pe": fastp_outputs_pe,
+    "reads_for_downstream": reads_for_downstream,
+    "star_prefix": star_prefix,
+    "star_sorted_bam": star_sorted_bam,
+    "star_transcriptome_bam": star_transcriptome_bam,
+    "star_gene_counts": star_gene_counts,
+    "star_log_final": star_log_final,
+    "mapped_bam": mapped_bam,
+    "mapped_transcriptome_bam": mapped_transcriptome_bam,
+    "sorted_bam": sorted_bam,
+    "sorted_bai": sorted_bai,
+    "picard_bam": picard_bam,
+    "picard_bai": picard_bai,
+    "picard_metrics": picard_metrics,
+    "split_bam": split_bam,
+    "split_bai": split_bai,
+    "bqsr_table": bqsr_table,
+    "bqsr_bam": bqsr_bam,
+    "bqsr_bai": bqsr_bai,
+    "haplotype_vcf": haplotype_vcf,
+    "haplotype_tbi": haplotype_tbi,
+    "filtered_vcf": filtered_vcf,
+    "filtered_tbi": filtered_tbi,
+    "formatted_vcf": formatted_vcf,
+    "sorted_vcf": sorted_vcf,
+    "sorted_tbi": sorted_tbi,
+    "kallisto_outputs": kallisto_outputs,
+    "rrna_ref_args": rrna_ref_args,
+    "multiqc_inputs": multiqc_inputs
+})
+
+# Include modular rules
+include: "rules/validate.smk"
+include: "rules/fastq.smk"
+include: "rules/fastp.smk"
+include: "rules/sortmerna.smk"
+include: "rules/kallisto.smk"
+include: "rules/star.smk"
+include: "rules/samtools.smk"
+include: "rules/picard_gatk.smk"
+include: "rules/bcftools.smk"
+include: "rules/multiqc.smk"
+include: "rules/targets.smk"

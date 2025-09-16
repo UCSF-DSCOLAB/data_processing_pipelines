@@ -8,8 +8,6 @@ rule sortmerna_se:
         f"{RESULTS_DIR}/trimmed_cleaned_reads/{{sample}}.sortmerna.fastq.gz",
         f"{RESULTS_DIR}/trimmed_cleaned_reads/{{sample}}.sortmerna.log"
     threads: 6
-    conda:
-        "envs/sortmerna.yml"
     params:
         refs=rrna_ref_args()
     shell:
@@ -35,8 +33,6 @@ rule sortmerna_pe:
         f"{RESULTS_DIR}/trimmed_cleaned_reads/{{sample}}_R2.sortmerna.fastq.gz",
         f"{RESULTS_DIR}/trimmed_cleaned_reads/{{sample}}.sortmerna.log"
     threads: 6
-    conda:
-        "envs/sortmerna.yml"
     params:
         refs=rrna_ref_args()
     shell:

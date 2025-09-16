@@ -1,19 +1,15 @@
-# STAR alignment (single modular rule handles SE/PE)
+# STAR alignment (single rule with static outputs)
 rule star_align:
     input:
         reads=lambda wc: reads_for_downstream(wc.sample),
         gtf=GTF,
         genome_dir=GENOME_DIR
     output:
-        lambda wc: [
-            star_sorted_bam(wc.sample),
-            star_transcriptome_bam(wc.sample),
-            star_gene_counts(wc.sample),
-            star_log_final(wc.sample)
-        ]
+        f"{RESULTS_DIR}/star/{{sample}}.Aligned.sortedByCoord.out.bam",
+        f"{RESULTS_DIR}/star/{{sample}}.Aligned.toTranscriptome.out.bam",
+        f"{RESULTS_DIR}/star/{{sample}}.ReadsPerGene.out.tab",
+        f"{RESULTS_DIR}/star/{{sample}}.Log.final.out"
     threads: 8
-    conda:
-        "envs/star.yml"
     shell:
         r"""
         mkdir -p {RESULTS_DIR}/star
@@ -35,7 +31,7 @@ rule star_align:
             --outReadsUnmapped None \
             --outSAMunmapped Within KeepPairs \
             --outSAMattrRGline ID:{wildcards.sample} SM:{wildcards.sample} LB:library PL:illumina \
-            --outFileNamePrefix {star_prefix(wildcards.sample)} \
+            --outFileNamePrefix {RESULTS_DIR}/star/{wildcards.sample}. \
             --outFilterMismatchNoverLmax {STAR_PARAMS['outfilter_mismatch_n_over_lmax']} \
             --alignSJoverhangMin {STAR_PARAMS['align_sjoverhang_min']} \
             --outFilterMultimapNmax {STAR_PARAMS['outfilter_multimap_nmax']} \

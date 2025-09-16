@@ -1,11 +1,9 @@
 # Optional contig format conversion, sort, index, merge
 rule bcftools_contig_conversion:
     input:
-        lambda wc: filtered_vcf(wc.sample)
+        lambda wc: f"{RESULTS_DIR}/snps/{wc.sample}.filtered.vcf.gz"
     output:
-        lambda wc: formatted_vcf(wc.sample)
-    conda:
-        "envs/bcftools.yml"
+        f"{RESULTS_DIR}/snps/{{sample}}.formatted.vcf.gz"
     params:
         mapfile=CONTIG_FORMAT_MAP
     run:
@@ -16,32 +14,26 @@ rule bcftools_contig_conversion:
 
 rule bcftools_sort_vcf:
     input:
-        lambda wc: formatted_vcf(wc.sample) if FORMAT_CONTIGS and CONTIG_FORMAT_MAP else filtered_vcf(wc.sample)
+        lambda wc: f"{RESULTS_DIR}/snps/{wc.sample}.formatted.vcf.gz" if FORMAT_CONTIGS and CONTIG_FORMAT_MAP else f"{RESULTS_DIR}/snps/{wc.sample}.filtered.vcf.gz"
     output:
-        lambda wc: sorted_vcf(wc.sample)
-    conda:
-        "envs/bcftools.yml"
+        f"{RESULTS_DIR}/snps/{{sample}}.sorted.vcf.gz"
     shell:
         "bcftools sort -Oz -o {output} {input}"
 
 rule bcftools_index_vcf:
     input:
-        lambda wc: sorted_vcf(wc.sample)
+        f"{RESULTS_DIR}/snps/{{sample}}.sorted.vcf.gz"
     output:
-        lambda wc: sorted_tbi(wc.sample)
-    conda:
-        "envs/bcftools.yml"
+        f"{RESULTS_DIR}/snps/{{sample}}.sorted.vcf.gz.tbi"
     shell:
         "bcftools index --tbi {input}"
 
 rule bcftools_merge:
     input:
-        vcfs=lambda wc: [sorted_vcf(s) for s in SAMPLES]
+        vcfs=lambda wc: [f"{RESULTS_DIR}/snps/{s}.sorted.vcf.gz" for s in SAMPLES]
     output:
         f"{RESULTS_DIR}/merged_results/merged_snps.bcf"
     threads: 8
-    conda:
-        "envs/bcftools.yml"
     shell:
         r"""
         mkdir -p {RESULTS_DIR}/merged_results

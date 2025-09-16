@@ -1,14 +1,12 @@
 # MarkDuplicates, SplitNCigarReads, BQSR, ApplyBQSR, HaplotypeCaller, VariantFiltration
 rule picard_markduplicates:
     input:
-        bam=lambda wc: sorted_bam(wc.sample),
-        bai=lambda wc: sorted_bai(wc.sample)
+        bam=lambda wc: f"{RESULTS_DIR}/star/{wc.sample}.bam",
+        bai=lambda wc: f"{RESULTS_DIR}/star/{wc.sample}.bai"
     output:
-        bam=lambda wc: picard_bam(wc.sample),
-        bai=lambda wc: picard_bai(wc.sample),
-        metrics=lambda wc: picard_metrics(wc.sample)
-    conda:
-        "envs/gatk.yml"
+        bam=f"{RESULTS_DIR}/star/{{sample}}.picard.bam",
+        bai=f"{RESULTS_DIR}/star/{{sample}}.picard.bai",
+        metrics=f"{RESULTS_DIR}/star/{{sample}}.MarkDuplicates.metrics.txt"
     shell:
         r"""
         gatk --java-options "-Xmx4g" MarkDuplicates \
@@ -16,18 +14,16 @@ rule picard_markduplicates:
           --OUTPUT {output.bam} \
           --REFERENCE_SEQUENCE {GENOME} \
           --METRICS_FILE {output.metrics}
-        samtools index {output.bam}
+        samtools index {output.bam} {output.bai}
         """
 
 rule gatk_splitncigarreads:
     input:
-        bam=lambda wc: picard_bam(wc.sample),
-        bai=lambda wc: picard_bai(wc.sample)
+        bam=lambda wc: f"{RESULTS_DIR}/star/{wc.sample}.picard.bam" if False else f"{RESULTS_DIR}/star/{wc.sample}.picard.bam",
+        bai=lambda wc: f"{RESULTS_DIR}/star/{wc.sample}.picard.bai"
     output:
-        bam=lambda wc: split_bam(wc.sample),
-        bai=lambda wc: split_bai(wc.sample)
-    conda:
-        "envs/gatk.yml"
+        bam=f"{RESULTS_DIR}/snps/{{sample}}.split.bam",
+        bai=f"{RESULTS_DIR}/snps/{{sample}}.split.bam.bai"
     shell:
         r"""
         gatk --java-options "-Xmx16g" SplitNCigarReads \
@@ -39,12 +35,10 @@ rule gatk_splitncigarreads:
 
 rule gatk_base_recalibrator:
     input:
-        bam=lambda wc: split_bam(wc.sample),
-        bai=lambda wc: split_bai(wc.sample)
+        bam=lambda wc: f"{RESULTS_DIR}/snps/{wc.sample}.split.bam",
+        bai=lambda wc: f"{RESULTS_DIR}/snps/{wc.sample}.split.bam.bai"
     output:
-        lambda wc: bqsr_table(wc.sample)
-    conda:
-        "envs/gatk.yml"
+        f"{RESULTS_DIR}/snps/{{sample}}.table"
     params:
         known_sites=(f" --known-sites {DBSNP}" if DBSNP else "")
     shell:
@@ -58,13 +52,11 @@ rule gatk_base_recalibrator:
 
 rule gatk_apply_bqsr:
     input:
-        bam=lambda wc: split_bam(wc.sample),
-        bai=lambda wc: split_bai(wc.sample),
-        table=lambda wc: bqsr_table(wc.sample)
+        bam=lambda wc: f"{RESULTS_DIR}/snps/{wc.sample}.split.bam",
+        bai=lambda wc: f"{RESULTS_DIR}/snps/{wc.sample}.split.bam.bai",
+        table=lambda wc: f"{RESULTS_DIR}/snps/{wc.sample}.table"
     output:
-        bam=lambda wc: bqsr_bam(wc.sample)
-    conda:
-        "envs/gatk.yml"
+        bam=f"{RESULTS_DIR}/snps/{{sample}}_bqsr.bam"
     shell:
         r"""
         gatk --java-options "-Xmx8g" ApplyBQSR \
@@ -76,23 +68,19 @@ rule gatk_apply_bqsr:
 
 rule samtools_index_bqsr:
     input:
-        lambda wc: bqsr_bam(wc.sample)
+        f"{RESULTS_DIR}/snps/{{sample}}_bqsr.bam"
     output:
-        lambda wc: bqsr_bai(wc.sample)
-    conda:
-        "envs/samtools.yml"
+        f"{RESULTS_DIR}/snps/{{sample}}_bqsr.bam.bai"
     shell:
-        "samtools index {input}"
+        "samtools index {input} {output}"
 
 rule gatk_haplotypecaller:
     input:
-        bam=lambda wc: bqsr_bam(wc.sample),
-        bai=lambda wc: bqsr_bai(wc.sample)
+        bam=lambda wc: f"{RESULTS_DIR}/snps/{wc.sample}_bqsr.bam",
+        bai=lambda wc: f"{RESULTS_DIR}/snps/{wc.sample}_bqsr.bam.bai"
     output:
-        vcf=lambda wc: haplotype_vcf(wc.sample),
-        tbi=lambda wc: haplotype_tbi(wc.sample)
-    conda:
-        "envs/gatk.yml"
+        vcf=f"{RESULTS_DIR}/snps/{{sample}}.vcf.gz",
+        tbi=f"{RESULTS_DIR}/snps/{{sample}}.vcf.gz.tbi"
     params:
         soft_clip=("--dont-use-soft-clipped-bases true" if GATK_PARAMS["dont_use_soft_clipped_bases"] else ""),
         min_conf=f"--standard-min-confidence-threshold-for-calling {GATK_PARAMS['standard_min_conf']}",
@@ -118,13 +106,11 @@ rule gatk_haplotypecaller:
 
 rule gatk_variantfiltration:
     input:
-        vcf=lambda wc: haplotype_vcf(wc.sample),
-        tbi=lambda wc: haplotype_tbi(wc.sample)
+        vcf=lambda wc: f"{RESULTS_DIR}/snps/{wc.sample}.vcf.gz",
+        tbi=lambda wc: f"{RESULTS_DIR}/snps/{wc.sample}.vcf.gz.tbi"
     output:
-        vcf=lambda wc: filtered_vcf(wc.sample),
-        tbi=lambda wc: filtered_tbi(wc.sample)
-    conda:
-        "envs/gatk.yml"
+        vcf=f"{RESULTS_DIR}/snps/{{sample}}.filtered.vcf.gz",
+        tbi=f"{RESULTS_DIR}/snps/{{sample}}.filtered.vcf.gz.tbi"
     shell:
         r"""
         gatk --java-options "-Xmx8g" VariantFiltration \

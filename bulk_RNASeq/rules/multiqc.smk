@@ -4,8 +4,6 @@ rule multiqc:
         lambda wc: multiqc_inputs()
     output:
         f"{RESULTS_DIR}/multiqc/multiqc_report.html"
-    conda:
-        "envs/multiqc.yml"
     shell:
         r"""
         mkdir -p {RESULTS_DIR}/multiqc

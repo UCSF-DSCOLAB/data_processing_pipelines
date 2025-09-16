@@ -3,9 +3,7 @@ rule merge_fastq_se:
     input:
         lambda wc: SAMPLES_MAP[wc.sample]["r1"]
     output:
-        lambda wc: merged_fastq_se(wc.sample)
-    conda:
-        "envs/py311_basic.yml"
+        f"{RESULTS_DIR}/merged_fastq/{{sample}}.merged.fastq.gz"
     shell:
         r"""
         mkdir -p $(dirname {output})
@@ -21,9 +19,8 @@ rule merge_fastq_pe:
         r1=lambda wc: SAMPLES_MAP[wc.sample]["r1"],
         r2=lambda wc: SAMPLES_MAP[wc.sample]["r2"]
     output:
-        lambda wc: merged_fastq_pe(wc.sample)
-    conda:
-        "envs/py311_basic.yml"
+        f"{RESULTS_DIR}/merged_fastq/{{sample}}_R1.merged.fastq.gz",
+        f"{RESULTS_DIR}/merged_fastq/{{sample}}_R2.merged.fastq.gz"
     shell:
         r"""
         mkdir -p $(dirname {output[0]})

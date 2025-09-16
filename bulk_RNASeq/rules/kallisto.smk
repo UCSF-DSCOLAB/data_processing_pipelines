@@ -4,15 +4,11 @@ rule kallisto:
         reads=lambda wc: reads_for_downstream(wc.sample),
         index=KALLISTO_INDEX
     output:
-        lambda wc: [
-          kallisto_outputs(wc.sample)["abundance_tsv"],
-          kallisto_outputs(wc.sample)["abundance_h5"],
-          kallisto_outputs(wc.sample)["run_info"],
-          kallisto_outputs(wc.sample)["log"]
-        ]
+        f"{RESULTS_DIR}/kallisto/{{sample}}.kallisto.abundance.tsv",
+        f"{RESULTS_DIR}/kallisto/{{sample}}.kallisto.abundance.h5",
+        f"{RESULTS_DIR}/kallisto/{{sample}}.kallisto.run_info.json",
+        f"{RESULTS_DIR}/kallisto/{{sample}}.kallisto.log"
     threads: 4
-    conda:
-        "envs/kallisto.yml"
     shell:
         r"""
         mkdir -p {RESULTS_DIR}/kallisto
@@ -34,11 +30,9 @@ rule kallisto:
 
 rule merge_kallisto_counts:
     input:
-        lambda wc: [kallisto_outputs(s)["abundance_tsv"] for s in SAMPLES]
+        lambda wc: [f"{RESULTS_DIR}/kallisto/{s}.kallisto.abundance.tsv" for s in SAMPLES]
     output:
         f"{RESULTS_DIR}/merged_results/merged_counts.tsv"
-    conda:
-        "envs/py311_basic.yml"
     shell:
         r"""
         mkdir -p {RESULTS_DIR}/merged_results

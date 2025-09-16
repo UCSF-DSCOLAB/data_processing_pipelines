@@ -1,0 +1,6 @@
+# User-level settings (override as needed)
+reference_profile: "hg38_p13"
+
+tmp_dir: "/c4/scratch/${USER}"
+results_directory: "/krummellab/data1/alaa/data/tests/bulk_rnaseq/pipeline_tests/emily_mini_dataset7_p13"
+input_sample_sheet: "/krummellab/data1/alaa/data/tests/bulk_rnaseq/pipeline_tests/emily_mini_dataset7_p13/sample_sheet.csv"

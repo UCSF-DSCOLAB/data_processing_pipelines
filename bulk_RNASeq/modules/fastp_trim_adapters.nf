@@ -10,12 +10,13 @@ process FASTP_TRIM_ADAPTERS {
           // File size in GB
           fileSize = reads[0].size() / (1024 * 1024 * 1024)
         }
-	if (fileSize > 5){
-	   fileSize = 5
-	}
+        if (fileSize > 5){
+          fileSize = 5
+        }
         return 10.GB * (1 + (fileSize * 2))
     }
     publishDir "${params.results_directory}/trimmed_reads", mode: 'copy'
+    containerOptions "-B /scratch/"
 
     input:
     tuple val(meta), path(reads)

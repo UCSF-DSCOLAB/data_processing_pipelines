@@ -20,6 +20,7 @@ process TEST_GZIP_INTEGRITY {
     """
     echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
     echo "[running TEST_GZIP_INTEGRITY]"
+    dir_use=""
 
     if [[ "${data_type}"  == "ATAC" ]];
     then
@@ -28,13 +29,13 @@ process TEST_GZIP_INTEGRITY {
     else
       library_str=${library}
       dt=${data_type}
-      lib_to_use=\${library_str}/"SCG"/"SC\${dt:0:1}"}
+      lib_to_use=\${library_str/"SCG"/"SC\${dt:0:1}"}
       dir_use=single_cell_${data_type}
     fi 
+    echo "Using \${dir_use} for ${library} with ${data_type}"
 
-
-    echo " gzip --test ${params.project_dir}/data/${dir_use}/raw/\${lib_to_use}/\${lib_to_use}*.fastq.gz"
-    gzip --test ${params.project_dir}/data/${dir_use}/raw/\${lib_to_use}/\${lib_to_use}*.fastq.gz
+    echo " gzip --test ${params.project_dir}/data/\${dir_use}/raw/\${lib_to_use}/\${lib_to_use}*.fastq.gz"
+    gzip --test ${params.project_dir}/data/\${dir_use}/raw/\${lib_to_use}/\${lib_to_use}*.fastq.gz
     
     if [[ "${data_type}" == "CITE" ]]
     then
@@ -88,13 +89,13 @@ process CELLRANGER {
       echo "${params.project_dir}/data/single_cell_CITE/raw/\${scc_library},\${scc_library},Antibody Capture" >> ${library}_libraries.csv
   fi
   echo " Using container ${params.container.cellranger}"
-  echo " cellranger count --id=${library}  \
+  echo " cellranger count --id=${library} --create-bam true \
     --libraries=${library}_libraries.csv \
     --feature-ref=${params.ref.cite_feature_ref} \
     --transcriptome=${params.ref.transcriptome} "
   echo "-----------"
 
-  cellranger count --id=${library}  \
+  cellranger count --id=${library} --create-bam true \
     --libraries=${library}_libraries.csv \
     --feature-ref=${params.ref.cite_feature_ref} \
     --transcriptome=${params.ref.transcriptome} \
@@ -261,11 +262,13 @@ process FILTER_BARCODES{
   publishDir(
     path: { "${data_type}" == "ATAC" ? 
             "${params.project_dir}/data/single_nuclear_ATAC/processed/${library}/demuxlet/" : 
-            "${params.project_dir}/data/single_cell_GEX/${library}/" }, 
+            "${params.project_dir}/data/single_cell_GEX/processed/${library}/cellranger/" }, 
             mode: 'copy', pattern: "barcodes_of_interest.filt.list" )
 
-  publishDir "${params.project_dir}/data/single_nuclear_ATAC/processed/${library}/amulet/",
-            mode: 'copy', pattern: "pre_amulet_barcodes_filt.csv"
+  publishDir (
+   path: { "${data_type}" == "ATAC" ? 
+    "${params.project_dir}/data/single_nuclear_ATAC/processed/${library}/amulet/":
+    ""}, mode: 'copy', pattern: "pre_amulet_barcodes_filt.csv")
 
   publishDir(
     path: { "${data_type}" == "ATAC" ? 
@@ -606,8 +609,8 @@ process FREEMUXLET_LIBRARY {
 
   publishDir(
     path: { "${data_type}" == "ATAC" ? 
-            "${params.project_dir}/data/single_nuclear_ATAC/processed/${library}/" : 
-            "${params.project_dir}/data/single_cell_GEX/processed/${library}/" }, 
+            "${params.project_dir}/data/single_nuclear_ATAC/processed/${library}/freemuxlet/" : 
+            "${params.project_dir}/data/single_cell_GEX/processed/${library}/freemuxlet/" }, 
             mode: 'copy', pattern: "${library}*")
 
   container "${params.container.popscle}"

@@ -1,5 +1,6 @@
 library(ArchR)
 library(tidyverse)
+library(ggExtra)
 
 args = commandArgs(trailingOnly=T)
 LIBRARY=args[1]
@@ -11,14 +12,18 @@ addArchRGenome("hg38")
 proj = loadArchRProject("results")
 
 ## TODO FILTER
-cuts = read_csv(CUTOFFS_CSV)
-if (!as.logical(cuts$reviewed)){
+cuts_df = read_csv(CUTOFFS_CSV)
+cuts=cuts_df$vals
+names(cuts) = cuts_df$params
+if (!as.logical(cuts[["reviewed"]])){
   print("Error, qc cutoffs are not reviewed!")
 } else {
-  pre_filt <- getCellColData(proj, select = c("log10(nFrags)", "TSSEnrichment"))
+  pre_filt <- getCellColData(proj, select = c("log10(nFrags)", "TSSEnrichment")) %>%
+    as_tibble(rownames="cell_id") %>%
+    filter(!is.na(TSSEnrichment))
   post_filt = pre_filt %>% 
-    filter(TSSEnrichment > cuts$tss.min,
-           `log10.nFrags.` > log10(as.numeric(cuts$nFrag.min)))
+    filter(TSSEnrichment > as.numeric(cuts[["tss.min"]]),
+           `log10.nFrags.` > log10(as.numeric(cuts[["nFrag.min"]])))
   
   write(sprintf("Started with %s nuclei, filtered to %s nuclei based on selected cutoffs.", 
                 nrow(pre_filt), nrow(post_filt)), file="filter_log.txt")
@@ -33,11 +38,12 @@ if (!as.logical(cuts$reviewed)){
     ylabel = "TSS Enrichment",
     xlim = c(log10(500), quantile(pre_filt$`log10.nFrags.`, probs = 0.99)),
     ylim = c(0, quantile(pre_filt$TSSEnrichment, probs = 0.99))) + 
-    geom_hline(yintercept = cuts$tss.min, lty = "dashed") + 
-    geom_vline(xintercept = log10(as.numeric(cuts$nfrag.min)), lty = "dashed")
+    geom_hline(yintercept = as.numeric(cuts[['tss.min']]), lty = "dashed") + 
+    geom_vline(xintercept = log10(as.numeric(cuts[["nFrag.min"]])), lty = "dashed")
   pdf("filt_tss_vs_nFrag.pdf", height=5, width=5)
   p %>% ggMarginal(type="density")
   dev.off()
+  proj = subsetArchRProject(proj, cells=post_filt$cell_id, force=T)
 }
 ## now run next steps
 proj <- addIterativeLSI(ArchRProj = proj, 

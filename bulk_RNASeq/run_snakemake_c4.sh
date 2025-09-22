@@ -15,7 +15,7 @@
 
 set -euo pipefail
 
-# Singularity image (same as Nextflow container.config)
+# Singularity image (aligned with Nextflow container.config)
 SIF="/krummellab/data1/singularity_images/bulk_rnaseq/v6/bulk_rna_seq.sif"
 
 # Scratch working directory (cleanup on success)

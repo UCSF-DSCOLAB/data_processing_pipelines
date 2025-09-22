@@ -1,410 +1,373 @@
-# Modular bulk RNA-seq Snakemake pipeline (Snakemake 7.32.4 compatible)
-# Robust config loading (supports both config/* and top-level files), env expansion,
-# exports helper functions for rules/, and includes only rules/*.
+############################################################################
+# Bulk RNA-seq – light Snakemake pipeline
+# Implements:
+#   1) sample-sheet validation
+#   2) (optional) concatenation of FASTQs that belong to the same sample
+#   3) adapter trimming with fastp
+#   4) optional rRNA removal with SortMeRNA
+#   5) transcript abundance estimation with kallisto
+#   6) MultiQC report
+############################################################################
 
-import os
-import csv
-import sys
+import os, csv
 from pathlib import Path
+from collections import defaultdict
 
-# Optional Snakemake loader (back-compatible)
-try:
-    from snakemake.utils import load_configfile as _snk_load_configfile
-except Exception:
-    _snk_load_configfile = None
-import yaml
+################################################################################
+# CONFIGURATION
+################################################################################
+configfile: "config/snakemake_config.yaml"
 
-def _load_yaml(path):
-    p = Path(path)
-    if not p.exists():
-        return {}
-    if _snk_load_configfile is not None:
-        return _snk_load_configfile(str(p))
-    with p.open("r") as fh:
-        return yaml.safe_load(fh) or {}
+SAMPLESHEET        = Path(config["input_sample_sheet"]).expanduser()
+RESULTS_DIR        = Path(config["results_directory"]).expanduser()
+TRANSCRIPT_INDEX   = Path(config["transcript_index"]).expanduser()
+FILTER_RRNA        = bool(config.get("filter_rrna", True))
+RRNA_DB_FILE       = Path(config.get("rrna_db_file", "")) if FILTER_RRNA else None
+FRAG_LEN_MEAN      = str(config.get("fragment_length_mean", 200))
+FRAG_LEN_STD       = str(config.get("fragment_length_std", 20))
+ADAPTER_SEQ1       = config.get("adapter_sequence_1", "")
+ADAPTER_SEQ2       = config.get("adapter_sequence_2", "")
 
-def deep_update(d, u):
-    for k, v in u.items():
-        if isinstance(v, dict) and isinstance(d.get(k), dict):
-            deep_update(d[k], v)
-        else:
-            d[k] = v
-    return d
+CONCAT_DIR         = Path("concat_fastq")
+TRIM_DIR           = RESULTS_DIR / "trimmed_reads"
+CLEAN_DIR          = RESULTS_DIR / "trimmed_cleaned_reads"
+KALLISTO_DIR       = RESULTS_DIR / "kallisto"
+MULTIQC_DIR        = RESULTS_DIR / "multiqc"
 
-def env_expand(obj):
-    if isinstance(obj, dict):
-        return {k: env_expand(v) for k, v in obj.items()}
-    if isinstance(obj, list):
-        return [env_expand(v) for v in obj]
-    if isinstance(obj, str):
-        return os.path.expandvars(obj)
-    return obj
+for d in (CONCAT_DIR, TRIM_DIR, CLEAN_DIR, KALLISTO_DIR, MULTIQC_DIR):
+    os.makedirs(d, exist_ok=True)
 
-def first_existing(paths):
-    for p in paths:
-        if Path(p).exists():
-            return p
-    return None
-
-# -------- Config layering with robust fallbacks --------
-_cfg = {}
-
-# parameters.yaml
-param_file = first_existing([
-    "config/parameters.yaml",
-    "parameters.yaml",
-])
-if param_file:
-    deep_update(_cfg, _load_yaml(param_file))
-
-# user.yaml
-user_file = first_existing([
-    "config/user.yaml",
-    "user.yaml",
-])
-user_cfg = {}
-if user_file:
-    user_cfg = _load_yaml(user_file)
-    deep_update(_cfg, user_cfg)
-
-# references profile
-ref_profile = user_cfg.get("reference_profile", "hg38_p13")
-ref_file = first_existing([
-    f"config/references/{ref_profile}.yaml",
-    f"config/{ref_profile}.yaml",
-    f"{ref_profile}.yaml",
-])
-if ref_file:
-    deep_update(_cfg, _load_yaml(ref_file))
-
-# Re-apply user overrides last
-if user_cfg:
-    deep_update(_cfg, user_cfg)
-
-config = env_expand(_cfg)
-
-# Validate required config keys early with friendly messages
-required_keys = ["results_directory", "input_sample_sheet", "genome", "genome_idx", "genome_dict", "genome_dir", "gtf", "transcript_fasta", "transcript_index"]
-missing = [k for k in required_keys if k not in config or not config[k]]
-if missing:
-    print(f"ERROR: Missing required config keys: {', '.join(missing)}", file=sys.stderr)
-    print("Hint: set these in config/user.yaml (preferred) or in parameters.yaml / references yaml files.", file=sys.stderr)
-    sys.exit(1)
-
-RESULTS_DIR = config["results_directory"]
-TMP_DIR = config.get("tmp_dir", "/tmp")
-SAMPLESHEET = config["input_sample_sheet"]
-USE_RRNA_FILTER = bool(config.get("filter_rrna", True))
-
-# References
-GENOME           = config["genome"]
-GENOME_IDX       = config["genome_idx"]
-GENOME_DICT      = config["genome_dict"]
-GENOME_DIR       = config["genome_dir"]
-GTF              = config["gtf"]
-TRANSCRIPT_FASTA = config["transcript_fasta"]
-KALLISTO_INDEX   = config["transcript_index"]
-DBSNP            = config.get("dbsnp", None)
-DBSNP_TBI        = config.get("dbsnp_tbi", None)
-RRNA_DB_FILE     = config.get("rrna_db_file", None)
-
-# STAR params (defaults tuned for RNA-seq SNP sensitivity)
-STAR_PARAMS = {
-    "outfilter_mismatch_n_over_lmax": config.get("star_outfilter_mismatch_n_over_lmax", 0.07),
-    "align_sjoverhang_min":           config.get("star_align_sjoverhang_min", 8),
-    "outfilter_multimap_nmax":        config.get("star_outfilter_multimap_nmax", 50),
-    "seed_search_start_lmax":         config.get("star_seed_search_start_lmax", 30),
-    "additional":                     config.get("star_additional", "--outSAMattributes NH HI AS nM XS")
-}
-
-# GATK params
-GATK_PARAMS = {
-    "dont_use_soft_clipped_bases":    bool(config.get("gatk_dont_use_soft_clipped_bases", True)),
-    "standard_min_conf":              config.get("gatk_standard_min_confidence", 10),
-    "min_pruning":                    config.get("gatk_min_pruning", 1),
-    "recover_all_dangling_branches":  bool(config.get("gatk_recover_all_dangling_branches", True)),
-    "allow_nonuniquekmer":            bool(config.get("gatk_allow_nonunique_kmer", True)),
-    "max_mnp_distance":               config.get("gatk_max_mnp_distance", 0),
-    "vf_fs_filter":                   float(config.get("gatk_vf_fs_filter", 60.0)),
-    "vf_qd_filter":                   float(config.get("gatk_vf_qd_filter", 1.0)),
-    "vf_cluster_size":                int(config.get("gatk_vf_cluster_size", 3)),
-    "vf_window_size":                 int(config.get("gatk_vf_window_size", 35))
-}
-
-FORMAT_CONTIGS = bool(config.get("format_contigs", False))
-CONTIG_FORMAT_MAP = config.get("contig_format_map", None)
-
-# Kallisto single-end params
-FRAG_MEAN = config.get("fragment_length_mean", 200)
-FRAG_STD  = config.get("fragment_length_std", 20)
-
-# fastp adapters
-ADAPTER_1 = config.get("adapter_sequence_1", "")
-ADAPTER_2 = config.get("adapter_sequence_2", "")
-
-# -------- Sample sheet parsing --------
-def read_samplesheet(samplesheet):
-    p = Path(samplesheet)
-    if not p.exists():
-        print(f"ERROR: input_sample_sheet not found: {samplesheet}", file=sys.stderr)
-        sys.exit(1)
-    with p.open("r") as fh:
-        head = fh.read(2048)
-        fh.seek(0)
-        dialect = csv.Sniffer().sniff(head)
-        reader = csv.DictReader(fh, dialect=dialect)
-        required = {"sample", "fastq_1", "fastq_2"}
-        if not required.issubset(set(reader.fieldnames)):
-            raise ValueError("Samplesheet must contain headers: sample,fastq_1,fastq_2")
-        m = {}
+################################################################################
+# SAMPLE PARSING
+################################################################################
+def parse_samples(samplesheet: Path):
+    rows = []
+    with samplesheet.open() as handle:
+        reader = csv.DictReader(handle)
         for row in reader:
-            sample = row["sample"].replace(" ", "_")
-            f1 = row["fastq_1"]
-            f2 = row["fastq_2"]
-            se = (len(str(f2).strip()) == 0)
-            md = m.setdefault(sample, {"se": se, "r1": [], "r2": []})
-            md["r1"].append(f1)
-            if not se:
-                md["r2"].append(f2)
-            if "se" in md and md["se"] != se:
-                raise ValueError(f"Sample {sample} mixes SE and PE runs.")
-        return m
+            rows.append(row)
 
-SAMPLES_MAP = read_samplesheet(SAMPLESHEET)
-SAMPLES = sorted(SAMPLES_MAP.keys())
-SAMPLES_SE = sorted([s for s in SAMPLES if SAMPLES_MAP[s]["se"]])
-SAMPLES_PE = sorted([s for s in SAMPLES if not SAMPLES_MAP[s]["se"]])
+    counts  = defaultdict(int)
+    samples = defaultdict(lambda: {"single_end": None, "r1": [], "r2": []})
 
-# -------- Helper path functions (exported to rules) --------
-def merged_fastq_se(sample):
-    return f"{RESULTS_DIR}/merged_fastq/{sample}.merged.fastq.gz"
+    for row in rows:
+        base = row["sample"].replace(" ", "_")
+        counts[base] += 1
+        single_end = (row["fastq_2"].strip() == "")
+        if samples[base]["single_end"] is None:
+            samples[base]["single_end"] = single_end
+        elif samples[base]["single_end"] != single_end:
+            raise ValueError(f"Sample {base} mixes single- and paired-end rows.")
 
-def merged_fastq_pe(sample):
-    return [
-        f"{RESULTS_DIR}/merged_fastq/{sample}_R1.merged.fastq.gz",
-        f"{RESULTS_DIR}/merged_fastq/{sample}_R2.merged.fastq.gz",
-    ]
+        samples[base]["r1"].append(Path(row["fastq_1"]))
+        if not single_end:
+            samples[base]["r2"].append(Path(row["fastq_2"]))
 
-def fastp_outputs_se(sample):
-    return [
-        f"{RESULTS_DIR}/trimmed_reads/{sample}.fastp.fastq.gz",
-        f"{RESULTS_DIR}/trimmed_reads/{sample}.fastp.json",
-        f"{RESULTS_DIR}/trimmed_reads/{sample}.fastp.html",
-    ]
+    return samples
 
-def fastp_outputs_pe(sample):
-    return [
-        f"{RESULTS_DIR}/trimmed_reads/{sample}_R1.fastp.fastq.gz",
-        f"{RESULTS_DIR}/trimmed_reads/{sample}_R2.fastp.fastq.gz",
-        f"{RESULTS_DIR}/trimmed_reads/{sample}.fastp.json",
-        f"{RESULTS_DIR}/trimmed_reads/{sample}.fastp.html",
-    ]
 
-def reads_for_downstream(sample):
-    if USE_RRNA_FILTER:
-        if SAMPLES_MAP[sample]["se"]:
-            return [f"{RESULTS_DIR}/trimmed_cleaned_reads/{sample}.sortmerna.fastq.gz"]
+SAMPLES        = parse_samples(SAMPLESHEET)
+SAMPLE_NAMES   = sorted(SAMPLES.keys())
+SINGLE_SAMPLES = [s for s in SAMPLE_NAMES if SAMPLES[s]["single_end"]]
+PAIRED_SAMPLES = [s for s in SAMPLE_NAMES if not SAMPLES[s]["single_end"]]
+
+# Convenience collections for rule all / MultiQC
+KALLISTO_TSVS = [
+    KALLISTO_DIR / f"{s}.se.kallisto.abundance.tsv" if s in SINGLE_SAMPLES
+    else KALLISTO_DIR / f"{s}.kallisto.abundance.tsv"
+    for s in SAMPLE_NAMES
+]
+KALLISTO_LOGS = [
+    KALLISTO_DIR / f"{s}.se.kallisto.log" if s in SINGLE_SAMPLES
+    else KALLISTO_DIR / f"{s}.kallisto.log"
+    for s in SAMPLE_NAMES
+]
+FASTP_JSONS = [
+    TRIM_DIR / f"{s}.se.fastp.json" if s in SINGLE_SAMPLES
+    else TRIM_DIR / f"{s}.fastp.json"
+    for s in SAMPLE_NAMES
+]
+
+################################################################################
+# RULES
+################################################################################
+rule all:
+    """
+    Final targets:
+      – kallisto TPM/Count tables for every sample
+      – consolidated MultiQC report
+      – validated sample sheet
+    """
+    input:
+        KALLISTO_TSVS,
+        MULTIQC_DIR / "multiqc_report.html",
+        "sample_sheet.valid.csv"
+
+###############################################################################
+# 1. Validate the sample sheet
+###############################################################################
+rule validate_sample_sheet:
+    input:  SAMPLESHEET
+    output: "sample_sheet.valid.csv"
+    shell:
+        "python validate_sample_sheet.py {input} {output}"
+
+###############################################################################
+# 2. Concatenate FASTQs belonging to the same sample (if needed)
+###############################################################################
+rule cat_fastq_single:
+    input:  lambda wc: SAMPLES[wc.sample]["r1"]
+    output: CONCAT_DIR / "{sample}.se.merged.fastq.gz"
+    threads: 1
+    run:
+        if len(input) == 1:
+            os.symlink(os.path.abspath(str(input[0])), str(output))
         else:
-            return [
-                f"{RESULTS_DIR}/trimmed_cleaned_reads/{sample}_R1.sortmerna.fastq.gz",
-                f"{RESULTS_DIR}/trimmed_cleaned_reads/{sample}_R2.sortmerna.fastq.gz",
-            ]
-    else:
-        if SAMPLES_MAP[sample]["se"]:
-            return [f"{RESULTS_DIR}/trimmed_reads/{sample}.fastp.fastq.gz"]
-        else:
-            return [
-                f"{RESULTS_DIR}/trimmed_reads/{sample}_R1.fastp.fastq.gz",
-                f"{RESULTS_DIR}/trimmed_reads/{sample}_R2.fastp.fastq.gz",
-            ]
+            shell("cat {input} > {output}")
 
-def star_prefix(sample):
-    return f"{RESULTS_DIR}/star/{sample}."
+rule cat_fastq_paired:
+    input:
+        r1 = lambda wc: SAMPLES[wc.sample]["r1"],
+        r2 = lambda wc: SAMPLES[wc.sample]["r2"]
+    output:
+        r1 = CONCAT_DIR / "{sample}_1.merged.fastq.gz",
+        r2 = CONCAT_DIR / "{sample}_2.merged.fastq.gz"
+    threads: 1
+    shell:
+        """
+        cat {input.r1} > {output.r1}
+        cat {input.r2} > {output.r2}
+        """
 
-def star_sorted_bam(sample):
-    return f"{star_prefix(sample)}Aligned.sortedByCoord.out.bam"
+###############################################################################
+# 3. Adapter trimming with fastp
+###############################################################################
+rule fastp_single:
+    input:  CONCAT_DIR / "{sample}.se.merged.fastq.gz"
+    output:
+        fastq = TRIM_DIR / "{sample}.se.fastp.fastq.gz",
+        json  = TRIM_DIR / "{sample}.se.fastp.json",
+        html  = TRIM_DIR / "{sample}.se.fastp.html",
+    threads: 6
+    params:
+        adapter_opt = f"--adapter_sequence {ADAPTER_SEQ1}" if ADAPTER_SEQ1 else ""
+    shell:
+        """
+        fastp \
+            --in1 {input} \
+            --out1 {output.fastq} \
+            --length_required 20 \
+            {params.adapter_opt} \
+            --correction \
+            --trim_poly_g \
+            --thread {threads} \
+            --json {output.json} \
+            --html {output.html}
+        """
 
-def star_transcriptome_bam(sample):
-    return f"{star_prefix(sample)}Aligned.toTranscriptome.out.bam"
+rule fastp_paired:
+    input:
+        r1 = CONCAT_DIR / "{sample}_1.merged.fastq.gz",
+        r2 = CONCAT_DIR / "{sample}_2.merged.fastq.gz"
+    output:
+        r1 = TRIM_DIR / "{sample}_R1.fastp.fastq.gz",
+        r2 = TRIM_DIR / "{sample}_R2.fastp.fastq.gz",
+        json = TRIM_DIR / "{sample}.fastp.json",
+        html = TRIM_DIR / "{sample}.fastp.html",
+    threads: 6
+    params:
+        adapter1 = f"--adapter_sequence {ADAPTER_SEQ1}" if ADAPTER_SEQ1 else "",
+        adapter2 = f"--adapter_sequence_r2 {ADAPTER_SEQ2}" if ADAPTER_SEQ2 else "",
+    shell:
+        """
+        fastp \
+            --in1 {input.r1} --in2 {input.r2} \
+            --out1 {output.r1} --out2 {output.r2} \
+            --length_required 20 \
+            {params.adapter1} {params.adapter2} \
+            --correction \
+            --trim_poly_g \
+            --thread {threads} \
+            --json {output.json} \
+            --html {output.html}
+        """
 
-def star_gene_counts(sample):
-    return f"{star_prefix(sample)}ReadsPerGene.out.tab"
+###############################################################################
+# 4. Optional rRNA removal with SortMeRNA
+###############################################################################
+if FILTER_RRNA:
+    with RRNA_DB_FILE.open() as fh:
+        RRNA_FASTAS = [l.strip() for l in fh if l.strip()]
+    RRNA_REFS = " ".join(f"--ref {f}" for f in RRNA_FASTAS)
 
-def star_log_final(sample):
-    return f"{star_prefix(sample)}Log.final.out"
+    rule sortmerna_single:
+        input:  TRIM_DIR / "{sample}.se.fastp.fastq.gz"
+        output:
+            fastq = CLEAN_DIR / "{sample}.se.sortmerna.fastq.gz",
+            log   = CLEAN_DIR / "{sample}.se.sortmerna.log"
+        threads: 6
+        shell:
+            r"""
+            TMP=$(mktemp -d)
 
-def mapped_bam(sample):
-    return f"{RESULTS_DIR}/star/{sample}.mapped.bam"
+            # Run SortMeRNA – do NOT abort on its exit status
+            set +e
+            sortmerna \
+                {RRNA_REFS} \
+                --reads {input} \
+                --threads {threads} \
+                --workdir $TMP \
+                --aligned rRNA_reads \
+                --fastx \
+                --other non_rRNA_reads
+            SM_EXIT=$?
+            set -e
 
-def mapped_transcriptome_bam(sample):
-    return f"{RESULTS_DIR}/star/{sample}.transcriptome.mapped.bam"
+            # Accept either *.fastq.gz or *.fq.gz
+            if [[ -f non_rRNA_reads.fastq.gz ]]; then
+                mv non_rRNA_reads.fastq.gz {output.fastq}
+            elif [[ -f non_rRNA_reads.fq.gz ]]; then
+                mv non_rRNA_reads.fq.gz  {output.fastq}
+            else
+                echo "ERROR: cleaned read file not produced!" >&2
+                exit 1
+            fi
 
-def sorted_bam(sample):
-    return f"{RESULTS_DIR}/star/{sample}.bam"
+            # Always leave a log behind
+            if [[ -f rRNA_reads.log ]]; then
+                mv rRNA_reads.log {output.log}
+            else
+                echo "SortMeRNA exited with code $SM_EXIT" > {output.log}
+            fi
 
-def sorted_bai(sample):
-    return f"{RESULTS_DIR}/star/{sample}.bai"
+            # Ignore SortMeRNA’s exit status now that outputs exist
+            exit 0
+            """
 
-def picard_bam(sample):
-    return f"{RESULTS_DIR}/star/{sample}.picard.bam"
+    rule sortmerna_paired:
+        input:
+            r1 = TRIM_DIR / "{sample}_R1.fastp.fastq.gz",
+            r2 = TRIM_DIR / "{sample}_R2.fastp.fastq.gz"
+        output:
+            r1 = CLEAN_DIR / "{sample}_R1.sortmerna.fastq.gz",
+            r2 = CLEAN_DIR / "{sample}_R2.sortmerna.fastq.gz",
+            log = CLEAN_DIR / "{sample}.sortmerna.log"
+        threads: 6
+        shell:
+            r"""
+            TMP=$(mktemp -d)
 
-def picard_bai(sample):
-    return f"{RESULTS_DIR}/star/{sample}.picard.bai"
+            set +e
+            sortmerna \
+                {RRNA_REFS} \
+                --reads {input.r1} --reads {input.r2} \
+                --threads {threads} \
+                --workdir $TMP \
+                --aligned rRNA_reads \
+                --paired_in \
+                --out2 \
+                --fastx \
+                --other non_rRNA_reads
+            SM_EXIT=$?
+            set -e
 
-def picard_metrics(sample):
-    return f"{RESULTS_DIR}/star/{sample}.MarkDuplicates.metrics.txt"
+            # Accept either *.fastq.gz or *.fq.gz
+            if [[ -f non_rRNA_reads_fwd.fastq.gz ]]; then
+                mv non_rRNA_reads_fwd.fastq.gz {output.r1}
+                mv non_rRNA_reads_rev.fastq.gz {output.r2}
+            elif [[ -f non_rRNA_reads_fwd.fq.gz ]]; then
+                mv non_rRNA_reads_fwd.fq.gz {output.r1}
+                mv non_rRNA_reads_rev.fq.gz {output.r2}
+            else
+                echo "ERROR: cleaned read files not produced!" >&2
+                exit 1
+            fi
 
-def split_bam(sample):
-    return f"{RESULTS_DIR}/snps/{sample}.split.bam"
+            if [[ -f rRNA_reads.log ]]; then
+                mv rRNA_reads.log {output.log}
+            else
+                echo "SortMeRNA exited with code $SM_EXIT" > {output.log}
+            fi
 
-def split_bai(sample):
-    return f"{RESULTS_DIR}/snps/{sample}.split.bam.bai"
+            exit 0
+            """
+else:
+    rule passthrough_clean_single:
+        input:  TRIM_DIR / "{sample}.se.fastp.fastq.gz"
+        output: CLEAN_DIR / "{sample}.se.sortmerna.fastq.gz"
+        shell:  "ln -sf {input} {output}"
 
-def bqsr_table(sample):
-    return f"{RESULTS_DIR}/snps/{sample}.table"
+    rule passthrough_clean_paired:
+        input:
+            r1 = TRIM_DIR / "{sample}_R1.fastp.fastq.gz",
+            r2 = TRIM_DIR / "{sample}_R2.fastp.fastq.gz"
+        output:
+            r1 = CLEAN_DIR / "{sample}_R1.sortmerna.fastq.gz",
+            r2 = CLEAN_DIR / "{sample}_R2.sortmerna.fastq.gz"
+        shell:
+            """
+            ln -sf {input.r1} {output.r1}
+            ln -sf {input.r2} {output.r2}
+            """
 
-def bqsr_bam(sample):
-    return f"{RESULTS_DIR}/snps/{sample}_bqsr.bam"
+###############################################################################
+# 5. Transcript abundance estimation with kallisto
+###############################################################################
+rule kallisto_single:
+    input:  CLEAN_DIR / "{sample}.se.sortmerna.fastq.gz"
+    output:
+        tsv  = KALLISTO_DIR / "{sample}.se.kallisto.abundance.tsv",
+        h5   = KALLISTO_DIR / "{sample}.se.kallisto.abundance.h5",
+        info = KALLISTO_DIR / "{sample}.se.kallisto.run_info.json",
+        log  = KALLISTO_DIR / "{sample}.se.kallisto.log",
+    threads: 4
+    shell:
+        """
+        TMP=$(mktemp -d)
+        kallisto quant \
+            --index {TRANSCRIPT_INDEX} \
+            --output-dir $TMP \
+            -t {threads} \
+            --single -l {FRAG_LEN_MEAN} -s {FRAG_LEN_STD} \
+            {input} \
+            > {output.log} 2>&1
+        mv $TMP/abundance.tsv   {output.tsv}
+        mv $TMP/abundance.h5    {output.h5}
+        mv $TMP/run_info.json   {output.info}
+        """
 
-def bqsr_bai(sample):
-    return f"{RESULTS_DIR}/snps/{sample}_bqsr.bam.bai"
+rule kallisto_paired:
+    input:
+        r1 = CLEAN_DIR / "{sample}_R1.sortmerna.fastq.gz",
+        r2 = CLEAN_DIR / "{sample}_R2.sortmerna.fastq.gz"
+    output:
+        tsv  = KALLISTO_DIR / "{sample}.kallisto.abundance.tsv",
+        h5   = KALLISTO_DIR / "{sample}.kallisto.abundance.h5",
+        info = KALLISTO_DIR / "{sample}.kallisto.run_info.json",
+        log  = KALLISTO_DIR / "{sample}.kallisto.log",
+    threads: 4
+    shell:
+        """
+        TMP=$(mktemp -d)
+        kallisto quant \
+            --index {TRANSCRIPT_INDEX} \
+            --output-dir $TMP \
+            -t {threads} \
+            {input.r1} {input.r2} \
+            > {output.log} 2>&1
+        mv $TMP/abundance.tsv   {output.tsv}
+        mv $TMP/abundance.h5    {output.h5}
+        mv $TMP/run_info.json   {output.info}
+        """
 
-def haplotype_vcf(sample):
-    return f"{RESULTS_DIR}/snps/{sample}.vcf.gz"
-
-def haplotype_tbi(sample):
-    return f"{RESULTS_DIR}/snps/{sample}.vcf.gz.tbi"
-
-def filtered_vcf(sample):
-    return f"{RESULTS_DIR}/snps/{sample}.filtered.vcf.gz"
-
-def filtered_tbi(sample):
-    return f"{RESULTS_DIR}/snps/{sample}.filtered.vcf.gz.tbi"
-
-def formatted_vcf(sample):
-    return f"{RESULTS_DIR}/snps/{sample}.formatted.vcf.gz"
-
-def sorted_vcf(sample):
-    return f"{RESULTS_DIR}/snps/{sample}.sorted.vcf.gz"
-
-def sorted_tbi(sample):
-    return f"{RESULTS_DIR}/snps/{sample}.sorted.vcf.gz.tbi"
-
-def kallisto_outputs(sample):
-    return {
-        "abundance_tsv": f"{RESULTS_DIR}/kallisto/{sample}.kallisto.abundance.tsv",
-        "abundance_h5":  f"{RESULTS_DIR}/kallisto/{sample}.kallisto.abundance.h5",
-        "run_info":      f"{RESULTS_DIR}/kallisto/{sample}.kallisto.run_info.json",
-        "log":           f"{RESULTS_DIR}/kallisto/{sample}.kallisto.log",
-    }
-
-def rrna_ref_args():
-    if not RRNA_DB_FILE or not Path(RRNA_DB_FILE).is_file():
-        return ""
-    refs = []
-    with open(RRNA_DB_FILE, "r") as fh:
-        for line in fh:
-            fp = line.strip()
-            if fp:
-                refs.extend(["--ref", fp])
-    return " ".join(refs)
-
-def multiqc_inputs():
-    files = []
-    # fastp json
-    for s in SAMPLES_SE:
-        files.append(fastp_outputs_se(s)[1])
-    for s in SAMPLES_PE:
-        files.append(fastp_outputs_pe(s)[2])
-    # SortMeRNA logs
-    if USE_RRNA_FILTER:
-        for s in SAMPLES:
-            files.append(f"{RESULTS_DIR}/trimmed_cleaned_reads/{s}.sortmerna.log")
-    # Kallisto logs
-    for s in SAMPLES:
-        files.append(kallisto_outputs(s)["log"])
-    # STAR log + metrics and stats
-    for s in SAMPLES:
-        files.append(star_log_final(s))
-        files.append(picard_metrics(s))
-        files.append(f"{RESULTS_DIR}/star/{s}.stats")
-        files.append(f"{RESULTS_DIR}/star/{s}.flagstat")
-        files.append(f"{RESULTS_DIR}/star/{s}.idxstats")
-        files.append(bqsr_table(s))
-    return files
-
-# Export everything rules/ need
-globals().update({
-    "SAMPLES": SAMPLES,
-    "SAMPLES_SE": SAMPLES_SE,
-    "SAMPLES_PE": SAMPLES_PE,
-    "SAMPLES_MAP": SAMPLES_MAP,
-    "RESULTS_DIR": RESULTS_DIR,
-    "TMP_DIR": TMP_DIR,
-    "SAMPLESHEET": SAMPLESHEET,
-    "USE_RRNA_FILTER": USE_RRNA_FILTER,
-    "GENOME": GENOME,
-    "GENOME_IDX": GENOME_IDX,
-    "GENOME_DICT": GENOME_DICT,
-    "GENOME_DIR": GENOME_DIR,
-    "GTF": GTF,
-    "TRANSCRIPT_FASTA": TRANSCRIPT_FASTA,
-    "KALLISTO_INDEX": KALLISTO_INDEX,
-    "DBSNP": DBSNP,
-    "DBSNP_TBI": DBSNP_TBI,
-    "RRNA_DB_FILE": RRNA_DB_FILE,
-    "STAR_PARAMS": STAR_PARAMS,
-    "GATK_PARAMS": GATK_PARAMS,
-    "FORMAT_CONTIGS": FORMAT_CONTIGS,
-    "CONTIG_FORMAT_MAP": CONTIG_FORMAT_MAP,
-    "FRAG_MEAN": FRAG_MEAN,
-    "FRAG_STD": FRAG_STD,
-    "ADAPTER_1": ADAPTER_1,
-    "ADAPTER_2": ADAPTER_2,
-    # helpers
-    "merged_fastq_se": merged_fastq_se,
-    "merged_fastq_pe": merged_fastq_pe,
-    "fastp_outputs_se": fastp_outputs_se,
-    "fastp_outputs_pe": fastp_outputs_pe,
-    "reads_for_downstream": reads_for_downstream,
-    "star_prefix": star_prefix,
-    "star_sorted_bam": star_sorted_bam,
-    "star_transcriptome_bam": star_transcriptome_bam,
-    "star_gene_counts": star_gene_counts,
-    "star_log_final": star_log_final,
-    "mapped_bam": mapped_bam,
-    "mapped_transcriptome_bam": mapped_transcriptome_bam,
-    "sorted_bam": sorted_bam,
-    "sorted_bai": sorted_bai,
-    "picard_bam": picard_bam,
-    "picard_bai": picard_bai,
-    "picard_metrics": picard_metrics,
-    "split_bam": split_bam,
-    "split_bai": split_bai,
-    "bqsr_table": bqsr_table,
-    "bqsr_bam": bqsr_bam,
-    "bqsr_bai": bqsr_bai,
-    "haplotype_vcf": haplotype_vcf,
-    "haplotype_tbi": haplotype_tbi,
-    "filtered_vcf": filtered_vcf,
-    "filtered_tbi": filtered_tbi,
-    "formatted_vcf": formatted_vcf,
-    "sorted_vcf": sorted_vcf,
-    "sorted_tbi": sorted_tbi,
-    "kallisto_outputs": kallisto_outputs,
-    "rrna_ref_args": rrna_ref_args,
-    "multiqc_inputs": multiqc_inputs,
-})
-
-# -------- Includes (use rules/*) --------
-include: "rules/validate.smk"
-include: "rules/fastq.smk"
-include: "rules/fastp.smk"
-include: "rules/sortmerna.smk"
-include: "rules/kallisto.smk"
-include: "rules/star.smk"
-include: "rules/samtools.smk"
-include: "rules/picard_gatk.smk"
-include: "rules/bcftools.smk"
-include: "rules/multiqc.smk"
-include: "rules/targets.smk"
+###############################################################################
+# 6. MultiQC
+###############################################################################
+rule multiqc:
+    input:
+        FASTP_JSONS,
+        KALLISTO_LOGS
+    output: MULTIQC_DIR / "multiqc_report.html"
+    threads: 1
+    shell:
+        "multiqc -f {RESULTS_DIR} -o {MULTIQC_DIR}"

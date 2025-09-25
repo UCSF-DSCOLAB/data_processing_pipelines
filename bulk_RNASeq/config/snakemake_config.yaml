@@ -1,0 +1,22 @@
+# -------------------------------------------------------------------------
+# Configuration for the Snakemake “light” RNA-seq pipeline
+# -------------------------------------------------------------------------
+# All paths are absolute so that Snakemake sees the same files inside/outside
+# the Singularity container (the host directories are bind-mounted).
+# -------------------------------------------------------------------------
+
+input_sample_sheet: "/krummellab/data1/alaa/data/tests/bulk_rnaseq/pipeline_tests/merlin_round2_test4_snakemake/sample_sheet.csv"
+results_directory : "/krummellab/data1/alaa/data/tests/bulk_rnaseq/pipeline_tests/merlin_round2_test4_snakemake"
+
+# Kallisto index (same as Nextflow ‘params.transcript_index’)
+transcript_index  : "/krummellab/data1/DSCoLab/references/human/hg38_p14/ncbi_refseq/kallisto_index"
+
+# rRNA database list file (one FASTA path per line)
+rrna_db_file      : "/krummellab/data1/DSCoLab/references/human/hg38_p14/ncbi_refseq/rrna_db.txt"
+
+# ---- optional parameters -------------------------------------------------
+filter_rrna           : true
+fragment_length_mean  : 200
+fragment_length_std   : 20
+adapter_sequence_1    : ""
+adapter_sequence_2    : ""

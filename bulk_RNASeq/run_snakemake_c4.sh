@@ -37,6 +37,10 @@ export SINGULARITYENV_TMPDIR="${work}"
 export APPTAINERENV_PYTHONNOUSERSITE=1
 export SINGULARITYENV_PYTHONNOUSERSITE=1
 
+# Expose SNK_WORKDIR inside the container so the Snakefile uses it for intermediates
+export SINGULARITYENV_SNK_WORKDIR="${work}"
+export APPTAINERENV_SNK_WORKDIR="${work}"
+
 # Cache for Singularity to avoid filling $HOME
 export SINGULARITY_CACHEDIR="${work_base}/cache"
 export APPTAINER_CACHEDIR="${work_base}/cache"
@@ -44,7 +48,7 @@ mkdir -p "${SINGULARITY_CACHEDIR}"
 
 # Bind mounts
 HOST_PWD="$(pwd)"
-BIND_DIRS="${HOST_PWD}:/work,/krummellab,/c4,/scratch"
+BIND_DIRS="${HOST_PWD}:/work,/krummellab,/c4,/scratch,/dscolab"
 # Only bind host home if it actually exists on this node
 if [[ -d "/c4/home/${USER}" ]]; then
   BIND_DIRS="${BIND_DIRS},/c4/home/${USER}"
@@ -78,4 +82,5 @@ singularity exec --cleanenv --home "${HOME_DIR}" -B "${BIND_DIRS}" --pwd /work "
     --latency-wait 120 \
     --printshellcmds \
     --directory /work \
+    --rerun-incomplete \
     "$@"

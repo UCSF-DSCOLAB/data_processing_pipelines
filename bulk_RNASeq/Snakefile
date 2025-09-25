@@ -28,13 +28,19 @@ FRAG_LEN_STD       = str(config.get("fragment_length_std", 20))
 ADAPTER_SEQ1       = config.get("adapter_sequence_1", "")
 ADAPTER_SEQ2       = config.get("adapter_sequence_2", "")
 
-CONCAT_DIR         = Path("concat_fastq")
+# Dedicated working directory for intermediates (prefer env var, then config, then fallback)
+WORK_DIR           = Path(
+    os.environ.get("SNK_WORKDIR", config.get("work_directory", str(RESULTS_DIR / "work")))
+).expanduser()
+
+CONCAT_DIR         = WORK_DIR / "concat_fastq"
 TRIM_DIR           = RESULTS_DIR / "trimmed_reads"
 CLEAN_DIR          = RESULTS_DIR / "trimmed_cleaned_reads"
 KALLISTO_DIR       = RESULTS_DIR / "kallisto"
 MULTIQC_DIR        = RESULTS_DIR / "multiqc"
+LOG_DIR            = RESULTS_DIR / "logs"
 
-for d in (CONCAT_DIR, TRIM_DIR, CLEAN_DIR, KALLISTO_DIR, MULTIQC_DIR):
+for d in (WORK_DIR, CONCAT_DIR, TRIM_DIR, CLEAN_DIR, KALLISTO_DIR, MULTIQC_DIR, LOG_DIR):
     os.makedirs(d, exist_ok=True)
 
 ################################################################################
@@ -88,6 +94,9 @@ FASTP_JSONS = [
     for s in SAMPLE_NAMES
 ]
 
+# Validated sample sheet path (intermediate) lives in WORK_DIR
+VALIDATED_SAMPLESHEET = WORK_DIR / "sample_sheet.valid.csv"
+
 ################################################################################
 # RULES
 ################################################################################
@@ -96,45 +105,61 @@ rule all:
     Final targets:
       – kallisto TPM/Count tables for every sample
       – consolidated MultiQC report
-      – validated sample sheet
     """
     input:
         KALLISTO_TSVS,
-        MULTIQC_DIR / "multiqc_report.html",
-        "sample_sheet.valid.csv"
+        MULTIQC_DIR / "multiqc_report.html"
 
 ###############################################################################
 # 1. Validate the sample sheet
 ###############################################################################
 rule validate_sample_sheet:
     input:  SAMPLESHEET
-    output: "sample_sheet.valid.csv"
+    output: temp(VALIDATED_SAMPLESHEET)
+    log:    LOG_DIR / "validate_sample_sheet.log"
+    params:
+        script=lambda wc: str(Path(workflow.basedir) / "bin" / "validate_sample_sheet.py")
     shell:
-        "python validate_sample_sheet.py {input} {output}"
+        r"""
+        set -x
+        exec > >(tee -a {log}) 2>&1
+        python {params.script} {input} {output}
+        """
 
 ###############################################################################
 # 2. Concatenate FASTQs belonging to the same sample (if needed)
+#    Make validation a hard dependency to strictly enforce ordering:
+#    validate -> concat -> trim -> clean -> kallisto
 ###############################################################################
-rule cat_fastq_single:
-    input:  lambda wc: SAMPLES[wc.sample]["r1"]
-    output: CONCAT_DIR / "{sample}.se.merged.fastq.gz"
-    threads: 1
-    run:
-        if len(input) == 1:
-            os.symlink(os.path.abspath(str(input[0])), str(output))
-        else:
-            shell("cat {input} > {output}")
+# rule cat_fastq_single:
+#     input:
+#         validated = VALIDATED_SAMPLESHEET,
+#         r1 = lambda wc: SAMPLES[wc.sample]["r1"]
+#     output: temp(CONCAT_DIR / "{sample}.se.merged.fastq.gz")
+#     log:    LOG_DIR / "concat" / "{sample}.se.cat.log"
+#     threads: 1
+#     run:
+#         shell("set -x; exec > >(tee -a {log}) 2>&1")
+#         if len(input.r1) == 1:
+#             os.symlink(os.path.abspath(str(input.r1[0])), str(output))
+#         else:
+#             shell("cat {input.r1} > {output}")
 
 rule cat_fastq_paired:
     input:
+        validated = VALIDATED_SAMPLESHEET,
         r1 = lambda wc: SAMPLES[wc.sample]["r1"],
         r2 = lambda wc: SAMPLES[wc.sample]["r2"]
     output:
-        r1 = CONCAT_DIR / "{sample}_1.merged.fastq.gz",
-        r2 = CONCAT_DIR / "{sample}_2.merged.fastq.gz"
+        r1 = temp(CONCAT_DIR / "{sample}_1.merged.fastq.gz"),
+        r2 = temp(CONCAT_DIR / "{sample}_2.merged.fastq.gz")
+    log:
+        LOG_DIR / "concat" / "{sample}.cat.log"
     threads: 1
     shell:
-        """
+        r"""
+        set -x
+        exec > >(tee -a {log}) 2>&1
         cat {input.r1} > {output.r1}
         cat {input.r2} > {output.r2}
         """
@@ -142,28 +167,31 @@ rule cat_fastq_paired:
 ###############################################################################
 # 3. Adapter trimming with fastp
 ###############################################################################
-rule fastp_single:
-    input:  CONCAT_DIR / "{sample}.se.merged.fastq.gz"
-    output:
-        fastq = TRIM_DIR / "{sample}.se.fastp.fastq.gz",
-        json  = TRIM_DIR / "{sample}.se.fastp.json",
-        html  = TRIM_DIR / "{sample}.se.fastp.html",
-    threads: 6
-    params:
-        adapter_opt = f"--adapter_sequence {ADAPTER_SEQ1}" if ADAPTER_SEQ1 else ""
-    shell:
-        """
-        fastp \
-            --in1 {input} \
-            --out1 {output.fastq} \
-            --length_required 20 \
-            {params.adapter_opt} \
-            --correction \
-            --trim_poly_g \
-            --thread {threads} \
-            --json {output.json} \
-            --html {output.html}
-        """
+# rule fastp_single:
+#     input:  CONCAT_DIR / "{sample}.se.merged.fastq.gz"
+#     output:
+#         fastq = TRIM_DIR / "{sample}.se.fastp.fastq.gz",
+#         json  = TRIM_DIR / "{sample}.se.fastp.json",
+#         html  = TRIM_DIR / "{sample}.se.fastp.html",
+#     log:    LOG_DIR / "fastp" / "{sample}.se.fastp.log"
+#     threads: 6
+#     params:
+#         adapter_opt = f"--adapter_sequence {ADAPTER_SEQ1}" if ADAPTER_SEQ1 else ""
+#     shell:
+#         r"""
+#         set -x
+#         exec > >(tee -a {log}) 2>&1
+#         fastp \
+#             --in1 {input} \
+#             --out1 {output.fastq} \
+#             --length_required 20 \
+#             {params.adapter_opt} \
+#             --correction \
+#             --trim_poly_g \
+#             --thread {threads} \
+#             --json {output.json} \
+#             --html {output.html}
+#         """
 
 rule fastp_paired:
     input:
@@ -174,12 +202,16 @@ rule fastp_paired:
         r2 = TRIM_DIR / "{sample}_R2.fastp.fastq.gz",
         json = TRIM_DIR / "{sample}.fastp.json",
         html = TRIM_DIR / "{sample}.fastp.html",
+    log:
+        LOG_DIR / "fastp" / "{sample}.fastp.log"
     threads: 6
     params:
         adapter1 = f"--adapter_sequence {ADAPTER_SEQ1}" if ADAPTER_SEQ1 else "",
         adapter2 = f"--adapter_sequence_r2 {ADAPTER_SEQ2}" if ADAPTER_SEQ2 else "",
     shell:
-        """
+        r"""
+        set -x
+        exec > >(tee -a {log}) 2>&1
         fastp \
             --in1 {input.r1} --in2 {input.r2} \
             --out1 {output.r1} --out2 {output.r2} \
@@ -194,55 +226,57 @@ rule fastp_paired:
 
 ###############################################################################
 # 4. Optional rRNA removal with SortMeRNA
+#    Use unique, per-sample output basenames to avoid filename collisions
+#    when multiple samples are processed in the same working directory.
+#    Robustly handle empty-read (water) samples by creating empty outputs.
 ###############################################################################
 if FILTER_RRNA:
     with RRNA_DB_FILE.open() as fh:
         RRNA_FASTAS = [l.strip() for l in fh if l.strip()]
     RRNA_REFS = " ".join(f"--ref {f}" for f in RRNA_FASTAS)
 
-    rule sortmerna_single:
-        input:  TRIM_DIR / "{sample}.se.fastp.fastq.gz"
-        output:
-            fastq = CLEAN_DIR / "{sample}.se.sortmerna.fastq.gz",
-            log   = CLEAN_DIR / "{sample}.se.sortmerna.log"
-        threads: 6
-        shell:
-            r"""
-            TMP=$(mktemp -d)
-
-            # Run SortMeRNA – do NOT abort on its exit status
-            set +e
-            sortmerna \
-                {RRNA_REFS} \
-                --reads {input} \
-                --threads {threads} \
-                --workdir $TMP \
-                --aligned rRNA_reads \
-                --fastx \
-                --other non_rRNA_reads
-            SM_EXIT=$?
-            set -e
-
-            # Accept either *.fastq.gz or *.fq.gz
-            if [[ -f non_rRNA_reads.fastq.gz ]]; then
-                mv non_rRNA_reads.fastq.gz {output.fastq}
-            elif [[ -f non_rRNA_reads.fq.gz ]]; then
-                mv non_rRNA_reads.fq.gz  {output.fastq}
-            else
-                echo "ERROR: cleaned read file not produced!" >&2
-                exit 1
-            fi
-
-            # Always leave a log behind
-            if [[ -f rRNA_reads.log ]]; then
-                mv rRNA_reads.log {output.log}
-            else
-                echo "SortMeRNA exited with code $SM_EXIT" > {output.log}
-            fi
-
-            # Ignore SortMeRNA’s exit status now that outputs exist
-            exit 0
-            """
+    # rule sortmerna_single:
+    #     input:  TRIM_DIR / "{sample}.se.fastp.fastq.gz"
+    #     output:
+    #         fastq = CLEAN_DIR / "{sample}.se.sortmerna.fastq.gz",
+    #         log   = CLEAN_DIR / "{sample}.se.sortmerna.log"
+    #     log:
+    #         LOG_DIR / "sortmerna" / "{sample}.se.sortmerna.log"
+    #     threads: 6
+    #     shell:
+    #         r"""
+    #         set -x
+    #         exec > >(tee -a {log}) 2>&1
+    #         R="{input}"
+    #         if ! zcat -f "$R" 2>/dev/null | head -n 1 | grep -q .; then
+    #             printf "" | gzip -c > {output.fastq}
+    #             echo "SortMeRNA skipped: input FASTQ contained zero reads." | tee {output.log}
+    #             exit 0
+    #         fi
+    #         TMP=$(mktemp -d)
+    #         cd "$TMP"
+    #         set +e
+    #         sortmerna {RRNA_REFS} --reads "$R" --threads {threads} --workdir "$TMP" \
+    #             --aligned {wildcards.sample}.rRNA_reads --fastx --other {wildcards.sample}.non_rRNA_reads
+    #         SM_EXIT=$?
+    #         set -e
+    #         if [[ -f {wildcards.sample}.non_rRNA_reads.fastq.gz ]]; then
+    #             mv {wildcards.sample}.non_rRNA_reads.fastq.gz {output.fastq}
+    #         elif [[ -f {wildcards.sample}.non_rRNA_reads.fq.gz ]]; then
+    #             mv {wildcards.sample}.non_rRNA_reads.fq.gz  {output.fastq}
+    #         elif [[ "$SM_EXIT" -eq 0 ]]; then
+    #             printf "" | gzip -c > {output.fastq}
+    #             echo "SortMeRNA produced no non-rRNA reads; wrote empty output." >> {log}
+    #         else
+    #             [[ -f {wildcards.sample}.rRNA_reads.log ]] && cp {wildcards.sample}.rRNA_reads.log {output.log} || true
+    #             exit $SM_EXIT
+    #         fi
+    #         if [[ -f {wildcards.sample}.rRNA_reads.log ]]; then
+    #             cp {wildcards.sample}.rRNA_reads.log {output.log}
+    #         else
+    #             echo "SortMeRNA exit code: $SM_EXIT" > {output.log}
+    #         fi
+    #         """
 
     rule sortmerna_paired:
         input:
@@ -252,50 +286,82 @@ if FILTER_RRNA:
             r1 = CLEAN_DIR / "{sample}_R1.sortmerna.fastq.gz",
             r2 = CLEAN_DIR / "{sample}_R2.sortmerna.fastq.gz",
             log = CLEAN_DIR / "{sample}.sortmerna.log"
+        log:
+            LOG_DIR / "sortmerna" / "{sample}.sortmerna.log"
         threads: 6
         shell:
             r"""
+            set -x
+            exec > >(tee -a {log}) 2>&1
+
+            R1="{input.r1}"
+            R2="{input.r2}"
+
+            # Short-circuit if inputs contain zero reads (e.g., water/empty controls)
+            if ! zcat -f "$R1" 2>/dev/null | head -n 1 | grep -q . \
+               || ! zcat -f "$R2" 2>/dev/null | head -n 1 | grep -q .; then
+                printf "" | gzip -c > {output.r1}
+                printf "" | gzip -c > {output.r2}
+                echo "SortMeRNA skipped: input FASTQs contained zero reads. Created empty outputs." | tee {output.log}
+                exit 0
+            fi
+
             TMP=$(mktemp -d)
+            cd "$TMP"
 
             set +e
             sortmerna \
                 {RRNA_REFS} \
-                --reads {input.r1} --reads {input.r2} \
+                --reads "$R1" --reads "$R2" \
                 --threads {threads} \
-                --workdir $TMP \
-                --aligned rRNA_reads \
+                --workdir "$TMP" \
+                --aligned {wildcards.sample}.rRNA_reads \
                 --paired_in \
                 --out2 \
                 --fastx \
-                --other non_rRNA_reads
+                --other {wildcards.sample}.non_rRNA_reads
             SM_EXIT=$?
             set -e
 
-            # Accept either *.fastq.gz or *.fq.gz
-            if [[ -f non_rRNA_reads_fwd.fastq.gz ]]; then
-                mv non_rRNA_reads_fwd.fastq.gz {output.r1}
-                mv non_rRNA_reads_rev.fastq.gz {output.r2}
-            elif [[ -f non_rRNA_reads_fwd.fq.gz ]]; then
-                mv non_rRNA_reads_fwd.fq.gz {output.r1}
-                mv non_rRNA_reads_rev.fq.gz {output.r2}
+            # Accept either *.fastq.gz or *.fq.gz; if none, create empty outputs on success
+            if [[ -f {wildcards.sample}.non_rRNA_reads_fwd.fastq.gz && -f {wildcards.sample}.non_rRNA_reads_rev.fastq.gz ]]; then
+                mv {wildcards.sample}.non_rRNA_reads_fwd.fastq.gz {output.r1}
+                mv {wildcards.sample}.non_rRNA_reads_rev.fastq.gz {output.r2}
+            elif [[ -f {wildcards.sample}.non_rRNA_reads_fwd.fq.gz && -f {wildcards.sample}.non_rRNA_reads_rev.fq.gz ]]; then
+                mv {wildcards.sample}.non_rRNA_reads_fwd.fq.gz {output.r1}
+                mv {wildcards.sample}.non_rRNA_reads_rev.fq.gz {output.r2}
+            elif [[ "$SM_EXIT" -eq 0 ]]; then
+                # No non-rRNA reads produced (empty result after filtering)
+                printf "" | gzip -c > {output.r1}
+                printf "" | gzip -c > {output.r2}
+                echo "SortMeRNA produced no non-rRNA reads; wrote empty outputs." >> {log}
             else
-                echo "ERROR: cleaned read files not produced!" >&2
-                exit 1
+                # Hard failure; propagate error. Copy tool log if present.
+                if [[ -f {wildcards.sample}.rRNA_reads.log ]]; then
+                    cp {wildcards.sample}.rRNA_reads.log {output.log} || true
+                fi
+                echo "SortMeRNA failed with exit code $SM_EXIT" >&2
+                exit $SM_EXIT
             fi
 
-            if [[ -f rRNA_reads.log ]]; then
-                mv rRNA_reads.log {output.log}
+            # Persist the SortMeRNA internal log if present; otherwise summarize status
+            if [[ -f {wildcards.sample}.rRNA_reads.log ]]; then
+                cp {wildcards.sample}.rRNA_reads.log {output.log}
             else
-                echo "SortMeRNA exited with code $SM_EXIT" > {output.log}
+                echo "SortMeRNA exit code: $SM_EXIT" > {output.log}
             fi
-
-            exit 0
             """
 else:
-    rule passthrough_clean_single:
-        input:  TRIM_DIR / "{sample}.se.fastp.fastq.gz"
-        output: CLEAN_DIR / "{sample}.se.sortmerna.fastq.gz"
-        shell:  "ln -sf {input} {output}"
+    # rule passthrough_clean_single:
+    #     input:  TRIM_DIR / "{sample}.se.fastp.fastq.gz"
+    #     output: CLEAN_DIR / "{sample}.se.sortmerna.fastq.gz"
+    #     log:    LOG_DIR / "sortmerna" / "{sample}.se.passthrough.log"
+    #     shell:
+    #         r"""
+    #         set -x
+    #         exec > >(tee -a {log}) 2>&1
+    #         ln -sf {input} {output}
+    #         """
 
     rule passthrough_clean_paired:
         input:
@@ -304,8 +370,12 @@ else:
         output:
             r1 = CLEAN_DIR / "{sample}_R1.sortmerna.fastq.gz",
             r2 = CLEAN_DIR / "{sample}_R2.sortmerna.fastq.gz"
+        log:
+            LOG_DIR / "sortmerna" / "{sample}.passthrough.log"
         shell:
-            """
+            r"""
+            set -x
+            exec > >(tee -a {log}) 2>&1
             ln -sf {input.r1} {output.r1}
             ln -sf {input.r2} {output.r2}
             """
@@ -313,28 +383,48 @@ else:
 ###############################################################################
 # 5. Transcript abundance estimation with kallisto
 ###############################################################################
-rule kallisto_single:
-    input:  CLEAN_DIR / "{sample}.se.sortmerna.fastq.gz"
-    output:
-        tsv  = KALLISTO_DIR / "{sample}.se.kallisto.abundance.tsv",
-        h5   = KALLISTO_DIR / "{sample}.se.kallisto.abundance.h5",
-        info = KALLISTO_DIR / "{sample}.se.kallisto.run_info.json",
-        log  = KALLISTO_DIR / "{sample}.se.kallisto.log",
-    threads: 4
-    shell:
-        """
-        TMP=$(mktemp -d)
-        kallisto quant \
-            --index {TRANSCRIPT_INDEX} \
-            --output-dir $TMP \
-            -t {threads} \
-            --single -l {FRAG_LEN_MEAN} -s {FRAG_LEN_STD} \
-            {input} \
-            > {output.log} 2>&1
-        mv $TMP/abundance.tsv   {output.tsv}
-        mv $TMP/abundance.h5    {output.h5}
-        mv $TMP/run_info.json   {output.info}
-        """
+# rule kallisto_single:
+#     input:  CLEAN_DIR / "{sample}.se.sortmerna.fastq.gz"
+#     output:
+#         tsv  = KALLISTO_DIR / "{sample}.se.kallisto.abundance.tsv",
+#         h5   = KALLISTO_DIR / "{sample}.se.kallisto.abundance.h5",
+#         info = KALLISTO_DIR / "{sample}.se.kallisto.run_info.json",
+#         log  = KALLISTO_DIR / "{sample}.se.kallisto.log",
+#     log:     LOG_DIR / "kallisto" / "{sample}.se.kallisto.log"
+#     threads: 4
+#     shell:
+#         r"""
+#         set -x
+#         exec > >(tee -a {log}) 2>&1
+#         # If input contains zero reads, create placeholder outputs and skip kallisto
+#         if ! zcat -f {input} 2>/dev/null | head -n 1 | grep -q .; then
+#             echo -e "target_id\tlength\teff_length\test_counts\ttpm" > {output.tsv}
+#             : > {output.h5}
+#             cat > {output.info} <<'JSON'
+# {{
+#   "n_targets": 0,
+#   "n_bootstraps": 0,
+#   "n_processed": 0,
+#   "n_pseudoaligned": 0,
+#   "p_pseudoaligned": 0.0,
+#   "call": "kallisto quant skipped due to empty inputs"
+# }}
+# JSON
+#             cp -f {log} {output.log}
+#             exit 0
+#         fi
+#         TMP=$(mktemp -d)
+#         kallisto quant \
+#             --index {TRANSCRIPT_INDEX} \
+#             --output-dir $TMP \
+#             -t {threads} \
+#             --single -l {FRAG_LEN_MEAN} -s {FRAG_LEN_STD} \
+#             {input}
+#         mv $TMP/abundance.tsv   {output.tsv}
+#         mv $TMP/abundance.h5    {output.h5}
+#         mv $TMP/run_info.json   {output.info}
+#         cp -f {log} {output.log}
+#         """
 
 rule kallisto_paired:
     input:
@@ -345,19 +435,42 @@ rule kallisto_paired:
         h5   = KALLISTO_DIR / "{sample}.kallisto.abundance.h5",
         info = KALLISTO_DIR / "{sample}.kallisto.run_info.json",
         log  = KALLISTO_DIR / "{sample}.kallisto.log",
+    log:
+        LOG_DIR / "kallisto" / "{sample}.kallisto.log"
     threads: 4
     shell:
-        """
+        r"""
+        set -x
+        exec > >(tee -a {log}) 2>&1
+        # If inputs contain zero reads, create placeholder outputs and skip kallisto
+        if ! zcat -f {input.r1} 2>/dev/null | head -n 1 | grep -q . \
+           || ! zcat -f {input.r2} 2>/dev/null | head -n 1 | grep -q .; then
+            echo -e "target_id\tlength\teff_length\test_counts\ttpm" > {output.tsv}
+            : > {output.h5}
+            cat > {output.info} <<'JSON'
+{{
+  "n_targets": 0,
+  "n_bootstraps": 0,
+  "n_processed": 0,
+  "n_pseudoaligned": 0,
+  "p_pseudoaligned": 0.0,
+  "call": "kallisto quant skipped due to empty inputs"
+}}
+JSON
+            cp -f {log} {output.log}
+            exit 0
+        fi
+
         TMP=$(mktemp -d)
         kallisto quant \
             --index {TRANSCRIPT_INDEX} \
             --output-dir $TMP \
             -t {threads} \
-            {input.r1} {input.r2} \
-            > {output.log} 2>&1
+            {input.r1} {input.r2}
         mv $TMP/abundance.tsv   {output.tsv}
         mv $TMP/abundance.h5    {output.h5}
         mv $TMP/run_info.json   {output.info}
+        cp -f {log} {output.log}
         """
 
 ###############################################################################
@@ -368,6 +481,11 @@ rule multiqc:
         FASTP_JSONS,
         KALLISTO_LOGS
     output: MULTIQC_DIR / "multiqc_report.html"
+    log:    LOG_DIR / "multiqc.log"
     threads: 1
     shell:
-        "multiqc -f {RESULTS_DIR} -o {MULTIQC_DIR}"
+        r"""
+        set -x
+        exec > >(tee -a {log}) 2>&1
+        multiqc -f {RESULTS_DIR} -o {MULTIQC_DIR}
+        """

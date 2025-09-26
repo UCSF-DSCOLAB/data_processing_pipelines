@@ -7,7 +7,9 @@
 #SBATCH --exclude=c4-n20
 
 # to run:
-#   sbatch ./run_pipeline.sh -profile hpc
+#   sbatch ./run_pipeline_c4.sh
+# to resume:
+#.  sbatch ./run_pipeline_c4.sh -resume
 
 # Arugments:
 # pass as many additional arguments to nextflow as you'd like (e.g. -resume, -with-timeline, -profile test)

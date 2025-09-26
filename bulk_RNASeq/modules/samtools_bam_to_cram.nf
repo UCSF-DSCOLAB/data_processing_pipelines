@@ -4,9 +4,9 @@ process SAMTOOLS_BAM_TO_CRAM {
     label 'samtools_bam_to_cram'
     publishDir "${params.results_directory}/star", mode: 'copy'
     memory {
-        // File size in GB
-        fileSize = bam.size() / (1024 * 1024 * 1024)
-        return 1.GB + (1.GB * fileSize * 0.001)
+        def sizeGiB   = Math.ceil( bam.size() / (1024 ** 3) )
+        def required  = 1.GB + sizeGiB * 1.GB
+        return required < 8.GB ? 8.GB : required   // equivalent to Math.max(required, 8.GB)
     }
 
     input:

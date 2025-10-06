@@ -115,9 +115,6 @@ process CELLRANGER_VDJ {
   path(".command.log"), emit: log
   
   """
-  echo "Debug: library=${library}"
-  echo "Debug: data_type=${data_type}"
-  echo "Debug: vdj_library=${vdj_library}"
 
   echo "[\$(date '+%d/%m/%Y %H:%M:%S')]"
   echo "[running CELLRANGER_VDJ]"

@@ -192,13 +192,26 @@ filter_cells = function(sobj, params, adt.present){
 load_clonotypes <- function(library, data_type, contig_path) {
   vdj_library=str_replace(library, "SCG", sprintf("SC%s", substr(data_type, 1,1) ))
 
-  annot = read.csv(contig_path) %>%
+  annot = read.csv(contig_path)
+  
+  # Detect gamma-delta samples
+  chain_counts = table(annot$chain)
+  gd_total = sum(chain_counts[c("TRG", "TRD")], na.rm = TRUE)
+  is_gamma_delta = (gd_total / nrow(annot)) > 0.80
+  
+  # Filter - skip productive and clonotype_id filters for γδ
+  if (is_gamma_delta) {
+    annot = annot %>%
+      filter(high_confidence=="true", full_length=="true")
+  } else {
+    annot = annot %>%
       filter(
-          high_confidence=="true",
-          full_length=="true",
-          productive=="true",
-          raw_clonotype_id!="" & !is.na(raw_clonotype_id) # target=NA, but may be turned into ""
+        high_confidence=="true",
+        full_length=="true",
+        productive=="true",
+        raw_clonotype_id!="" & !is.na(raw_clonotype_id)
       )
+  }
   
   # The TCR/BCR sequencies for each barcode are split into different chains across multiple lines, but all those rows have same raw_clonotype_id values. Extracting the barcode and raw_clonotype_id and removing the redundancies.
   annot_set = annot %>% select(barcode, raw_clonotype_id) %>% unique()
@@ -224,6 +237,7 @@ load_clonotypes <- function(library, data_type, contig_path) {
   
   return(clonotype_data)
 }
+
 
 process_adt <- function(ADT_counts, ADT_background){
   

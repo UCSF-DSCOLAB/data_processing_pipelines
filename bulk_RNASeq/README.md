@@ -55,7 +55,7 @@ cd data_processing_pipelines/bulk_RNAseq
 * Run the DSL2 pipeline using Slurm and Singularity
     * NOTE: you must run the following command inside `data_processing_pipelines/bulk_RNASeq/`
 ```bash
-sbatch ./run_pipeline.sh
+sbatch ./run_pipeline_c4.sh
 ```
 The pipeline log and Nextflow work directory are created under `results_directory`. A small `slurm-<job-id>.out` bootstrap log is also created in the submission directory because Slurm opens its output before the pipeline configuration can be read.
 

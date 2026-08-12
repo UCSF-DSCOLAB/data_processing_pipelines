@@ -15,6 +15,7 @@ process FASTP_TRIM_ADAPTERS {
 	}
         return 10.GB * (1 + (fileSize * 2))
     }
+    publishDir "${params.results_directory}/trimmed_reads", mode: 'copy'
 
     input:
     tuple val(meta), path(reads)

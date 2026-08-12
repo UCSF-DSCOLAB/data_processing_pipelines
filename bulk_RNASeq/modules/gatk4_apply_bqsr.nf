@@ -8,6 +8,8 @@ process GATK4_APPLY_BQSR {
         return 1.GB + (2.GB * fileSize * 0.1)
     }
 
+    containerOptions "-B /scratch/"
+
     input:
     tuple val(meta), path(input), path(input_index), path(bqsr_table)
     path  genome
@@ -30,7 +32,7 @@ process GATK4_APPLY_BQSR {
         --output ${prefix}_bqsr.bam \\
         --reference $genome \\
         --bqsr-recal-file $bqsr_table \\
-        --tmp-dir \$PWD \\
+        --tmp-dir \$TMPDIR \\
         $args
     """
 }

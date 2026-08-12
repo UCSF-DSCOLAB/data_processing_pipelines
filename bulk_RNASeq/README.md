@@ -40,6 +40,8 @@ cd data_processing_pipelines/bulk_RNAseq
 ```
 
 ## Configuration
+* The pipeline defaults to the hg38.p13 reference and assumes its chromosome names already use the UCSC convention, so contig conversion is disabled.
+* To use the hg38.p14 NCBI RefSeq reference, add `hg38_p14` to the profile list. For example, on C4 use `-profile hpc_c4,hg38_p14`. This reference automatically enables conversion of RefSeq contig accessions to UCSC-style chromosome names.
 * Create a sample sheet (CSV) specifying each sample, locations of their sequencing reads (FASTQ), and whether they are single-end or paired-end reads. The figure below is an example of a correctly formatted sample sheet:
 * Avoid creating the csv using Microsoft Excel because it can add weird symbols (eg. <U+FEFF>) to the beginning of the file causing issues for the pipeline
 ![sample_sheet](docs/figs/sample_sheet_example.png)

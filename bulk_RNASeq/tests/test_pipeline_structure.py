@@ -26,6 +26,8 @@ class PipelineStructureTests(unittest.TestCase):
         self.assertIn("gatk_extended_site_filters", self.filters)
         self.assertIn("ReadPosRankSum", self.filters)
         self.assertIn("MQRankSum", self.filters)
+        self.assertIn("].join(' ') : ''", self.filters)
+        self.assertLess(self.filters.index("--output"), self.filters.index("$extended_filters $args"))
 
     def test_rna_filter_defaults_and_complete_case_output(self):
         self.assertIn("gatk_vf_fs_filter                     = 30.0", self.parameters)

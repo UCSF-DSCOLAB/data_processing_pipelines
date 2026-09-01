@@ -18,8 +18,7 @@ process GATK4_VARIANTFILTRATION {
     path  dict
 
     output:
-    tuple val(meta), path("*.filtered.vcf.gz"), emit: vcf
-    tuple val(meta), path("*.tbi")   , emit: tbi
+    tuple val(meta), path("*.filtered.vcf.gz"), path("*.filtered.vcf.gz.tbi"), emit: vcf
 
     when:
     task.ext.when == null || task.ext.when
@@ -46,7 +45,6 @@ process GATK4_VARIANTFILTRATION {
         --reference $fasta \\
         --window $params.gatk_vf_window_size \\
         --output ${prefix}.filtered.vcf.gz \\
-        --tmp-dir \$TMPDIR \\
-        $extended_filters $args
+        --tmp-dir \$TMPDIR $extended_filters $args
     """
 }

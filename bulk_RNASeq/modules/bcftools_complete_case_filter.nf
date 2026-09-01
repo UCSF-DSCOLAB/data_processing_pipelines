@@ -11,11 +11,11 @@ process BCFTOOLS_COMPLETE_CASE_FILTER {
 
     script:
     """
-    bcftools +fill-tags $vcf -Ou -- -t F_MISSING | \\
-        bcftools view \\
-            --include 'F_MISSING=0' \\
-            --output-type z \\
-            --output cohort.demux_ready.complete.vcf.gz
+    bcftools view \\
+        --include 'F_MISSING=0' \\
+        --output-type z \\
+        --output cohort.demux_ready.complete.vcf.gz \\
+        $vcf
     bcftools index --tbi cohort.demux_ready.complete.vcf.gz
     """
 }

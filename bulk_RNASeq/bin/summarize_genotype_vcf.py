@@ -45,7 +45,7 @@ def summarize_sample(vcf, sample):
     for line in text.splitlines():
         if not line:
             continue
-        gt_text, dp_text, gq_text = line.split("\\t")
+        gt_text, dp_text, gq_text = line.split("\t")
         counts["total"] += 1
         gt = canonical_gt(gt_text)
         if gt is None:
@@ -74,7 +74,7 @@ def pairwise_counts(vcf, samples):
     text = run_bcftools("query", "-f", fmt, str(vcf))
     pairs = {(a, b): [0, 0] for a, b in itertools.combinations(samples, 2)}
     for line in text.splitlines():
-        fields = line.split("\\t")
+        fields = line.split("\t")
         genotypes = [canonical_gt(value) for value in fields[2:]]
         for left, right in itertools.combinations(range(len(samples)), 2):
             gt_left, gt_right = genotypes[left], genotypes[right]
@@ -101,23 +101,23 @@ def main():
 
     with args.sample_output.open("w") as handle:
         handle.write(
-            "sample\\ttotal_sites\\tcalled_sites\\tcall_rate\\thom_ref\\thet\\t"
-            "hom_alt\\tmean_dp\\tmean_gq\\n"
+            "sample\ttotal_sites\tcalled_sites\tcall_rate\thom_ref\thet\t"
+            "hom_alt\tmean_dp\tmean_gq\n"
         )
         for sample in samples:
             summary = summarize_sample(args.vcf, sample)
             handle.write(
-                f"{sample}\\t{summary['total']}\\t{summary['called']}\\t"
-                f"{summary['call_rate']:.4f}\\t{summary['hom_ref']}\\t"
-                f"{summary['het']}\\t{summary['hom_alt']}\\t"
-                f"{summary['mean_dp']:.2f}\\t{summary['mean_gq']:.2f}\\n"
+                f"{sample}\t{summary['total']}\t{summary['called']}\t"
+                f"{summary['call_rate']:.4f}\t{summary['hom_ref']}\t"
+                f"{summary['het']}\t{summary['hom_alt']}\t"
+                f"{summary['mean_dp']:.2f}\t{summary['mean_gq']:.2f}\n"
             )
 
     with args.pairwise_output.open("w") as handle:
-        handle.write("donor_1\\tdonor_2\\tjoint_called\\tdiscordant\\tstatus\\n")
+        handle.write("donor_1\tdonor_2\tjoint_called\tdiscordant\tstatus\n")
         for (left, right), (joint, discordant) in pairwise_counts(args.vcf, samples).items():
             status = "PASS" if discordant >= args.minimum_discordant else "WARN"
-            handle.write(f"{left}\\t{right}\\t{joint}\\t{discordant}\\t{status}\\n")
+            handle.write(f"{left}\t{right}\t{joint}\t{discordant}\t{status}\n")
 
 
 if __name__ == "__main__":

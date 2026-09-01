@@ -13,6 +13,7 @@ process BCFTOOLS_DEMUX_FILTER {
 
     script:
     """
+    set -o pipefail
     bcftools norm \\
         --fasta-ref $fasta \\
         --multiallelics -any \\

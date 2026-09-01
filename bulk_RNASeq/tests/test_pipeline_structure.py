@@ -23,6 +23,7 @@ class PipelineStructureTests(unittest.TestCase):
     def test_genotype_and_site_filters_are_present(self):
         self.assertIn("--genotype-filter-expression", self.filters)
         self.assertIn("--set-filtered-genotype-to-no-call true", self.filters)
+        self.assertIn('path("*.filtered.vcf.gz.tbi"), emit: vcf', self.filters)
         self.assertIn("gatk_extended_site_filters", self.filters)
         self.assertIn("ReadPosRankSum", self.filters)
         self.assertIn("MQRankSum", self.filters)
@@ -34,6 +35,7 @@ class PipelineStructureTests(unittest.TestCase):
         self.assertIn("gatk_extended_site_filters            = false", self.parameters)
         self.assertIn("emit_complete_case_vcf                = true", self.parameters)
         self.assertIn("F_MISSING=0", self.complete)
+        self.assertNotIn("+fill-tags", self.complete)
         self.assertIn("BCFTOOLS_COMPLETE_CASE_FILTER", self.pipeline)
 
     def test_gatk_tmpdir_modules_bind_scratch(self):

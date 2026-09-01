@@ -130,7 +130,9 @@ and mitochondrial regions.
 * snps/filtered/: SNP-only, filter-annotated, and PASS intermediate VCFs.
 * snps/demux_ready/: normalized, polymorphic, high-call-rate donor SNP VCFs.
   If an optional panel or exclusion BED is supplied, the most downstream file
-  in this directory is the recommended output.
+  in this directory is the recommended output. By default, the pipeline also
+  writes cohort.demux_ready.complete.vcf.gz, containing only sites called in
+  every donor after genotype masking and all optional panel/region controls.
 * snps/qc/: raw/final bcftools statistics, per-donor genotype metrics, and
   pairwise donor-discrimination counts.
 
@@ -143,6 +145,9 @@ reference. The final VCF preserves GT, AD, DP, GQ, and PL when emitted by GATK.
 * genotype_min_depth=8
 * genotype_min_gq=20
 * demux_max_missing_fraction=0.20
+* emit_complete_case_vcf=true
+* gatk_vf_fs_filter=30
+* gatk_extended_site_filters=false
 * demux_min_pairwise_discordant_snps=50
 * expression_fastp_overlap_correction=true (the independent genotyping branch
   always disables overlap correction)
@@ -150,6 +155,13 @@ reference. The final VCF preserves GT, AD, DP, GQ, and PL when emitted by GATK.
 These are starting values and should be benchmarked against orthogonal donor
 genotypes when available. cohort.pairwise_discrimination.tsv reports WARN for
 donor pairs below the configured discriminatory-SNP threshold.
+
+The default GATK site-filter profile follows the RNA-specific FS > 30, QD < 2,
+and three-SNP/35-bp cluster controls. Set gatk_extended_site_filters=true to
+also apply QUAL, SOR, MQ, MQRankSum, and ReadPosRankSum filters for a benchmarked
+high-specificity profile. The complete-case VCF is useful for consumers that
+require fully called donor genotypes, but may be too restrictive for large or
+unevenly covered RNA cohorts.
 
 ## Authors
 Emily Flynn (@erflynn)

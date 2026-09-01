@@ -36,6 +36,11 @@
       "minimum": 0,
       "default": 20
     },
+    "gatk_extended_site_filters": {
+      "type": "boolean",
+      "default": false,
+      "description": "Also filter GATK discovery calls on QUAL, SOR, MQ, MQRankSum and ReadPosRankSum"
+    },
     "demux_snp_panel": {
       "type": "string",
       "format": "file-path",
@@ -55,6 +60,11 @@
       "minimum": 0,
       "maximum": 1,
       "default": 0.2
+    },
+    "emit_complete_case_vcf": {
+      "type": "boolean",
+      "default": true,
+      "description": "Emit an additional final VCF containing only sites called in every donor"
     },
     "demux_min_pairwise_discordant_snps": {
       "type": "integer",

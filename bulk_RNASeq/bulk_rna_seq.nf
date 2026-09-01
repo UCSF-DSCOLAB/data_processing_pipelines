@@ -66,8 +66,10 @@ include { GATK4_SELECT_PASS_VARIANTS} from './modules/gatk4_select_pass_variants
 include { BCFTOOLS_DEMUX_FILTER     } from './modules/bcftools_demux_filter'
 include { BCFTOOLS_INTERSECT_PANEL  } from './modules/bcftools_intersect_panel'
 include { BCFTOOLS_EXCLUDE_REGIONS  } from './modules/bcftools_exclude_regions'
+include { BCFTOOLS_COMPLETE_CASE_FILTER } from './modules/bcftools_complete_case_filter'
 include { BCFTOOLS_STATS as BCFTOOLS_STATS_RAW   } from './modules/bcftools_stats'
 include { BCFTOOLS_STATS as BCFTOOLS_STATS_FINAL } from './modules/bcftools_stats'
+include { BCFTOOLS_STATS as BCFTOOLS_STATS_COMPLETE } from './modules/bcftools_stats'
 include { GENOTYPE_VCF_QC           } from './modules/genotype_vcf_qc'
 include { BCFTOOLS_CONTIG_CONVERSION} from './modules/bcftools_contig_conversion'
 include { BCFTOOLS_SORT_VCF   }       from './modules/bcftools_sort_vcf'
@@ -365,6 +367,16 @@ workflow {
         )
         BCFTOOLS_SORT_VCF (BCFTOOLS_CONTIG_CONVERSION.out.formatted_vcf)
         BCFTOOLS_INDEX_VCF (BCFTOOLS_SORT_VCF.out.sorted_vcf)
+        ch_demux_ready_vcf = BCFTOOLS_SORT_VCF.out.sorted_vcf
+            .join(BCFTOOLS_INDEX_VCF.out.vcf_index, by: [0])
+    }
+
+    // Optionally provide a strict cohort VCF in which every donor has a
+    // callable genotype after DP/GQ masking and all panel/region controls.
+    ch_complete_case_vcf = Channel.empty()
+    if (params.emit_complete_case_vcf) {
+        BCFTOOLS_COMPLETE_CASE_FILTER (ch_demux_ready_vcf)
+        ch_complete_case_vcf = BCFTOOLS_COMPLETE_CASE_FILTER.out.vcf
     }
 
     //
@@ -379,6 +391,12 @@ workflow {
     GENOTYPE_VCF_QC (ch_demux_ready_vcf)
     ch_reports = ch_reports.mix(BCFTOOLS_STATS_RAW.out.stats.map { label, report -> report })
     ch_reports = ch_reports.mix(BCFTOOLS_STATS_FINAL.out.stats.map { label, report -> report })
+    if (params.emit_complete_case_vcf) {
+        BCFTOOLS_STATS_COMPLETE (
+            ch_complete_case_vcf.map { meta, vcf, tbi -> ['complete_case', vcf, tbi] }
+        )
+        ch_reports = ch_reports.mix(BCFTOOLS_STATS_COMPLETE.out.stats.map { label, report -> report })
+    }
     //
     // MODULE: Generate QC reports using MULTIQC
     //

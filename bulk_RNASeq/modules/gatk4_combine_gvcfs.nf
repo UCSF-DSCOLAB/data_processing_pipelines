@@ -2,6 +2,7 @@ process GATK4_COMBINEGVCFS {
     tag "cohort"
     label 'gatk4_combinegvcfs'
     publishDir "${params.results_directory}/snps/joint", mode: 'copy'
+    containerOptions "-B /scratch/"
 
     input:
     val meta

@@ -2,6 +2,7 @@ process GATK4_GENOTYPEGVCFS {
     tag "cohort"
     label 'gatk4_genotypegvcfs'
     publishDir "${params.results_directory}/snps/joint", mode: 'copy'
+    containerOptions "-B /scratch/"
 
     input:
     tuple val(meta), path(gvcf), path(tbi)

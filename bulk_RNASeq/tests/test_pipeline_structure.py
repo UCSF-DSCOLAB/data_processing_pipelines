@@ -34,6 +34,18 @@ class PipelineStructureTests(unittest.TestCase):
         self.assertIn("F_MISSING=0", self.complete)
         self.assertIn("BCFTOOLS_COMPLETE_CASE_FILTER", self.pipeline)
 
+    def test_gatk_tmpdir_modules_bind_scratch(self):
+        module_names = (
+            "gatk4_combine_gvcfs.nf",
+            "gatk4_genotype_gvcfs.nf",
+            "gatk4_select_snps.nf",
+            "gatk4_select_pass_variants.nf",
+        )
+        for module_name in module_names:
+            module = (ROOT / "modules" / module_name).read_text()
+            self.assertIn("--tmp-dir \\$TMPDIR", module)
+            self.assertIn('containerOptions "-B /scratch/"', module)
+
 
 if __name__ == "__main__":
     unittest.main()

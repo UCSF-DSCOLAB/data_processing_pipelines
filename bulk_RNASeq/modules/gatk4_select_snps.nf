@@ -2,6 +2,7 @@ process GATK4_SELECT_SNPS {
     tag "cohort"
     label 'gatk4_selectvariants'
     publishDir "${params.results_directory}/snps/filtered", mode: 'copy'
+    containerOptions "-B /scratch/"
 
     input:
     tuple val(meta), path(vcf), path(tbi)

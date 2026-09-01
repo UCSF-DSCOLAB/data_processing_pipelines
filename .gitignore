@@ -4,6 +4,8 @@
 *.nextflow*
 *~
 *trace*.txt
+**/__pycache__/
+*.py[cod]
 # Snakemake
 *.snakemake*
 # Jetbrains

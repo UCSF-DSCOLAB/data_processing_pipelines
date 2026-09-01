@@ -2,7 +2,7 @@ process BCFTOOLS_INDEX_VCF {
     tag "$meta.id"
     // clusterOptions = '-S /bin/bash'
     label 'bcftools_index_vcf', 'per_sample'
-    publishDir "${params.results_directory}/snps", mode: 'copy'
+    publishDir "${params.results_directory}/snps/demux_ready", mode: 'copy'
     memory {
         // File size in GB
         fileSize = vcf.size() / (1024 * 1024 * 1024)

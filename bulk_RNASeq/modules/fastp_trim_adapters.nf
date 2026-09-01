@@ -33,6 +33,7 @@ process FASTP_TRIM_ADAPTERS {
     def prefix = task.ext.prefix ?: "${meta.id}"
     def adapter_sequence_1 = params.adapter_sequence_1 ? "--adapter_sequence ${params.adapter_sequence_1}" : ""
     def adapter_sequence_2 = params.adapter_sequence_2 ? "--adapter_sequence_r2 ${params.adapter_sequence_2}" : ""
+    def overlap_correction = params.expression_fastp_overlap_correction ? "--correction" : ""
     if (meta.single_end) {
         """
         [ ! -f  ${prefix}.fastq.gz ] && ln -sf $reads ${prefix}.fastq.gz
@@ -42,7 +43,7 @@ process FASTP_TRIM_ADAPTERS {
           --length_required 20 \
           $adapter_sequence_1 \\
           $adapter_sequence_2 \\
-          --correction  \
+          $overlap_correction \
           --trim_poly_g  \
           --thread ${task.cpus} \\
           --json ${prefix}.fastp.json \\
@@ -60,7 +61,7 @@ process FASTP_TRIM_ADAPTERS {
           --length_required 20 \
           $adapter_sequence_1 \\
           $adapter_sequence_2 \\
-          --correction  \
+          $overlap_correction \
           --trim_poly_g  \
           --thread ${task.cpus} \\
           --json ${prefix}.fastp.json \\

@@ -45,7 +45,7 @@ process STAR_ALIGN {
         --quantMode TranscriptomeSAM GeneCounts \
         --outReadsUnmapped None \
 	      --outSAMunmapped Within KeepPairs \
-        --outSAMattrRGline ID:$prefix SM:$prefix LB:library PL:illumina \
+        --outSAMattrRGline ID:${meta.library_id ?: prefix} SM:${meta.donor_id ?: prefix} LB:${meta.library_id ?: prefix} PL:illumina \
         --outFileNamePrefix $prefix \\
         --outTmpDir $task.scratch \\
         --outFilterMismatchNoverLmax ${params.star_outfilter_mismatch_n_over_lmax} \\

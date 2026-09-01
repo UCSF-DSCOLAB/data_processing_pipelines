@@ -2,7 +2,7 @@ process BCFTOOLS_CONTIG_CONVERSION {
     tag "$meta.id"
     // clusterOptions = '-S /bin/bash'
     label 'bcftools_contig_conversion', 'per_sample'
-    publishDir "${params.results_directory}/snps", mode: 'copy'
+    publishDir "${params.results_directory}/snps/demux_ready", mode: 'copy'
     memory {
         // File size in GB
         fileSize = vcf.size() / (1024 * 1024 * 1024)
@@ -27,7 +27,7 @@ process BCFTOOLS_CONTIG_CONVERSION {
             --rename-chrs $format_map \\
             --threads $task.cpus -Oz \\
             --output ${prefix}.formatted.vcf.gz \\
+            $args \\
             $vcf
-            $args
     """
 }

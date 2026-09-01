@@ -1,0 +1,7 @@
+name: genotype_qc
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=3.11
+  - bcftools=1.20

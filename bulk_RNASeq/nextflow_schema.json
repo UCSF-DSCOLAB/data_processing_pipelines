@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema",
+  "title": "RNAX bulk RNA-seq parameters",
+  "type": "object",
+  "properties": {
+    "input_sample_sheet": {
+      "type": "string",
+      "format": "file-path",
+      "description": "CSV with sample, fastq_1, fastq_2 and optional donor_id/library_id columns"
+    },
+    "results_directory": {
+      "type": "string",
+      "format": "directory-path"
+    },
+    "run_bqsr": {
+      "type": "boolean",
+      "default": true
+    },
+    "expression_fastp_overlap_correction": {
+      "type": "boolean",
+      "default": true
+    },
+    "genotype_min_mapping_quality": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 60,
+      "default": 30
+    },
+    "genotype_min_depth": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 8
+    },
+    "genotype_min_gq": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 20
+    },
+    "demux_snp_panel": {
+      "type": "string",
+      "format": "file-path",
+      "description": "Optional normalized common germline SNP VCF"
+    },
+    "demux_snp_panel_tbi": {
+      "type": "string",
+      "format": "file-path"
+    },
+    "demux_exclude_regions": {
+      "type": "string",
+      "format": "file-path",
+      "description": "Optional BED of RNA-editing and difficult regions"
+    },
+    "demux_max_missing_fraction": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "default": 0.2
+    },
+    "demux_min_pairwise_discordant_snps": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 50
+    }
+  },
+  "required": ["input_sample_sheet", "results_directory"]
+}

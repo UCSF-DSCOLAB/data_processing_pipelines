@@ -12,6 +12,7 @@ process SAMTOOLS_EXTRACT_MAPPED_READS {
     input:
     tuple val(meta), path(bam)
     val prefix_addon
+    val filter_args
 
     output:
     tuple val(meta), path('*.mapped.bam'), emit: mapped_bam
@@ -21,7 +22,7 @@ process SAMTOOLS_EXTRACT_MAPPED_READS {
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
     samtools view  -b \\
-        -F 0x4 \\
+        $filter_args \\
         -@ ${task.cpus} \\
         --no-PG \\
         -o ${prefix}${prefix_addon}.mapped.bam \\

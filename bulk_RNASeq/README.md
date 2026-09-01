@@ -46,6 +46,9 @@ cd data_processing_pipelines/bulk_RNAseq
 * Avoid creating the csv using Microsoft Excel because it can add weird symbols (eg. <U+FEFF>) to the beginning of the file causing issues for the pipeline
 ![sample_sheet](docs/figs/sample_sheet_example.png)
 * If one or more of your samples have multiple FASTQ reads (i.e. multiple lanes), the sample sheet should contain a row for each lane with an identical name under the `sample` column
+* Optional donor_id and library_id columns define the BAM read-group sample
+  and library identifiers. When omitted, both default to sample. All lanes for
+  one donor must use the same sample, donor_id, and library_id.
 * Open `config/user_directories.config` using your favorite text editor, and specify the following parameters before saving the file:
     * `results_directory`: for storing final results; this should be in a location that you have read-write access to
     * `input_sample_sheet`: sample sheet name. THIS FILE MUST BE INSIDE `results_directory`
@@ -79,6 +82,74 @@ nextflow run bulk_rna_seq.nf -c config/base.config -w your/tmp/directory -profil
 ### Troubleshooting
 * If a run fails, examine log ouputs to identify and resolve issues before resuming run
 * Common cause of failure includes insufficent memory allocated for jobs (solution: for the process that ran out of memory, adjust the amount of computational resource allocated in `container.config` for _HPC Usage_ or `conda.config` for _Local Usage_)
+
+## Genotyping output optimized for donor demultiplexing
+
+The expression-quantification results remain unchanged. The SNP branch uses the
+adapter-trimmed reads before optional rRNA removal, because rRNA filtering is an
+expression-processing concern and should not discard genotype evidence.
+
+The genotyping path is:
+
+1. STAR two-pass alignment with donor/library read groups.
+2. Retention of primary, uniquely mapped, MAPQ >= 30 reads by default.
+3. Picard duplicate marking and GATK SplitNCigarReads.
+4. Optional BQSR (run_bqsr=false disables it for concordance benchmarks).
+5. Per-donor HaplotypeCaller reference-confidence GVCFs.
+6. CombineGVCFs and GenotypeGVCFs for a consistent cohort genotype matrix.
+7. Biallelic SNP selection, site filtering, and DP/GQ genotype masking.
+8. PASS selection, normalization, cohort missingness filtering, and removal of
+   sites that are monomorphic among the sequenced donors.
+9. Optional intersection with a curated common-SNP panel and exclusion of
+   RNA-editing/difficult regions.
+
+No single-cell data or demultiplexing software is run by this pipeline.
+
+### Recommended optional resources
+
+For the most conservative output, provide:
+
+    --demux_snp_panel /path/common_germline_snps.vcf.gz
+    --demux_snp_panel_tbi /path/common_germline_snps.vcf.gz.tbi
+    --demux_exclude_regions /path/rna_editing_and_difficult_regions.bed
+
+The SNP panel must be normalized against the configured FASTA. The pipeline
+checks panel REF alleles and stops on a mismatch. The exclusion BED should use
+the same source contig names as the FASTA; contig renaming, when enabled, occurs
+only after reference-dependent filtering.
+
+Recommended panel contents are common autosomal biallelic germline SNPs. The
+exclusion BED should combine known RNA-editing sites, low-mappability and
+low-complexity regions, segmental duplications, problematic pseudogenes, HLA,
+and mitochondrial regions.
+
+### SNP output layout
+
+* snps/gvcfs/: per-donor reference-confidence GVCFs and indexes.
+* snps/joint/cohort.raw.vcf.gz: raw joint-genotyped cohort VCF.
+* snps/filtered/: SNP-only, filter-annotated, and PASS intermediate VCFs.
+* snps/demux_ready/: normalized, polymorphic, high-call-rate donor SNP VCFs.
+  If an optional panel or exclusion BED is supplied, the most downstream file
+  in this directory is the recommended output.
+* snps/qc/: raw/final bcftools statistics, per-donor genotype metrics, and
+  pairwise donor-discrimination counts.
+
+Low-DP or low-GQ donor genotypes are converted to missing rather than homozygous
+reference. The final VCF preserves GT, AD, DP, GQ, and PL when emitted by GATK.
+
+### Important genotyping parameters
+
+* genotype_min_mapping_quality=30
+* genotype_min_depth=8
+* genotype_min_gq=20
+* demux_max_missing_fraction=0.20
+* demux_min_pairwise_discordant_snps=50
+* expression_fastp_overlap_correction=true (the independent genotyping branch
+  always disables overlap correction)
+
+These are starting values and should be benchmarked against orthogonal donor
+genotypes when available. cohort.pairwise_discrimination.tsv reports WARN for
+donor pairs below the configured discriminatory-SNP threshold.
 
 ## Authors
 Emily Flynn (@erflynn)

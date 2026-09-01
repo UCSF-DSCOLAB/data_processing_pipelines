@@ -31,6 +31,13 @@ params.rrna_db_file             = ""
 
 // Check mandatory parameters (sample sheet)
 if (params.input_sample_sheet) { ch_input = file(params.input_sample_sheet) } else { exit 1, 'Input samplesheet not specified!' } 
+if ((params.demux_snp_panel && !params.demux_snp_panel_tbi) ||
+    (!params.demux_snp_panel && params.demux_snp_panel_tbi)) {
+    exit 1, 'demux_snp_panel and demux_snp_panel_tbi must be supplied together!'
+}
+if (params.demux_max_missing_fraction < 0 || params.demux_max_missing_fraction > 1) {
+    exit 1, 'demux_max_missing_fraction must be between 0 and 1!'
+}
 //if (params.transcript_index) { ch_transcript_index = file(params.transcript_index) } else { exit 1, 'Input transcript index not specified!' } 
 
 // Import SUBWORKFLOWS
@@ -42,6 +49,7 @@ include { BAM_MARKDUPLICATES_PICARD } from './subworkflows/post_process_bam'
 // Import MODULES
 include { CAT_FASTQ                 } from './modules/cat_fastq'
 include { FASTP_TRIM_ADAPTERS       } from './modules/fastp_trim_adapters'
+include { FASTP_PREPARE_GENOTYPING  } from './modules/fastp_prepare_genotyping'
 include { SORTMERNA_RIBOSOMAL_RNA_REMOVAL       } from './modules/sortmerna_rrna_removal'
 include { KALLISTO_QUANT            } from './modules/kallisto_quant'
 include { CUSTOM_MERGE_COUNTS       } from './modules/custom_merge_counts'
@@ -50,11 +58,20 @@ include { GATK4_BASE_RECALIBRATOR   } from './modules/gatk4_recalibrator'
 include { GATK4_APPLY_BQSR          } from './modules/gatk4_apply_bqsr'
 include { SAMTOOLS_INDEX as SAMTOOLS_INDEX_BQSR } from './modules/samtools_index'
 include { GATK4_HAPLOTYPECALLER     } from './modules/gatk4_haplotype_caller'
+include { GATK4_COMBINEGVCFS        } from './modules/gatk4_combine_gvcfs'
+include { GATK4_GENOTYPEGVCFS       } from './modules/gatk4_genotype_gvcfs'
+include { GATK4_SELECT_SNPS         } from './modules/gatk4_select_snps'
 include { GATK4_VARIANTFILTRATION   } from './modules/gatk4_variant_filter'
+include { GATK4_SELECT_PASS_VARIANTS} from './modules/gatk4_select_pass_variants'
+include { BCFTOOLS_DEMUX_FILTER     } from './modules/bcftools_demux_filter'
+include { BCFTOOLS_INTERSECT_PANEL  } from './modules/bcftools_intersect_panel'
+include { BCFTOOLS_EXCLUDE_REGIONS  } from './modules/bcftools_exclude_regions'
+include { BCFTOOLS_STATS as BCFTOOLS_STATS_RAW   } from './modules/bcftools_stats'
+include { BCFTOOLS_STATS as BCFTOOLS_STATS_FINAL } from './modules/bcftools_stats'
+include { GENOTYPE_VCF_QC           } from './modules/genotype_vcf_qc'
 include { BCFTOOLS_CONTIG_CONVERSION} from './modules/bcftools_contig_conversion'
 include { BCFTOOLS_SORT_VCF   }       from './modules/bcftools_sort_vcf'
 include { BCFTOOLS_INDEX_VCF   }      from './modules/bcftools_index_vcf'
-include { BCFTOOLS_MERGE_VCF        } from './modules/bcftools_merge_vcf'
 include { MULTIQC                   } from './modules/multiqc'
 
 
@@ -72,7 +89,7 @@ workflow {
     .map {
         meta, fastq ->
             def meta_clone = meta.clone()
-            meta_clone.id = meta_clone.id.split('_')[0..-2].join('_')
+            meta_clone.id = meta_clone.id.replaceFirst(/_T\d+$/, '')
             [ meta_clone, fastq ]
     }
     .groupTuple(by: [0])
@@ -104,6 +121,13 @@ workflow {
     ch_trimmed_reads = FASTP_TRIM_ADAPTERS.out.trimmed_reads
     ch_trim_multiqc = FASTP_TRIM_ADAPTERS.out.json_report
     ch_reports = ch_reports.mix(ch_trim_multiqc)
+    //
+    // MODULE: Prepare an independent genotype-safe read branch. Overlap
+    // correction is intentionally omitted so observed alleles are not rewritten.
+    //
+    FASTP_PREPARE_GENOTYPING (ch_cat_fastq)
+    ch_genotyping_reads = FASTP_PREPARE_GENOTYPING.out.trimmed_reads
+    ch_reports = ch_reports.mix(FASTP_PREPARE_GENOTYPING.out.json_report)
     //
     // MODULE: Remove ribosomal RNA reads
     //
@@ -156,7 +180,7 @@ workflow {
     ch_star_idxstats = Channel.empty()
     ch_star_multiqc  = Channel.empty()
     ALIGN_READS(
-        ch_trimmed_reads,
+        ch_genotyping_reads,
         params.gtf,
         params.genome_dir
     )
@@ -205,45 +229,45 @@ workflow {
     )
     ch_split_bam = GATK4_SPLITNCIGARREADS.out.bam
     ch_split_bai = GATK4_SPLITNCIGARREADS.out.bai
-    //
-    // MODULE: Base Recalibration table generation
-    //
-    ch_recal_table = Channel.empty()
-    GATK4_BASE_RECALIBRATOR (
-        ch_split_bam,
-        ch_split_bai,
-        params.genome,
-        params.genome_idx,
-        params.genome_dict,
-        params.dbsnp,
-        params.dbsnp_tbi
-    )
-    ch_recal_table = GATK4_BASE_RECALIBRATOR.out.table
-    ch_reports = ch_reports.mix(ch_recal_table.map{ meta, table -> table})
-    //
-    // MODULE: Apply BQSR using recalibration table, then index
-    //
-    ch_split_bam_bai = ch_split_bam.join(ch_split_bai, by: [0])
-    ch_bam_bai_bqsr = ch_split_bam_bai.join(ch_recal_table, by: [0])
     ch_bam_variant_calling = Channel.empty()
     ch_bai_variant_calling = Channel.empty()
-    GATK4_APPLY_BQSR (
-        ch_bam_bai_bqsr,
-        params.genome,
-        params.genome_idx,
-        params.genome_dict
-    )
-    SAMTOOLS_INDEX_BQSR (
-        GATK4_APPLY_BQSR.out.bam
-    )
-    ch_bam_variant_calling = GATK4_APPLY_BQSR.out.bam
-    ch_bai_variant_calling = SAMTOOLS_INDEX_BQSR.out.bai
+    if (params.run_bqsr) {
+        //
+        // MODULES: Generate and apply BQSR. This remains configurable so its
+        // effect on orthogonal genotype concordance can be benchmarked.
+        //
+        GATK4_BASE_RECALIBRATOR (
+            ch_split_bam,
+            ch_split_bai,
+            params.genome,
+            params.genome_idx,
+            params.genome_dict,
+            params.dbsnp,
+            params.dbsnp_tbi
+        )
+        ch_recal_table = GATK4_BASE_RECALIBRATOR.out.table
+        ch_reports = ch_reports.mix(ch_recal_table.map{ meta, table -> table})
+        ch_split_bam_bai = ch_split_bam.join(ch_split_bai, by: [0])
+        ch_bam_bai_bqsr = ch_split_bam_bai.join(ch_recal_table, by: [0])
+        GATK4_APPLY_BQSR (
+            ch_bam_bai_bqsr,
+            params.genome,
+            params.genome_idx,
+            params.genome_dict
+        )
+        SAMTOOLS_INDEX_BQSR (
+            GATK4_APPLY_BQSR.out.bam
+        )
+        ch_bam_variant_calling = GATK4_APPLY_BQSR.out.bam
+        ch_bai_variant_calling = SAMTOOLS_INDEX_BQSR.out.bai
+    } else {
+        ch_bam_variant_calling = ch_split_bam
+        ch_bai_variant_calling = ch_split_bai
+    }
     //
-    // MODULE: Call SNPs and Indels using HaplotypeCaller
+    // MODULE: Emit a reference-confidence GVCF for each donor.
     //
     ch_bam_bai_variant_calling = ch_bam_variant_calling.join(ch_bai_variant_calling, by: [0])
-    ch_haplotype_vcf = Channel.empty()
-    ch_haplotype_tbi = Channel.empty()
     GATK4_HAPLOTYPECALLER (
         ch_bam_bai_variant_calling,
         params.genome,
@@ -252,111 +276,109 @@ workflow {
         params.dbsnp,
         params.dbsnp_tbi
     )
-    ch_haplotype_vcf = GATK4_HAPLOTYPECALLER.out.vcf
+    ch_haplotype_gvcf = GATK4_HAPLOTYPECALLER.out.vcf
     ch_haplotype_tbi = GATK4_HAPLOTYPECALLER.out.tbi
-    ch_haplotype_vcf_tbi = ch_haplotype_vcf.join(ch_haplotype_tbi, by: [0])
+    ch_haplotype_gvcf_tbi = ch_haplotype_gvcf.join(ch_haplotype_tbi, by: [0])
+
     //
-    // MODULE: Filter variants using VariantFiltration
+    // MODULES: Combine reference-confidence records and jointly genotype donors.
+    // This replaces bcftools merge of independently discovered variant-only VCFs.
     //
-    ch_filtered_vcf = Channel.empty()
-    GATK4_VARIANTFILTRATION (
-        ch_haplotype_vcf_tbi,
+    cohort_meta = Channel.value([id: 'cohort'])
+    cohort_gvcfs = ch_haplotype_gvcf_tbi.map { meta, gvcf, tbi -> gvcf }.collect()
+    cohort_gvcf_tbis = ch_haplotype_gvcf_tbi.map { meta, gvcf, tbi -> tbi }.collect()
+    GATK4_COMBINEGVCFS (
+        cohort_meta,
+        cohort_gvcfs,
+        cohort_gvcf_tbis,
         params.genome,
         params.genome_idx,
         params.genome_dict
     )
-    ch_filtered_vcf = GATK4_VARIANTFILTRATION.out.vcf 
-    if (params.format_contigs && params.contig_format_map) {
-        //
-        // MODULE: Convert VCF contigs to desired naming format (e.g. ucsc)
-        //
-        BCFTOOLS_CONTIG_CONVERSION (
-           ch_filtered_vcf,
-           params.contig_format_map
+    GATK4_GENOTYPEGVCFS (
+        GATK4_COMBINEGVCFS.out.gvcf,
+        params.genome,
+        params.genome_idx,
+        params.genome_dict,
+        params.dbsnp,
+        params.dbsnp_tbi
+    )
+
+    //
+    // MODULES: retain biallelic SNPs, mask low-quality donor genotypes, and
+    // physically select PASS sites.
+    //
+    GATK4_SELECT_SNPS (
+        GATK4_GENOTYPEGVCFS.out.vcf,
+        params.genome,
+        params.genome_idx,
+        params.genome_dict
+    )
+    GATK4_VARIANTFILTRATION (
+        GATK4_SELECT_SNPS.out.vcf,
+        params.genome,
+        params.genome_idx,
+        params.genome_dict
+    )
+    GATK4_SELECT_PASS_VARIANTS (
+        GATK4_VARIANTFILTRATION.out.vcf,
+        params.genome,
+        params.genome_idx,
+        params.genome_dict
+    )
+
+    //
+    // MODULES: normalize, remove cohort-monomorphic/high-missingness sites,
+    // optionally intersect a common germline panel, and exclude difficult regions.
+    //
+    BCFTOOLS_DEMUX_FILTER (
+        GATK4_SELECT_PASS_VARIANTS.out.vcf,
+        params.genome,
+        params.genome_idx
+    )
+    ch_demux_ready_vcf = BCFTOOLS_DEMUX_FILTER.out.vcf
+
+    if (params.demux_snp_panel && params.demux_snp_panel_tbi) {
+        BCFTOOLS_INTERSECT_PANEL (
+            ch_demux_ready_vcf,
+            params.demux_snp_panel,
+            params.demux_snp_panel_tbi,
+            params.genome,
+            params.genome_idx
         )
-        ch_filtered_vcf = BCFTOOLS_CONTIG_CONVERSION.out.formatted_vcf
+        ch_demux_ready_vcf = BCFTOOLS_INTERSECT_PANEL.out.vcf
     }
-    //
-    // MODULE: Sort and index VCFs
-    //
-    ch_sorted_vcf = Channel.empty()
-    BCFTOOLS_SORT_VCF (
-        ch_filtered_vcf
-    )
-    ch_sorted_vcf = BCFTOOLS_SORT_VCF.out.sorted_vcf
-    //
-    // MODULE: Index VCFs
-    //
-    ch_vcf_index = Channel.empty()
-    BCFTOOLS_INDEX_VCF (
-        ch_sorted_vcf
-    )
-    // ch_sorted_vcf = BCFTOOLS_INDEX_VCF.out.sorted_vcf
-    ch_vcf_index = BCFTOOLS_INDEX_VCF.out.vcf_index
-    ch_vcf = ch_sorted_vcf.join(ch_vcf_index, by: [0])
-    // Collect all VCFs and index files from upstream process
-    // meta = ch_vcf
-    // .map { tuple -> tuple[0]}
-    // .collect()
-    // vcfs = ch_vcf
-    // .map { tuple -> tuple[1]}
-    // .collect()
-    // tbis = ch_vcf
-    // .map { tuple -> tuple[2]}
-    // .collect()
-    // //
-    // // MODULE: Merge VCFs
-    // //
-    // BCFTOOLS_MERGE_VCF (
-    //     meta, 
-    //     vcfs, 
-    //     tbis
-    // )
-    // Collect VCFs and TBIs, filtering out any nulls or missing files
-    // Filter ch_vcf to samples with both VCF and TBI files
-    // ch_vcf_success = ch_vcf.filter { meta, vcf, tbi -> vcf && tbi }
 
-    // // Collect the VCF files into a list within a channel
-    // ch_vcf_lists = ch_vcf_success
-    //     .collect()
-    //     .map { vcf_tuples ->
-    //         def metaList = vcf_tuples.collect { it[0] }
-    //         def vcfList = vcf_tuples.collect { it[1] }
-    //         def tbiList = vcf_tuples.collect { it[2] }
-    //         return [ metaList, vcfList, tbiList ]
-    //     }
-    // Split the combined channel into three separate channels
-    meta = ch_vcf
-        .map { tuple -> tuple[0]}
-        .collect()
-    vcfs = ch_vcf
-        .map { tuple -> tuple[1]}
-        .collect()
-    tbis = ch_vcf
-        .map { tuple -> tuple[2]}
-        .collect()
-    // Now, invoke the process outside of any closure
-    BCFTOOLS_MERGE_VCF( 
-        meta, 
-        vcfs, 
-        tbis 
+    if (params.demux_exclude_regions) {
+        BCFTOOLS_EXCLUDE_REGIONS (
+            ch_demux_ready_vcf,
+            params.demux_exclude_regions
         )
-    // // Filter ch_vcf to samples with both VCF and TBI files
-    // ch_vcf_success = ch_vcf.filter { meta, vcf, tbi -> vcf && tbi }
+        ch_demux_ready_vcf = BCFTOOLS_EXCLUDE_REGIONS.out.vcf
+    }
 
-    // // Collect the VCF files into a list
-    // vcf_list = ch_vcf_success
-    //     .map { meta, vcf, tbi -> vcf }
-    //     .collect()
+    // Rename contigs only after all reference-based normalization/filtering.
+    if (params.format_contigs && params.contig_format_map) {
+        BCFTOOLS_CONTIG_CONVERSION (
+            ch_demux_ready_vcf.map { meta, vcf, tbi -> [meta, vcf] },
+            params.contig_format_map
+        )
+        BCFTOOLS_SORT_VCF (BCFTOOLS_CONTIG_CONVERSION.out.formatted_vcf)
+        BCFTOOLS_INDEX_VCF (BCFTOOLS_SORT_VCF.out.sorted_vcf)
+    }
 
-    // // Subscribe to the vcf_list when it's ready
-    // vcf_list.subscribe { list ->
-    //     if (!list.isEmpty()) {
-    //         BCFTOOLS_MERGE_VCF(list)
-    //     } else {
-    //         println "No VCF files to merge."
-    //     }
-    // }
+    //
+    // MODULES: raw and final cohort/genotype QC for MultiQC and review.
+    //
+    BCFTOOLS_STATS_RAW (
+        GATK4_GENOTYPEGVCFS.out.vcf.map { meta, vcf, tbi -> ['raw_joint', vcf, tbi] }
+    )
+    BCFTOOLS_STATS_FINAL (
+        ch_demux_ready_vcf.map { meta, vcf, tbi -> ['demux_ready', vcf, tbi] }
+    )
+    GENOTYPE_VCF_QC (ch_demux_ready_vcf)
+    ch_reports = ch_reports.mix(BCFTOOLS_STATS_RAW.out.stats.map { label, report -> report })
+    ch_reports = ch_reports.mix(BCFTOOLS_STATS_FINAL.out.stats.map { label, report -> report })
     //
     // MODULE: Generate QC reports using MULTIQC
     //

@@ -35,7 +35,8 @@ workflow ALIGN_READS {
     //
     EXTRACT_MAPPED_GENOME_READS (
         STAR_ALIGN.out.bam,
-        prefix_addon = ''
+        prefix_addon = '',
+        filter_args = "-F ${params.genotype_exclude_flags} -q ${params.genotype_min_mapping_quality}"
     )
     //
     // Sort BAM file
@@ -62,7 +63,8 @@ workflow ALIGN_READS {
     //
     EXTRACT_MAPPED_TRANSCRIPTOME_READS (
         STAR_ALIGN.out.transcriptome_bam,
-        prefix_addon = '.transcriptome'
+        prefix_addon = '.transcriptome',
+        filter_args = '-F 0x4'
     )
     //
     // Convert mapped transcriptome reads from BAM to CRAM

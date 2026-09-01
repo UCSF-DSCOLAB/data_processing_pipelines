@@ -30,6 +30,8 @@ def create_fastq_channel(LinkedHashMap row) {
     def meta = [:]
     meta.id         = row.sample
     meta.single_end = row.single_end.toBoolean()
+    meta.donor_id   = row.donor_id ?: row.sample
+    meta.library_id = row.library_id ?: row.sample
 
     // add path(s) of the fastq file(s) to the meta map
     def fastq_meta = []

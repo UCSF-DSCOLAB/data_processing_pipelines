@@ -2,7 +2,7 @@ process GATK4_HAPLOTYPECALLER {
     tag "$meta.id"
     // clusterOptions = '-S /bin/bash'
     label 'gatk4_haplotypecaller', 'per_sample'
-    publishDir "${params.results_directory}/snps", mode: 'copy'
+    publishDir "${params.results_directory}/snps/gvcfs", mode: 'copy'
     memory {
         // File size in GB
         fileSize = input.size() / (1024 * 1024 * 1024)
@@ -21,8 +21,8 @@ process GATK4_HAPLOTYPECALLER {
     path  known_sites_tbi
 
     output:
-    tuple val(meta), path("*.vcf.gz"), emit: vcf
-    tuple val(meta), path("*.tbi")   , optional:true, emit: tbi
+    tuple val(meta), path("*.g.vcf.gz"), emit: vcf
+    tuple val(meta), path("*.g.vcf.gz.tbi"), emit: tbi
 
     when:
     task.ext.when == null || task.ext.when
@@ -41,7 +41,8 @@ process GATK4_HAPLOTYPECALLER {
     """
     gatk --java-options "-Xmx${task.memory.toGiga()}g" HaplotypeCaller \\
         --input $input \\
-        --output ${prefix}.vcf.gz \\
+        --output ${prefix}.g.vcf.gz \\
+        --emit-ref-confidence GVCF \\
         $reference_command \\
         $dbsnp_command \\
         --tmp-dir \$TMPDIR \\

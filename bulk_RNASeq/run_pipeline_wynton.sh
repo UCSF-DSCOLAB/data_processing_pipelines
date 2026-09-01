@@ -23,4 +23,4 @@ export NXF_WORK="$nf_work"
 export APPTAINERENV_TMPDIR="$nf_work"
 set +o posix
 ## Run the pipeline
-nextflow run bulk_rna_seq.nf -c config/base.config -profile hpc "${@:1}"
+nextflow run bulk_rna_seq.nf -c config/base.config -profile hpc_wynton "${@:1}"

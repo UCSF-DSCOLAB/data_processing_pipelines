@@ -37,6 +37,8 @@ class RowChecker:
         first_col="fastq_1",
         second_col="fastq_2",
         single_col="single_end",
+        donor_col="donor_id",
+        library_col="library_id",
         **kwargs,
     ):
         """
@@ -59,6 +61,8 @@ class RowChecker:
         self._first_col = first_col
         self._second_col = second_col
         self._single_col = single_col
+        self._donor_col = donor_col
+        self._library_col = library_col
         self._seen = set()
         self.modified = []
 
@@ -72,6 +76,7 @@ class RowChecker:
 
         """
         self._validate_sample(row)
+        self._validate_identity(row)
         self._validate_first(row)
         self._validate_second(row)
         self._validate_pair(row)
@@ -83,6 +88,16 @@ class RowChecker:
         assert len(row[self._sample_col]) > 0, "Sample input is required."
         # Sanitize samples slightly.
         row[self._sample_col] = row[self._sample_col].replace(" ", "_")
+
+    def _validate_identity(self, row):
+        """Populate stable donor and library identifiers used in BAM read groups."""
+        sample = row[self._sample_col]
+        donor = (row.get(self._donor_col) or sample).strip().replace(" ", "_")
+        library = (row.get(self._library_col) or sample).strip().replace(" ", "_")
+        assert donor, "donor_id must not be empty."
+        assert library, "library_id must not be empty."
+        row[self._donor_col] = donor
+        row[self._library_col] = library
 
     def _validate_first(self, row):
         """Assert that the first FASTQ entry is non-empty and has the right format."""
@@ -120,6 +135,27 @@ class RowChecker:
 
         """
         assert len(self._seen) == len(self.modified), "The pair of sample name and FASTQ must be unique."
+        donor_samples = {}
+        donor_libraries = {}
+        sample_donors = {}
+        for row in self.modified:
+            donor_samples.setdefault(row[self._donor_col], set()).add(row[self._sample_col])
+            donor_libraries.setdefault(row[self._donor_col], set()).add(row[self._library_col])
+            sample_donors.setdefault(row[self._sample_col], set()).add(row[self._donor_col])
+        for donor, samples in donor_samples.items():
+            assert len(samples) == 1, (
+                f"donor_id '{donor}' is assigned to multiple sample names: {sorted(samples)}. "
+                "The current pipeline expects one bulk RNA sample per donor."
+            )
+        for donor, libraries in donor_libraries.items():
+            assert len(libraries) == 1, (
+                f"donor_id '{donor}' is assigned to multiple library_id values: {sorted(libraries)}. "
+                "Use one stable library_id for all lanes belonging to a donor."
+            )
+        for sample, donors in sample_donors.items():
+            assert len(donors) == 1, (
+                f"sample '{sample}' is assigned to multiple donor_id values: {sorted(donors)}."
+            )
         seen = Counter()
         for row in self.modified:
             sample = row[self._sample_col]
@@ -206,7 +242,9 @@ def check_samplesheet(file_in, file_out):
                 sys.exit(1)
         checker.validate_unique_samples()
     header = list(reader.fieldnames)
-    header.insert(1, "single_end")
+    for column in ("library_id", "donor_id", "single_end"):
+        if column not in header:
+            header.insert(1, column)
     # See https://docs.python.org/3.9/library/csv.html#id3 to read up on `newline=""`.
     with file_out.open(mode="w", newline="") as out_handle:
         writer = csv.DictWriter(out_handle, header, delimiter=",")
